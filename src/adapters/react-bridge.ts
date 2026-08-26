@@ -1,4 +1,9 @@
-(() => {
+/**
+ * Development-only page bridge injected before application scripts run.
+ * It observes React's public DevTools hook and exposes a bounded snapshot
+ * contract for ReactAdapter without exposing arbitrary page globals.
+ */
+export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
   if (window.__WEB_DEBUG_REACT__) return;
 
   const componentTags = new Set([0, 1, 2, 11, 14, 15]);
@@ -133,4 +138,4 @@
     }
     return output;
   }
-})();
+})();`;

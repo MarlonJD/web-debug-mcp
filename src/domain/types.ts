@@ -140,6 +140,31 @@ export interface NextSnapshot {
   warnings: string[];
 }
 
+export interface ViteModuleSummary {
+  id: string | null;
+  url: string;
+  file: string | null;
+  type: "js" | "css" | "asset";
+  importers: string[];
+  importedModules: string[];
+  acceptedHmrDeps: string[];
+  isSelfAccepting: boolean | null;
+  lastHMRTimestamp: number;
+}
+
+export interface ViteSnapshot {
+  detected: true;
+  endpoint: string;
+  root: string;
+  moduleCount: number;
+  modules: ViteModuleSummary[];
+  hmr: {
+    active: boolean;
+    lastUpdate: { file: string; timestamp: number; moduleCount: number } | null;
+  };
+  warnings: string[];
+}
+
 export interface BrowserSnapshot {
   url: string;
   title: string;
@@ -151,6 +176,7 @@ export interface BrowserSnapshot {
   debugger: DebuggerSnapshot;
   react: ReactSnapshot | null;
   next: NextSnapshot | null;
+  vite: ViteSnapshot | null;
   warnings: string[];
 }
 

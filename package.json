@@ -4,6 +4,10 @@
   "private": true,
   "description": "Agent-native local web debugging through one bounded MCP surface.",
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./vite": "./dist/adapters/vite-plugin.js"
+  },
   "engines": {
     "node": ">=20"
   },

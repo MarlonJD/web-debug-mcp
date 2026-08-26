@@ -48,7 +48,6 @@ const requiredFiles = [
   "fixtures/react-vite/index.html",
   "fixtures/react-vite/src/main.jsx",
   "fixtures/react-vite/src/App.jsx",
-  "fixtures/react-vite/src/react-debug-hook.js",
   "fixtures/next/package.json",
   "fixtures/next/next.config.mjs",
   "fixtures/next/app/layout.jsx",
@@ -61,8 +60,12 @@ const requiredFiles = [
   "scripts/live-next-smoke.mjs",
   "scripts/serve-next.mjs",
   "src/adapters/next.ts",
+  "src/adapters/react-bridge.ts",
+  "src/adapters/vite.ts",
+  "src/adapters/vite-plugin.ts",
   "test/next-fixture-contract.test.ts",
   "test/next-adapter.test.ts",
+  "test/vite-adapter.test.ts",
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 

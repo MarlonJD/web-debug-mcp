@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { ChromiumAdapter } from "../adapters/chromium.js";
 import type { BrowserAdapter, BrowserAdapterFactory } from "../adapters/browser.js";
 import { NextAdapter } from "../adapters/next.js";
+import { ViteAdapter } from "../adapters/vite.js";
 import type {
   ActionResult,
   BrowserAction,
@@ -42,6 +43,7 @@ interface ManagedSession {
   summary: DebugSessionSummary;
   adapter: BrowserAdapter;
   nextAdapter: NextAdapter | null;
+  viteAdapter: ViteAdapter | null;
 }
 
 const MAX_SESSIONS = 8;
@@ -83,6 +85,7 @@ export class SessionManager {
       summary,
       adapter,
       nextAdapter: descriptor.capabilities.next ? new NextAdapter() : null,
+      viteAdapter: descriptor.capabilities.vite ? new ViteAdapter() : null,
     };
     this.sessions.set(id, managed);
 
@@ -144,9 +147,29 @@ export class SessionManager {
           `Next runtime snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`,
         ]);
       }
+      if (session.descriptor.capabilities.next && next === null) {
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [
+          "Next was detected but its local /_next/mcp endpoint did not return a runtime snapshot.",
+        ]);
+      }
       if (next?.warnings) session.summary.warnings = mergeWarnings(session.summary.warnings, next.warnings);
     }
-    const combinedBrowser = { ...browser, next };
+    let vite = null;
+    if (session.viteAdapter) {
+      try {
+        vite = await session.viteAdapter.snapshot(browser.url);
+      } catch (error) {
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [
+          `Vite module graph snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`,
+        ]);
+      }
+      if (session.descriptor.capabilities.vite && vite === null) {
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [
+          "Vite was detected but the web-debug Vite plugin endpoint did not return a module snapshot.",
+        ]);
+      }
+    }
+    const combinedBrowser = { ...browser, next, vite };
     session.summary.url = browser.url;
     session.summary.status = browser.debugger.paused ? "paused" : "ready";
     session.summary.target = {
@@ -158,7 +181,7 @@ export class SessionManager {
     session.summary.warnings = mergeWarnings(session.summary.warnings, browser.warnings);
     if (session.descriptor.capabilities.react && combinedBrowser.react === null) {
       session.summary.warnings = mergeWarnings(session.summary.warnings, [
-        "React was detected but the opt-in web-debug React bridge was not found.",
+        "React was detected but the injected web-debug React bridge was not found.",
       ]);
     }
     return composeEvidence(session.descriptor, session.summary, combinedBrowser);

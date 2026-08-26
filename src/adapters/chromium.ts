@@ -27,6 +27,7 @@ import type {
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { ReactAdapter } from "./react.js";
+import { REACT_DEBUG_BRIDGE_SCRIPT } from "./react-bridge.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -122,6 +123,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.page = await this.context.newPage();
     }
 
+    await this.context.addInitScript({ content: REACT_DEBUG_BRIDGE_SCRIPT });
     this.installObservers(this.page);
     this.cdp = await this.context.newCDPSession(this.page);
     this.cdp.on("Debugger.paused", (event) => {
@@ -269,6 +271,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       debugger: await this.debuggerSnapshot(),
       react,
       next: null,
+      vite: null,
       warnings,
     };
   }

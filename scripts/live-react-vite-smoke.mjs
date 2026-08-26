@@ -44,6 +44,8 @@ try {
   });
   const verification = await manager.verifyScenario(verificationSession.id, scenario.id);
   const verifiedComponent = findComponent(verification.evidence.browser.react?.components ?? [], "CheckoutForm");
+  const viteEvidence = verification.evidence.browser.vite;
+  const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
   await manager.close(verificationSession.id);
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
@@ -62,6 +64,10 @@ try {
     reactDetected: Boolean(verifiedComponent),
     submittedText: verification.evidence.browser.dom.bodyText.includes("Payment submitted: 249.90"),
     submittedState: componentContainsValue(afterComponent, true),
+    viteDetected: viteEvidence?.detected === true,
+    viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
+    appModule: Boolean(appModule),
+    hmrActive: viteEvidence?.hmr.active === true,
     paused: paused.browser.debugger.paused,
     source: pausedFrame?.url.includes("/src/App.jsx") ?? false,
     sourceLine: pausedFrame?.line === 17,
@@ -76,6 +82,7 @@ try {
     pausedFrame,
     pausedConsole: paused.browser.console,
     afterConsole: after.browser.console,
+    appModule,
     artifactDir,
   }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;

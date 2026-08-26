@@ -3,10 +3,10 @@ import type { Page } from "playwright-core";
 import type { ReactSnapshot } from "../domain/types.js";
 
 /**
- * Reads the opt-in bridge exposed by a development React app.
+ * Reads the bridge injected into a development page before React loads.
  *
- * The bridge is deliberately explicit: the adapter never walks arbitrary page
- * globals or assumes that a production React DevTools hook is present.
+ * The bridge is deliberately bounded: the adapter never walks arbitrary page
+ * globals or exposes the raw React DevTools hook.
  */
 export class ReactAdapter {
   async snapshot(page: Page): Promise<ReactSnapshot | null> {
