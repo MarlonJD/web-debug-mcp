@@ -31,7 +31,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 18:50Z) Verify component/state evidence and scenario verification against the live React/Vite fixture.
 - [x] (2026-08-26 18:55Z) Re-run deterministic tests, type/build checks, harness checks, vanilla smoke, and React/Vite smoke after correcting commit-based render counts.
 - [x] (2026-08-26 18:56Z) Complete the final validation set with both live smoke commands passing and no owned process remaining.
-- [ ] Commit and push the React/Vite milestone separately from the bootstrap checkpoint.
+- [x] (2026-08-26 18:57Z) Commit and push the React/Vite milestone as `bdf83d0` on `origin/main`.
 
 ## Surprises & Discoveries
 
@@ -49,7 +49,7 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 
 ## Outcomes & Retrospective
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, React/Vite semantic bridge, and React/Vite live smoke are complete for the current milestone. The React/Vite commit and push remain. Next.js server semantics, automatic React DevTools integration, Safari, replay, remote targets, hosted deployment, and production evidence remain intentionally deferred.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, React/Vite semantic bridge, React/Vite live smoke, and milestone push are complete for the current milestone. The plan remains active for the next adapter milestone. Next.js server semantics, automatic React DevTools integration, Safari, replay, remote targets, hosted deployment, and production evidence remain intentionally deferred.
 
 ## Context and Orientation
 
@@ -121,3 +121,4 @@ The React adapter consumes the opt-in `window.__WEB_DEBUG_REACT__` bridge expose
 - (2026-08-26 18:41Z) Change: Started the React/Vite adapter milestone. Reason: Add framework semantic evidence behind the existing one-MCP core while preserving the first milestone as a stable checkpoint.
 - (2026-08-26 18:50Z) Change: Added the React bridge, Vite fixture, and live semantic smoke. Reason: Prove that the single MCP core can expose framework state and verify a React interaction without adding a second MCP server.
 - (2026-08-26 18:56Z) Change: Recorded the final React/Vite validation evidence before the milestone checkpoint. Reason: Keep the active plan aligned with the tested working tree and explicit remaining commit/push step.
+- (2026-08-26 18:57Z) Change: Recorded milestone commit `bdf83d0` and remote verification. Reason: Preserve the React/Vite checkpoint and leave future Next.js work as a separate active milestone.
