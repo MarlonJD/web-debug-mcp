@@ -3,7 +3,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import type { ModuleNode, Plugin, ViteDevServer } from "vite";
 
 import { boundText } from "../core/redaction.js";
-import type { ViteTransformDiff } from "../domain/types.js";
+import type { ViteSourceMapSummary, ViteTransformDiff, ViteTransformSummary } from "../domain/types.js";
 
 const MAX_TRACKED_SOURCES = 200;
 const MAX_SOURCE_CHARS = 32_000;
@@ -14,11 +14,18 @@ interface LastHotUpdate {
   timestamp: number;
   moduleCount: number;
   transformDiff: ViteTransformDiff | null;
+  transformProvenance: {
+    before: ViteTransformSummary | null;
+    after: ViteTransformSummary | null;
+  } | null;
 }
 
 export interface ViteSourceSnapshot {
   code: string;
   truncated: boolean;
+  deps: string[];
+  dynamicDeps: string[];
+  sourceMap: unknown;
 }
 
 export function webDebugVitePlugin(): Plugin {
@@ -57,8 +64,12 @@ export function webDebugVitePlugin(): Plugin {
       let current: ViteSourceSnapshot | null = null;
       const changedModule = context.modules.find((module) => normalizeId(module.file ?? module.id ?? "") === file);
       if (changedModule?.url) {
-        const transformed = await context.server.transformRequest(changedModule.url);
-        if (transformed) current = snapshotSource(transformed.code);
+        try {
+          const transformed = await context.server.transformRequest(changedModule.url);
+          if (transformed) current = snapshotSource(transformed.code, transformed.map, transformed.deps, transformed.dynamicDeps);
+        } catch {
+          current = null;
+        }
       }
       if (!current) current = snapshotSource(await context.read());
 
@@ -67,6 +78,10 @@ export function webDebugVitePlugin(): Plugin {
         timestamp: context.timestamp,
         moduleCount: context.modules.length,
         transformDiff: previous && current ? createTransformDiff(previous, current) : null,
+        transformProvenance: {
+          before: previous ? summarizeTransform(previous) : null,
+          after: current ? summarizeTransform(current) : null,
+        },
       };
     },
   };
@@ -113,10 +128,41 @@ export function createTransformDiff(previous: ViteSourceSnapshot, current: ViteS
   };
 }
 
-function snapshotSource(code: string): ViteSourceSnapshot {
+function snapshotSource(code: string, sourceMap: unknown = null, deps: string[] = [], dynamicDeps: string[] = []): ViteSourceSnapshot {
   return {
     code: code.slice(0, MAX_SOURCE_CHARS),
     truncated: code.length > MAX_SOURCE_CHARS,
+    deps: deps.slice(0, 50),
+    dynamicDeps: dynamicDeps.slice(0, 50),
+    sourceMap,
+  };
+}
+
+function summarizeTransform(source: ViteSourceSnapshot): ViteTransformSummary {
+  return {
+    codeLength: source.code.length,
+    truncated: source.truncated,
+    deps: source.deps,
+    dynamicDeps: source.dynamicDeps,
+    sourceMap: summarizeSourceMap(source.sourceMap),
+  };
+}
+
+function summarizeSourceMap(sourceMap: unknown): ViteSourceMapSummary {
+  if (!isRecord(sourceMap)) {
+    return { present: false, sourceCount: 0, sources: [], namesCount: 0, mappingLength: 0, file: null };
+  }
+  const sources = Array.isArray(sourceMap.sources)
+    ? sourceMap.sources.filter((source): source is string => typeof source === "string").slice(0, 50)
+    : [];
+  const namesCount = Array.isArray(sourceMap.names) ? sourceMap.names.length : 0;
+  return {
+    present: true,
+    sourceCount: sources.length,
+    sources,
+    namesCount,
+    mappingLength: typeof sourceMap.mappings === "string" ? sourceMap.mappings.length : 0,
+    file: typeof sourceMap.file === "string" ? sourceMap.file.slice(0, 500) : null,
   };
 }
 
@@ -131,6 +177,10 @@ function isProjectFile(file: string, viteServer: ViteDevServer | null): boolean 
   return Boolean(relativePath) && !isAbsolute(relativePath) && !relativePath.startsWith("..");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function summarizeModule(module: ModuleNode) {
   return {
     id: module.id,
@@ -142,5 +192,8 @@ function summarizeModule(module: ModuleNode) {
     acceptedHmrDeps: [...module.acceptedHmrDeps].map((item) => item.url).slice(0, 50),
     isSelfAccepting: module.isSelfAccepting ?? null,
     lastHMRTimestamp: module.lastHMRTimestamp,
+    transform: module.transformResult
+      ? summarizeTransform(snapshotSource(module.transformResult.code, module.transformResult.map, module.transformResult.deps, module.transformResult.dynamicDeps))
+      : null,
   };
 }

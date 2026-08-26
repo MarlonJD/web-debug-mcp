@@ -50,6 +50,7 @@ try {
   const verifiedComponent = findComponent(verification.evidence.browser.react?.components ?? [], "CheckoutForm");
   const viteEvidence = verification.evidence.browser.vite;
   const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
+  const appTransform = appModule?.transform;
   const replaySeek = await manager.seekReplay(verificationSession.id, 1);
   await manager.close(verificationSession.id);
 
@@ -92,8 +93,10 @@ try {
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
     appModule: Boolean(appModule),
+    appTransform: isRecord(appTransform) && typeof appTransform.codeLength === "number" && isRecord(appTransform.sourceMap) && typeof appTransform.sourceMap.present === "boolean",
     hmrActive: viteEvidence?.hmr.active === true,
     viteTransformDiff: isRecord(hmrEvidence) && isRecord(hmrEvidence.hmr) && isRecord(hmrEvidence.hmr.lastUpdate) && isRecord(hmrEvidence.hmr.lastUpdate.transformDiff) && typeof hmrEvidence.hmr.lastUpdate.transformDiff.patch === "string" && hmrEvidence.hmr.lastUpdate.transformDiff.patch.includes("@@"),
+    viteTransformProvenance: isRecord(hmrEvidence) && isRecord(hmrEvidence.hmr) && isRecord(hmrEvidence.hmr.lastUpdate) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance.before) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance.after) && typeof hmrEvidence.hmr.lastUpdate.transformProvenance.before.codeLength === "number" && typeof hmrEvidence.hmr.lastUpdate.transformProvenance.after.codeLength === "number",
     paused: paused.browser.debugger.paused,
     source: pausedFrame?.url.includes("/src/App.jsx") ?? false,
     sourceLine: pausedFrame?.line === 17,

@@ -222,6 +222,7 @@ export interface ViteModuleSummary {
   acceptedHmrDeps: string[];
   isSelfAccepting: boolean | null;
   lastHMRTimestamp: number;
+  transform: ViteTransformSummary | null;
 }
 
 export interface ViteTransformDiff {
@@ -229,6 +230,23 @@ export interface ViteTransformDiff {
   addedLines: number;
   removedLines: number;
   truncated: boolean;
+}
+
+export interface ViteSourceMapSummary {
+  present: boolean;
+  sourceCount: number;
+  sources: string[];
+  namesCount: number;
+  mappingLength: number;
+  file: string | null;
+}
+
+export interface ViteTransformSummary {
+  codeLength: number;
+  truncated: boolean;
+  deps: string[];
+  dynamicDeps: string[];
+  sourceMap: ViteSourceMapSummary;
 }
 
 export interface ViteSnapshot {
@@ -244,6 +262,10 @@ export interface ViteSnapshot {
       timestamp: number;
       moduleCount: number;
       transformDiff: ViteTransformDiff | null;
+      transformProvenance: {
+        before: ViteTransformSummary | null;
+        after: ViteTransformSummary | null;
+      } | null;
     } | null;
   };
   warnings: string[];
