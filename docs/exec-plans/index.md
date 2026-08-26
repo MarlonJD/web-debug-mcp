@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Plan deep Next/server debugging and replay follow-up |
+| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Plan Safari permission, remote-target hardening, and replay fidelity follow-up |
 <!-- harness:plans:active:end -->
 
 ## Completed

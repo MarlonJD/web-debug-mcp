@@ -11,6 +11,7 @@
 - screenshot path when capture succeeds;
 - debugger pause reason, call frames, scopes, and redacted locals;
 - explicit redaction policy and truncation warnings.
+- a bounded `replay` timeline whose fill actions are sanitised and whose frames are inspectable through `web_replay_seek`.
 
 ## Handoff labels
 

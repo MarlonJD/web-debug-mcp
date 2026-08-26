@@ -17,6 +17,7 @@ The first increment supports framework-neutral browser targets, Chromium/CDP, Sa
 - Vite module/importer graph, HMR status, and bounded transform diffs through the `webDebugVitePlugin()` development plugin.
 - Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
 - Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`.
+- Bounded replay timeline in captures and frame lookup through `web_replay_seek`; seek returns captured state without rewinding the live browser.
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
 - A live React/Vite fixture, automatic React bridge, and module-graph/HMR smoke.
@@ -73,7 +74,8 @@ Run the MCP server with `npm run dev` during development or `node dist/index.js`
 4. Call `web_issue_capture` for one bounded evidence bundle.
 5. For Next.js, call `web_next_inspect` to compile a route or resolve a Server Action ID.
 6. Store a flow with `web_repro_record` and run it later with `web_fix_verify`.
-7. Call `web_session_close` when the session is no longer needed.
+7. Use `web_replay_seek` to inspect one retained captured frame.
+8. Call `web_session_close` when the session is no longer needed.
 
 The server does not write into the project during a normal session. Screenshots are stored in a temporary per-session artifact directory and returned as paths.
 
@@ -88,4 +90,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari CDP-equivalent debugger/console/network support, or time-travel replay implementation yet. Safari WebDriver actions, DOM, screenshots, and explicit unsupported-capability warnings are available.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari CDP-equivalent debugger/console/network support, or state-restoring time-travel replay. Safari WebDriver actions, DOM, screenshots, explicit unsupported-capability warnings, and captured-frame replay seek are available.

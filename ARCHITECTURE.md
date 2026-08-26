@@ -37,7 +37,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `src/index.ts` is the only public MCP boundary. It validates inputs with Zod, delegates to `SessionManager`, and serializes structured results or bounded errors. It does not access Playwright directly.
 
-`SessionManager` owns one in-memory record per session and limits active sessions to eight. It creates temporary artifact directories, invokes the browser adapter, updates lifecycle status, and composes evidence. It is the policy boundary for session lookup and close behavior.
+`SessionManager` owns one in-memory record per session and limits active sessions to eight. It creates temporary artifact directories, invokes the browser adapter, records a capped replay timeline after actions/captures, updates lifecycle status, and composes evidence. It is the policy boundary for session lookup, replay seek, and close behavior.
 
 `ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. `SafariAdapter` owns W3C WebDriver requests to local `safaridriver` or an explicit endpoint; it supports actions, DOM, screenshots, and explicit JavaScript evaluation, while CDP-only debugger/console/network sections remain warnings. Chromium records metadata for console and network events, never response bodies, and both adapters expose only the operations defined by `BrowserAdapter`.
 
@@ -53,7 +53,8 @@ React intelligence is available through a development bridge at `window.__WEB_DE
 6. If the project has Vite capability, `ViteAdapter` queries the local `__web_debug/vite` endpoint during capture and adds its bounded module graph/HMR metadata to the browser evidence.
 7. If the project has Next capability, `NextAdapter` queries the local `/_next/mcp` endpoint during capture and adds its bounded runtime metadata to the browser evidence.
 8. If a Next inspection is requested, `web_next_inspect` calls only `compile_route` or `get_server_action_by_id` with bounded arguments and returns redacted results.
-9. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
+9. After each browser action and evidence capture, `SessionManager` stores a bounded, sanitised replay frame; `web_replay_seek` returns one retained frame without mutating the browser.
+10. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
 
 ## Runtime topology
 
