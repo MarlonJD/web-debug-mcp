@@ -25,8 +25,8 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 16:02Z) Run the native harness check and live Chromium breakpoint smoke after documentation and scripts are complete.
 - [x] (2026-08-26 16:06Z) Run the final validation set and inspect the worktree for whitespace or process-cleanup failures.
 - [x] (2026-08-26 16:07Z) Exercise the built `dist/index.js` through an MCP stdio client and confirm all 11 tools are discoverable.
-- [ ] Create the first Conventional Commit.
-- [ ] Push the first commit to the supplied GitHub remote if the remote accepts the authenticated write.
+- [x] (2026-08-26 16:09Z) Create the first Conventional Commit `5fbdf90` with message `feat: bootstrap web debug mcp`.
+- [x] (2026-08-26 16:09Z) Push the first commit to `origin/main` and confirm the remote resolves to `5fbdf904a04eb8add0a18bb111adfa8653590822`.
 
 ## Surprises & Discoveries
 
@@ -43,7 +43,7 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 
 ## Outcomes & Retrospective
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, and built stdio handshake are complete for this milestone. The first commit and remote push remain. React/Vite/Next semantic adapters, Safari, replay, remote targets, hosted deployment, and production evidence are intentionally deferred.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, first commit, and remote push are complete for this milestone. The plan remains active for the next adapter milestone. React/Vite/Next semantic adapters, Safari, replay, remote targets, hosted deployment, and production evidence are intentionally deferred.
 
 ## Context and Orientation
 
@@ -103,3 +103,4 @@ The core public tools are `web_project_detect`, `web_session_start`, `web_sessio
 ## Revision History
 
 - (2026-08-26 15:35Z) Change: Created the active implementation plan and selected the first local vertical slice. Reason: Make the empty supplied repository restartable and evidence-driven.
+- (2026-08-26 16:09Z) Change: Recorded source commit `5fbdf90` and remote branch verification. Reason: Preserve the first bootstrap checkpoint and leave the active plan ready for the adapter milestone.
