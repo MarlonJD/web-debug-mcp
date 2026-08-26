@@ -2,7 +2,7 @@
 
 `web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
 
-The first increment supports framework-neutral browser targets, an opt-in React/Vite development bridge, and Next.js development-server metadata. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
 
 ## What is included
 
@@ -12,10 +12,11 @@ The first increment supports framework-neutral browser targets, an opt-in React/
 - Same-origin browser actions: navigate, click, fill, wait, and reload.
 - JavaScript breakpoints, pause control, bounded call frames, and read-only evaluation by default.
 - Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
-- React component tree, hook values, source locations, and render counts when the opt-in bridge is present.
+- React component tree, hook values, source locations, and render counts when the development build exposes React commits.
+- Vite module/importer graph and HMR status through the `webDebugVitePlugin()` development plugin.
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
-- A live React/Vite fixture and CDP breakpoint smoke.
+- A live React/Vite fixture, automatic React bridge, and module-graph/HMR smoke.
 - A live Next.js App Router fixture and `/_next/mcp` runtime smoke.
 
 ## Requirements
@@ -33,6 +34,8 @@ npm run typecheck
 npm run build
 npm run harness:check
 npm run smoke:live
+npm run smoke:react-vite
+npm run smoke:next
 ```
 
 Run the fixture with `npm run serve:fixture`. The server binds to `127.0.0.1` and defaults to port `4173`; set `WEB_DEBUG_FIXTURE_PORT` to use another port.
@@ -40,6 +43,18 @@ Run the fixture with `npm run serve:fixture`. The server binds to `127.0.0.1` an
 Run `npm run smoke:live` after setting `WEB_DEBUG_CHROME_EXECUTABLE_PATH` when the default macOS Chrome path is not available. It starts the vanilla fixture, sets a breakpoint in `app.js`, clicks the button, captures a pause-safe evidence path, and cleans up the owned browser and fixture processes.
 
 Run `npm run smoke:react-vite` to start the Vite fixture, verify React component/state evidence, pause at `fixtures/react-vite/src/App.jsx`, and replay the submitted-payment flow.
+
+For a Vite application, add the development-only plugin to `vite.config.ts`:
+
+```ts
+import { webDebugVitePlugin } from "web-debug-mcp/vite";
+
+export default {
+  plugins: [webDebugVitePlugin()],
+};
+```
+
+The plugin serves the local read-only module graph endpoint used during a debug session. It should not be enabled in a production server.
 
 Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata, and exercise the client route handler flow.
 
@@ -67,4 +82,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, automatic React DevTools integration, Vite HMR/module-graph adapter, Next.js server debugger/Server Action adapter, Safari adapter, or time-travel replay implementation yet. The current Next adapter reads the built-in dev-server MCP metadata surface only.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/render-cause integration, Vite hot-update diff/transform tracing, Next.js server debugger/Server Action adapter, Safari adapter, or time-travel replay implementation yet. The current Next adapter reads the built-in dev-server MCP metadata surface only.

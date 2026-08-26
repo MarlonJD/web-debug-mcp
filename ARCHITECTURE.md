@@ -18,8 +18,11 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/core/evidence.ts` | Redacted evidence bundle composition | Platform Engineering; update when evidence consumers change |
 | `src/adapters/browser.ts` | Browser transport interface | Platform Engineering; update when an adapter capability changes |
 | `src/adapters/chromium.ts` | Playwright/CDP browser and JavaScript debugger adapter | Platform Engineering; update with Chromium protocol behavior |
-| `src/adapters/react.ts` | Opt-in React runtime bridge reader | Platform Engineering; update with the bridge contract |
+| `src/adapters/react.ts` | Injected React runtime bridge reader | Platform Engineering; update with the bridge contract |
+| `src/adapters/react-bridge.ts` | Development-page React DevTools hook bridge script | Platform Engineering; update with the bridge contract |
 | `src/adapters/next.ts` | Next.js development MCP/SSE runtime metadata reader | Platform Engineering; update with the `/_next/mcp` contract |
+| `src/adapters/vite.ts` | Vite module graph/HMR metadata reader | Platform Engineering; update with the local endpoint contract |
+| `src/adapters/vite-plugin.ts` | Vite dev-server middleware and hot-update bridge | Platform Engineering; update with Vite plugin API behavior |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |
 | `fixtures/react-vite/` | React component/state fixture served by Vite | Test ownership; update when framework evidence changes |
 | `fixtures/next/` | Next.js App Router, client, and route-handler fixture | Test ownership; update when Next runtime evidence changes |
@@ -36,7 +39,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. It records metadata for console and network events, never response bodies, and exposes only the operations defined by `BrowserAdapter`.
 
-React intelligence is available through an explicit development bridge at `window.__WEB_DEBUG_REACT__`. `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when that bridge is present. The React/Vite fixture installs the bridge before React loads. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint and records project metadata, route discovery, compilation issues, log path, and explicit unavailable-runtime warnings. Full Next server debugging and Server Action resolution remain future adapters; their absence is a warning, not a discovery failure.
+React intelligence is available through a development bridge at `window.__WEB_DEBUG_REACT__`. `ChromiumAdapter` injects the bridge into the isolated browser context before application scripts run, and `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when React commits are observed. `ViteAdapter` reads the fixture’s local read-only module graph/HMR endpoint, while `vite-plugin.ts` owns the Vite server middleware and hot-update summary. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint and records project metadata, route discovery, compilation issues, log path, and explicit unavailable-runtime warnings. Full React DevTools profiling, Vite hot-update diff/transform tracing, Next server debugging, and Server Action resolution remain future adapters; their absence is a warning, not a discovery failure.
 
 ## Data and control flow
 
@@ -45,8 +48,9 @@ React intelligence is available through an explicit development bridge at `windo
 3. Browser actions are bounded and same-origin. Console, request, response, and page-error observers retain bounded metadata in memory.
 4. `web_breakpoint_set` and `web_debug_control` use the local CDP Debugger domain. `web_debug_evaluate` uses CDP Runtime with side effects rejected by default.
 5. `web_issue_capture` collects DOM, console, network, screenshot, paused-frame, and optional React bridge data, then applies the redaction policy again before returning the evidence bundle.
-6. If the project has Next capability, `NextAdapter` queries the local `/_next/mcp` endpoint during capture and adds its bounded runtime metadata to the browser evidence.
-7. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
+6. If the project has Vite capability, `ViteAdapter` queries the local `__web_debug/vite` endpoint during capture and adds its bounded module graph/HMR metadata to the browser evidence.
+7. If the project has Next capability, `NextAdapter` queries the local `/_next/mcp` endpoint during capture and adds its bounded runtime metadata to the browser evidence.
+8. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
 
 ## Runtime topology
 
@@ -61,7 +65,7 @@ web-debug-mcp process
                                       └── local web app
 ```
 
-The deterministic fixture uses `scripts/serve-fixture.mjs` on `127.0.0.1`. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. Temporary screenshots remain outside the project and survive session close so the caller can inspect evidence; the operating system owns eventual temporary-directory cleanup.
+The deterministic fixtures use `scripts/serve-fixture.mjs`, `scripts/serve-react-vite.mjs`, and `scripts/serve-next.mjs` on loopback ports. The React/Vite fixture’s `vite.config.ts` installs the local module-graph middleware. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. Temporary screenshots remain outside the project and survive session close so the caller can inspect evidence; the operating system owns eventual temporary-directory cleanup.
 
 Production, hosted MCP, remote browser, Safari, and cloud deployment environments are intentionally out of scope for this increment.
 
@@ -83,6 +87,7 @@ Production, hosted MCP, remote browser, Safari, and cloud deployment environment
 | Browser targets are loopback-only by default | `ChromiumAdapter` tests and input policy | Pass explicit `allowRemote` only for an authorized future use case and update security evidence |
 | Sensitive values are redacted before evidence leaves the adapter | `redaction.test.ts`, React bridge serialization, and `composeEvidence` | Add a regression test for any newly observed sensitive shape |
 | Session count and browser wait time are bounded | `SessionManager` and `ChromiumAdapter` constants | Use a smaller bounded operation or change the limit with a reliability review |
+| Vite module graph data is local, bounded, and read-only | `ViteAdapter`, `vite-plugin.ts`, and React/Vite smoke | Keep the endpoint loopback-only and add bounds/tests for new module fields |
 
 ## Architecture decisions
 

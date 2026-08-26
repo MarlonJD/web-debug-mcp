@@ -30,7 +30,7 @@ Use this file as the short route into the project contract. Keep detailed ration
 | Harness check | `npm run harness:check` | Project contract check prints `harness-check: PASS` |
 | Fixture runtime | `npm run serve:fixture` | Server reports a loopback URL and stops on SIGINT/SIGTERM |
 | Live browser smoke | `npm run smoke:live` | JSON reports `passed: true` for vanilla CDP breakpoint evidence |
-| React/Vite smoke | `npm run smoke:react-vite` | JSON reports `passed: true` for React state and source evidence |
+| React/Vite smoke | `npm run smoke:react-vite` | JSON reports `passed: true` for React state, source, and Vite module evidence |
 | Next smoke | `npm run smoke:next` | JSON reports `passed: true` for Next runtime metadata and UI evidence |
 
 ## Working contract

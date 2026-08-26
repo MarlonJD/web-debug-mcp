@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Plan deep Next server debugging and automatic framework evidence |
+| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Plan deep Next/server debugging and replay follow-up |
 <!-- harness:plans:active:end -->
 
 ## Completed
