@@ -1,0 +1,30 @@
+{
+  "name": "web-debug-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent-native local web debugging through one bounded MCP surface.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "harness:check": "node scripts/harness-check.mjs",
+    "smoke:live": "npm run build && node scripts/live-smoke.mjs",
+    "serve:fixture": "node scripts/serve-fixture.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "playwright-core": "1.62.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.2",
+    "vitest": "3.2.4"
+  }
+}
