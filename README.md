@@ -17,7 +17,7 @@ The current increment supports framework-neutral browser targets, Chromium/CDP, 
 - React component tree, hook values, source locations, render counts, bounded commit summaries, profiler durations, a flat flamegraph view, and inferred render causes when the development build exposes React commits.
 - Vite module/importer graph, HMR status, transformed-code diffs, and source-map summaries through the `webDebugVitePlugin()` development plugin.
 - Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
-- Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`, plus request-linked execution evidence when the browser sends a `Next-Action` request.
+- Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`, plus normalized server request traces and request-linked execution evidence when the browser sends a `Next-Action` request.
 - Bounded replay timeline in captures and frame lookup through `web_replay_seek`; `restore: true` replays only safe retained actions and rejects sanitised form inputs.
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
