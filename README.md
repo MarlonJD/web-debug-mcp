@@ -14,7 +14,7 @@ The current increment supports framework-neutral browser targets, Chromium/CDP, 
 - Same-origin browser actions: navigate, click, fill, wait, and reload.
 - JavaScript breakpoints, pause control, bounded call frames, and read-only evaluation by default.
 - Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
-- React component tree, hook values, source locations, render counts, bounded commit summaries, profiler durations, and inferred render causes when the development build exposes React commits.
+- React component tree, hook values, source locations, render counts, bounded commit summaries, profiler durations, a flat flamegraph view, and inferred render causes when the development build exposes React commits.
 - Vite module/importer graph, HMR status, transformed-code diffs, and source-map summaries through the `webDebugVitePlugin()` development plugin.
 - Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
 - Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`, plus request-linked execution evidence when the browser sends a `Next-Action` request.

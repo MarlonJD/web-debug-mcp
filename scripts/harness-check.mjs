@@ -94,6 +94,11 @@ function inspectSource(path) {
 inspectSource(sourceRoot);
 
 const mcpSource = read("src/index.ts");
+const reactBridgeSource = read("src/adapters/react-bridge.ts");
+const safariSource = read("src/adapters/safari.ts");
+const sessionSource = read("src/core/session-manager.ts");
+const vitePluginSource = read("src/adapters/vite-plugin.ts");
+const nextSource = read("src/adapters/next.ts");
 for (const toolName of [
   "web_project_detect",
   "web_session_start",
@@ -111,6 +116,12 @@ for (const toolName of [
 ]) {
   check(mcpSource.includes(`\"${toolName}\"`), `public MCP tool is not registered: ${toolName}`);
 }
+check(reactBridgeSource.includes("flamegraph"), "React bridge must expose the bounded flamegraph view");
+check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
+check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");
+check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");
+check(vitePluginSource.includes("summarizeSourceMap"), "Vite plugin must preserve source-map provenance summaries");
+check(nextSource.includes("serverActionExecutions"), "Next adapter must preserve Server Action execution evidence");
 
 const config = JSON.parse(read("docs/agent-harness/config.json"));
 check(config.schema_version === 1, "harness config schema_version must be 1");
