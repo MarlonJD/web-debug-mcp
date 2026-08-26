@@ -2,7 +2,7 @@ import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { open, realpath } from "node:fs/promises";
 
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
-import type { NetworkEntry, NextInspection, NextInspectionResult, NextSnapshot } from "../domain/types.js";
+import type { NetworkEntry, NextInspection, NextInspectionResult, NextRequestTrace, NextSnapshot } from "../domain/types.js";
 
 interface RpcResponse {
   result?: unknown;
@@ -52,7 +52,8 @@ export class NextAdapter {
     const logTail = projectRoot
       ? await readLogTail(values.get("get_logs"), projectRoot, warnings)
       : null;
-    const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, warnings);
+    const requestTraces = extractRequestTraces(values.get("get_request_insights"));
+    const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, requestTraces, warnings);
 
     return {
       detected: true,
@@ -65,6 +66,7 @@ export class NextAdapter {
       compilationIssues: values.get("get_compilation_issues") ?? null,
       pageMetadata: values.get("get_page_metadata") ?? null,
       requestInsights: values.get("get_request_insights") ?? null,
+      requestTraces,
       logTail,
       serverActionExecutions,
       warnings,
@@ -111,6 +113,7 @@ async function resolveExecutedServerActions(
   client: NextMcpClient,
   tools: string[],
   network: NetworkEntry[],
+  requestTraces: NextRequestTrace[],
   warnings: string[],
 ): Promise<NextSnapshot["serverActionExecutions"]> {
   const requests = network.filter((entry) => entry.nextActionId).slice(-10);
@@ -124,7 +127,7 @@ async function resolveExecutedServerActions(
     if (!tools.includes("get_server_action_by_id")) {
       const warning = "Next runtime tool is not advertised: get_server_action_by_id";
       warnings.push(warning);
-      executions.push({ actionId, request: actionRequest(request), resolution: null, warning });
+      executions.push({ actionId, request: actionRequest(request), resolution: null, trace: findActionTrace(requestTraces, request), warning });
       continue;
     }
     const result = await client.callTool("get_server_action_by_id", { actionId });
@@ -133,10 +136,82 @@ async function resolveExecutedServerActions(
       actionId,
       request: actionRequest(request),
       resolution: result.value,
+      trace: findActionTrace(requestTraces, request),
       ...(result.warning ? { warning: result.warning } : {}),
     });
   }
   return executions;
+}
+
+function extractRequestTraces(value: unknown): NextRequestTrace[] {
+  if (!isRecord(value) || !Array.isArray(value.requests)) return [];
+  return value.requests.flatMap((request): NextRequestTrace[] => {
+    if (!isRecord(request) || typeof request.requestId !== "string") return [];
+    const spans = Array.isArray(request.spans)
+      ? request.spans.flatMap((span): NextRequestTrace["spans"] => {
+        if (!isRecord(span)) return [];
+        return [{
+          name: boundedString(span.name, "span", 300),
+          startTime: finiteNumber(span.startTime),
+          durationMs: finiteNumber(span.durationMs),
+          status: nullableString(span.status, 100),
+          traceId: nullableString(span.traceId, 200),
+          spanId: nullableString(span.spanId, 200),
+          parentSpanId: nullableString(span.parentSpanId, 200),
+          attributes: isRecord(span.attributes) ? redactValue(span.attributes) as Record<string, unknown> : {},
+        }];
+      }).slice(0, 100)
+      : [];
+    return [{
+      requestId: boundText(request.requestId, 200),
+      kind: nullableString(request.kind, 100),
+      route: nullableString(request.route, 500),
+      url: typeof request.url === "string" ? safeUrl(boundText(request.url, 2_000)) : null,
+      status: nullableString(request.status, 100),
+      startTime: finiteNumber(request.startTime),
+      durationMs: finiteNumber(request.durationMs),
+      spans,
+      fetches: Array.isArray(request.fetches) ? request.fetches.slice(0, 50).map((fetch) => redactValue(fetch)) : [],
+    }];
+  }).slice(-50);
+}
+
+function findActionTrace(traces: NextRequestTrace[], request: NetworkEntry): NextRequestTrace | null {
+  let pathname: string | null = null;
+  try {
+    pathname = new URL(request.url).pathname;
+  } catch {
+    // A malformed trace URL cannot be correlated to a browser request.
+  }
+  const candidates = traces.filter((trace) => trace.route === pathname || trace.url === pathname);
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    const candidate = candidates[index];
+    if (candidate?.spans.some((span) => span.name === request.method || span.attributes["http.method"] === request.method)) return copyRequestTrace(candidate);
+  }
+  return candidates.at(-1) ? copyRequestTrace(candidates.at(-1)!) : null;
+}
+
+function copyRequestTrace(trace: NextRequestTrace): NextRequestTrace {
+  return {
+    ...trace,
+    spans: trace.spans.map((span) => ({
+      ...span,
+      attributes: redactValue(span.attributes) as Record<string, unknown>,
+    })),
+    fetches: trace.fetches.map((fetch) => redactValue(fetch)),
+  };
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nullableString(value: unknown, maxChars: number): string | null {
+  return typeof value === "string" ? boundText(value, maxChars) : null;
+}
+
+function boundedString(value: unknown, fallback: string, maxChars: number): string {
+  return typeof value === "string" ? boundText(value, maxChars) : fallback;
 }
 
 function actionRequest(entry: NetworkEntry) {

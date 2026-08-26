@@ -176,6 +176,7 @@ export interface NextSnapshot {
   compilationIssues: unknown | null;
   pageMetadata: unknown | null;
   requestInsights: unknown | null;
+  requestTraces: NextRequestTrace[];
   logTail: {
     file: string;
     text: string;
@@ -191,9 +192,31 @@ export interface NextSnapshot {
       ok: boolean | null;
     };
     resolution: unknown | null;
+    trace: NextRequestTrace | null;
     warning?: string;
   }>;
   warnings: string[];
+}
+
+export interface NextRequestTrace {
+  requestId: string;
+  kind: string | null;
+  route: string | null;
+  url: string | null;
+  status: string | null;
+  startTime: number | null;
+  durationMs: number | null;
+  spans: Array<{
+    name: string;
+    startTime: number | null;
+    durationMs: number | null;
+    status: string | null;
+    traceId: string | null;
+    spanId: string | null;
+    parentSpanId: string | null;
+    attributes: Record<string, unknown>;
+  }>;
+  fetches: unknown[];
 }
 
 export type NextInspection =

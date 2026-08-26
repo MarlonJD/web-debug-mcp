@@ -57,6 +57,7 @@ try {
   const actionResolution = actionInspection.result;
   const actionExecution = actionNextEvidence?.serverActionExecutions.find((execution) => execution.actionId === actionId);
   const requestInsights = actionNextEvidence?.requestInsights;
+  const requestTraces = actionNextEvidence?.requestTraces;
   const assertions = {
     scenarioPassed: verification.passed,
     nextDetected: nextEvidence?.detected === true,
@@ -71,6 +72,8 @@ try {
     serverActionResolved: isRecord(actionResolution) && actionResolution.actionId === actionId && typeof actionResolution.filename === "string" && actionResolution.filename.endsWith("actions.js"),
     serverActionExecuted: isRecord(actionExecution) && isRecord(actionExecution.request) && actionExecution.request.method === "POST" && actionExecution.request.ok === true && isRecord(actionExecution.resolution) && actionExecution.resolution.actionId === actionId,
     requestInsights: isRecord(requestInsights) && Array.isArray(requestInsights.requests) && requestInsights.requests.length > 0,
+    requestTraces: Array.isArray(requestTraces) && requestTraces.length > 0 && requestTraces.some((trace) => Array.isArray(trace.spans) && trace.spans.length > 0 && typeof trace.durationMs === "number"),
+    serverActionTraceLinked: isRecord(actionExecution?.trace) && Array.isArray(actionExecution.trace.spans) && actionExecution.trace.spans.some((span) => span.name === "POST" || span.attributes?.["http.method"] === "POST"),
     serverRenderedText: verification.evidence.browser.dom.bodyText.includes("Next server component ready"),
     clientRenderedText: verification.evidence.browser.dom.bodyText.includes("Healthy"),
     consoleClean: verification.evidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
@@ -84,6 +87,7 @@ try {
     routeInspection,
     actionInspection,
     actionExecution,
+    requestTraces,
     actionNextEvidence,
     logTail,
     bodyText: verification.evidence.browser.dom.bodyText,
