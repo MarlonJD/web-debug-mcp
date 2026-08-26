@@ -17,6 +17,10 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 
 ## Progress
 
+- [x] (2026-08-26 21:12Z) Add explicit CDP endpoint protocol/host validation and remote target metadata.
+- [x] (2026-08-26 21:12Z) Verify default-deny remote CDP policy and local launch target isolation metadata.
+- [x] (2026-08-26 21:12Z) Commit and push the remote-target policy milestone as 0fbee2d on origin/main.
+
 - [x] (2026-08-26 15:30Z) Clone the supplied repository into `monorepos/web-debug-mcp` and confirm it is empty.
 - [x] (2026-08-26 15:35Z) Run the adaptive Harness Engineering audit and review the standard scaffold preview.
 - [x] (2026-08-26 15:45Z) Add the TypeScript/MCP project manifest and source boundary.
@@ -70,6 +74,8 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 
 ## Decision Log
 
+- Decision: Require explicit remote CDP opt-in and expose remote/non-isolated target metadata. Rationale: remote browser control is materially higher risk than a local launch, so endpoint host/protocol validation and allowRemote must be visible in the session contract; no target discovery or implicit credential flow is added. Date/Author: 2026-08-26 / Platform Engineering.
+
 - Decision: Use `web-debug-mcp` as the project name and keep it separate from AviaWorkspace product code. Rationale: the tool is a reusable developer capability and must not add frontend runtime dependencies to the platform composition repository. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Expose one MCP facade with high-level tools and keep browser/framework details behind adapters. Rationale: this avoids a global catalog of overlapping Vite, Next, React, and browser servers. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Start with Chromium/CDP and framework-neutral evidence. Rationale: CDP provides browser and JavaScript debugger primitives without requiring VS Code, while a vanilla fixture gives a deterministic baseline for future adapters. Date/Author: 2026-08-26 / Platform Engineering.
@@ -87,6 +93,8 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 
 ## Outcomes & Retrospective
 
+The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host is still required for live remote-attach evidence.
+
 The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with bounded transform diffs, bounded replay timeline/seek, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Safari WebDriver transport, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Safari debugger parity, state-restoring replay, remote targets, hosted deployment, and production evidence; live Safari verification is blocked by the host setting recorded in the debt tracker.
 
 ## Context and Orientation
@@ -96,6 +104,8 @@ The MCP boundary is `src/index.ts`. `SessionManager` in `src/core/session-manage
 The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures/react-vite/` is served by `scripts/serve-react-vite.mjs`; `fixtures/next/` is served by `scripts/serve-next.mjs`. Unit and contract tests live under `test/` and use a fake browser adapter for lifecycle behavior. The project-native harness gate is `scripts/harness-check.mjs`.
 
 ## Plan of Work
+
+The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy and local-launch checks are complete; external-host live attach remains a separate evidence gate.
 
 The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. The Safari milestone adds W3C WebDriver actions/DOM/screenshots with explicit CDP capability warnings. The replay milestone adds captured-frame timeline/seek with sanitised action values. Remaining work is split into Safari debugger parity, state-restoring replay, and remote target milestones.
 
@@ -129,6 +139,8 @@ For the Safari milestone, run `npm run smoke:safari` after the normal checks. Ex
 For the replay milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with retained frames, successful `web_replay_seek`, and no raw fill value in a replay action.
 
 ## Validation and Acceptance
+
+Remote-target acceptance additionally requires default-deny and endpoint-protocol tests plus local target metadata. A remote live run is candidate-only until an approved external endpoint is supplied.
 
 Acceptance requires all of the following:
 
@@ -178,6 +190,8 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 
 ## Interfaces and Dependencies
 
+Browser targets now identify the selected browser engine and whether the connection is remote; Safari uses WebDriver and Chromium uses CDP/launch according to explicit session input.
+
 The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses `McpServer.registerTool` with Zod 4 schemas. `playwright-core` 1.62.1 is used only through `BrowserAdapter`; it does not download a browser. `SessionManager` accepts a `BrowserAdapterFactory` so deterministic fake adapters can test lifecycle behavior without a browser. `EvidenceBundle` is version 1 and always carries a redaction marker.
 
 The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_next_inspect`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
@@ -185,6 +199,8 @@ The core public tools are `web_project_detect`, `web_session_start`, `web_sessio
 The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, render count, inferred render cause, and optional actual duration; it also returns a capped commit summary timeline. Render causes are inferred from serialized prop/hook signatures across Fiber alternates and are not a substitute for the full React DevTools profiler. The Vite adapter reads the bounded graph/HMR summary and transform diff served by `webDebugVitePlugin()` at `/__web_debug/vite`. The Safari adapter uses W3C WebDriver through local `safaridriver` or an explicit endpoint for actions, DOM, screenshots, and explicitly side-effect-enabled evaluation; CDP debugger/console/network parity is not claimed. The replay timeline retains up to 50 sanitised frames, and `web_replay_seek` returns a captured frame without mutating the browser. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation or Server Action lookup only through `web_next_inspect`.
 
 ## Revision History
+
+- (2026-08-26 21:12Z) Change: Recorded remote-target policy commit 0fbee2d and local policy verification. Reason: Make remote CDP control explicit, bounded, and visibly non-isolated.
 
 - (2026-08-26 15:35Z) Change: Created the active implementation plan and selected the first local vertical slice. Reason: Make the empty supplied repository restartable and evidence-driven.
 - (2026-08-26 16:09Z) Change: Recorded source commit `5fbdf90` and remote branch verification. Reason: Preserve the first bootstrap checkpoint and leave the active plan ready for the adapter milestone.

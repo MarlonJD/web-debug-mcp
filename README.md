@@ -8,6 +8,7 @@ The first increment supports framework-neutral browser targets, Chromium/CDP, Sa
 
 - Project capability detection without starting a process.
 - Local Chromium attach mode through an explicit CDP endpoint.
+- Explicit remote CDP attach is supported only with `allowRemote: true`; targets are marked non-isolated and never auto-discovered.
 - Local Chromium launch mode through an explicit executable path.
 - Safari WebDriver mode through local `safaridriver` or an explicit WebDriver endpoint.
 - Same-origin browser actions: navigate, click, fill, wait, and reload.
@@ -90,4 +91,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari CDP-equivalent debugger/console/network support, or state-restoring time-travel replay. Safari WebDriver actions, DOM, screenshots, explicit unsupported-capability warnings, and captured-frame replay seek are available.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, unauthenticated/auto-discovered remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari CDP-equivalent debugger/console/network support, or state-restoring time-travel replay. Explicit remote CDP attachment, Safari WebDriver actions/DOM/screenshots, explicit unsupported-capability warnings, and captured-frame replay seek are available.

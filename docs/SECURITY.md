@@ -7,7 +7,7 @@
 | Boundary | Invariant | Enforcer | Verification | Owner/update trigger |
 | --- | --- | --- | --- | --- |
 | MCP caller to server | Tool inputs are schema-validated and session IDs are required for runtime actions | Zod schemas in `src/index.ts` and `SessionManager` lookup | `npm run typecheck` and session tests | Platform Engineering; public tool changes |
-| Server to browser | Remote targets are rejected unless `allowRemote` is explicit; navigation stays same-origin | `ChromiumAdapter` URL policy | Adapter contract tests and manual local smoke | Platform Engineering; target policy changes |
+| Server to browser | Remote page/remote CDP targets are rejected unless `allowRemote` is explicit; CDP endpoint protocol is validated and attached sessions are marked non-isolated; navigation stays same-origin | `ChromiumAdapter` URL and CDP endpoint policy | `chromium-policy.test.ts` and manual local smoke | Platform Engineering; target policy changes |
 | Browser to evidence | Console, URLs, locals, and evaluated values are bounded and sensitive fields redacted | `src/core/redaction.ts`, adapter bounds, `composeEvidence` | `npm test` redaction coverage | Platform Engineering; new data source or privacy finding |
 | Browser profile | Launch mode creates a fresh Playwright context; attach mode is marked non-isolated | `ChromiumAdapter` target metadata | Session summary and issue capture warning | Platform Engineering; browser lifecycle changes |
 | Safari WebDriver | Safari endpoint is loopback-only by default, browser selection is explicit, and no CDP-only data is fabricated | `SafariAdapter` endpoint policy and capability warnings | `safari-adapter.test.ts` and Safari smoke | Platform Engineering; Safari transport changes |

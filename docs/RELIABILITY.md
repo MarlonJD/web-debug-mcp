@@ -21,6 +21,7 @@ The first increment favors bounded, recoverable local sessions over background p
 | React commit profiling data is unavailable or grows too large | Bridge uses bounded commit history, Fiber weak maps, and nullable duration fields | Keep component/state evidence and report the React bridge warning; do not fail the browser session | `react-fixture-contract.test.ts` and `npm run smoke:react-vite` |
 | Safari remote automation is disabled or WebDriver is unavailable | `SafariAdapter` returns a bounded startup error; the smoke reports `status: "blocked"` | Enable Safari remote automation or provide a loopback WebDriver endpoint; use Chromium when CDP debugger evidence is required | `safari-adapter.test.ts` and `npm run smoke:safari` |
 | Replay frames grow without bound or contain form values | Session keeps 50 frames, caps per-frame console/network history, and sanitises fill actions | Use `web_replay_seek` only for retained frame indices; rerun the flow when older frames are truncated | Session manager contract and React/Vite smoke |
+| Remote CDP target is not approved or unreachable | Endpoint host/protocol policy fails closed before connection; explicit attached sessions report non-isolation | Enable `allowRemote` only for a known endpoint and retry with a bounded connection timeout | `chromium-policy.test.ts` and local attach smoke |
 
 ## Operational signals
 
