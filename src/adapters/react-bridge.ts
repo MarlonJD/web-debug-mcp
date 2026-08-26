@@ -12,6 +12,7 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
   const previousProps = new WeakMap();
   const previousHooks = new WeakMap();
   const renderCauses = new WeakMap();
+  const renderDetails = new WeakMap();
   const actualDurations = new WeakMap();
   const commitSummaries = [];
   const renderers = new Map();
@@ -21,6 +22,7 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
   const previousUnmount = typeof existingHook.onCommitFiberUnmount === "function" ? existingHook.onCommitFiberUnmount.bind(existingHook) : null;
   let nextRendererId = 1;
   let commitCount = 0;
+  let profilerCapped = false;
 
   existingHook.supportsFiber = true;
   existingHook.renderers = existingHook.renderers ?? new Map();
@@ -42,7 +44,10 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
       changedComponentCount: stats.changedComponentCount,
       durationMs: stats.durationMs,
     });
-    if (commitSummaries.length > 50) commitSummaries.shift();
+    if (commitSummaries.length > 50) {
+      commitSummaries.shift();
+      profilerCapped = true;
+    }
     previousCommit?.(rendererId, root, ...rest);
   };
   existingHook.onCommitFiberUnmount = (rendererId, fiber, ...rest) => {
@@ -67,6 +72,7 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
         rendererCount: renderers.size,
         commitCount,
         commits: commitSummaries.slice(),
+        profiler: { mode: "devtools-hook", capped: profilerCapped },
         components,
         warnings,
       };
@@ -86,7 +92,11 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
               hooks: hookValues(child),
               renderCount: renderCounts.get(child) ?? 0,
               renderCause: renderCauses.get(child) ?? "parent",
-              actualDurationMs: actualDurations.get(child) ?? null,
+              propChanges: renderDetails.get(child)?.propChanges ?? [],
+              hookChanges: renderDetails.get(child)?.hookChanges ?? [],
+              actualDurationMs: renderDetails.get(child)?.actualDurationMs ?? null,
+              selfDurationMs: renderDetails.get(child)?.selfDurationMs ?? null,
+              treeDurationMs: renderDetails.get(child)?.treeDurationMs ?? null,
               children: descendants,
             });
           } else {
@@ -106,19 +116,25 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
     while (stack.length > 0) {
       const fiber = stack.pop();
       if (!fiber || seen.has(fiber)) continue;
+      if (seen.size >= 1_000) {
+        profilerCapped = true;
+        break;
+      }
       seen.add(fiber);
       if (componentTags.has(fiber.tag)) {
         componentCount += 1;
-        const propsSignature = valueSignature(fiber.memoizedProps);
-        const hooksSignature = valueSignature(hookValues(fiber));
+        const propsSnapshot = serialize(fiber.memoizedProps, undefined, new Set(), 0);
+        const hooksSnapshot = hookValues(fiber);
         const previousFiber = previousProps.has(fiber)
           ? fiber
           : fiber.alternate && previousProps.has(fiber.alternate)
             ? fiber.alternate
             : null;
         const hasPrevious = previousFiber !== null;
-        const propsChanged = hasPrevious && previousProps.get(previousFiber) !== propsSignature;
-        const hooksChanged = hasPrevious && previousHooks.get(previousFiber) !== hooksSignature;
+        const propChanges = hasPrevious ? changedPropKeys(previousProps.get(previousFiber), propsSnapshot) : [];
+        const hookChanges = hasPrevious ? changedHookIndexes(previousHooks.get(previousFiber), hooksSnapshot) : [];
+        const propsChanged = propChanges.length > 0;
+        const hooksChanged = hookChanges.length > 0;
         const renderCause = !hasPrevious
           ? "mount"
           : propsChanged && hooksChanged
@@ -129,19 +145,23 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
                 ? "state"
                 : "parent";
         const renderCount = (renderCounts.get(fiber) ?? renderCounts.get(previousFiber) ?? 0) + 1;
-        previousProps.set(fiber, propsSignature);
-        previousHooks.set(fiber, hooksSignature);
+        previousProps.set(fiber, propsSnapshot);
+        previousHooks.set(fiber, hooksSnapshot);
         renderCauses.set(fiber, renderCause);
         renderCounts.set(fiber, renderCount);
+        const actualDurationMs = durationValue(fiber.actualDuration);
+        const selfDurationMs = durationValue(fiber.selfBaseDuration);
+        const treeDurationMs = durationValue(fiber.treeBaseDuration);
+        renderDetails.set(fiber, { propChanges, hookChanges, actualDurationMs, selfDurationMs, treeDurationMs });
         if (fiber.alternate) {
-          previousProps.set(fiber.alternate, propsSignature);
-          previousHooks.set(fiber.alternate, hooksSignature);
+          previousProps.set(fiber.alternate, propsSnapshot);
+          previousHooks.set(fiber.alternate, hooksSnapshot);
           renderCauses.set(fiber.alternate, renderCause);
           renderCounts.set(fiber.alternate, renderCount);
+          renderDetails.set(fiber.alternate, { propChanges, hookChanges, actualDurationMs, selfDurationMs, treeDurationMs });
         }
         if (renderCause !== "parent") changedComponentCount += 1;
-        const actualDuration = Number(fiber.actualDuration);
-        actualDurations.set(fiber, Number.isFinite(actualDuration) ? Number(actualDuration.toFixed(3)) : null);
+        actualDurations.set(fiber, actualDurationMs);
       }
       if (fiber.child) stack.push(fiber.child);
       if (fiber.sibling) stack.push(fiber.sibling);
@@ -187,6 +207,33 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
     } catch {
       return "[UNAVAILABLE]";
     }
+  }
+
+  function changedPropKeys(previous, current) {
+    if (!isObjectRecord(previous) || !isObjectRecord(current)) {
+      return valueSignature(previous) === valueSignature(current) ? [] : ["<props>"];
+    }
+    const keys = new Set([...Object.keys(previous), ...Object.keys(current)]);
+    return [...keys].filter((key) => valueSignature(previous[key]) !== valueSignature(current[key])).slice(0, 20);
+  }
+
+  function changedHookIndexes(previous, current) {
+    if (!Array.isArray(previous) || !Array.isArray(current)) return valueSignature(previous) === valueSignature(current) ? [] : [0];
+    const changed = [];
+    const length = Math.max(previous.length, current.length);
+    for (let index = 0; index < length && changed.length < 20; index += 1) {
+      if (valueSignature(previous[index]) !== valueSignature(current[index])) changed.push(index);
+    }
+    return changed;
+  }
+
+  function isObjectRecord(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function durationValue(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Number(number.toFixed(3)) : null;
   }
 
   function serialize(value, key, seen, depth) {

@@ -131,7 +131,11 @@ export interface ReactComponentNode {
   hooks: unknown[];
   renderCount: number;
   renderCause: ReactRenderCause;
+  propChanges: string[];
+  hookChanges: number[];
   actualDurationMs: number | null;
+  selfDurationMs: number | null;
+  treeDurationMs: number | null;
   children: ReactComponentNode[];
 }
 
@@ -140,6 +144,10 @@ export interface ReactSnapshot {
   rendererCount: number;
   commitCount: number;
   commits: ReactCommitSummary[];
+  profiler: {
+    mode: "devtools-hook";
+    capped: boolean;
+  };
   components: ReactComponentNode[];
   warnings: string[];
 }

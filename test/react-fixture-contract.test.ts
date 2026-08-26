@@ -17,6 +17,9 @@ describe("React/Vite fixture contract", () => {
     expect(bridge).toContain("commitCount");
     expect(bridge).toContain("commitSummaries");
     expect(bridge).toContain("renderCause");
+    expect(bridge).toContain("changedPropKeys");
+    expect(bridge).toContain("changedHookIndexes");
+    expect(bridge).toContain("treeDurationMs");
     expect(bridge).toContain("actualDurationMs");
     expect(bridge).toContain("recordRenderTree");
   });
