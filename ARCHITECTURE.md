@@ -19,10 +19,13 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/adapters/browser.ts` | Browser transport interface | Platform Engineering; update when an adapter capability changes |
 | `src/adapters/chromium.ts` | Playwright/CDP browser and JavaScript debugger adapter | Platform Engineering; update with Chromium protocol behavior |
 | `src/adapters/react.ts` | Opt-in React runtime bridge reader | Platform Engineering; update with the bridge contract |
+| `src/adapters/next.ts` | Next.js development MCP/SSE runtime metadata reader | Platform Engineering; update with the `/_next/mcp` contract |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |
 | `fixtures/react-vite/` | React component/state fixture served by Vite | Test ownership; update when framework evidence changes |
+| `fixtures/next/` | Next.js App Router, client, and route-handler fixture | Test ownership; update when Next runtime evidence changes |
 | `scripts/harness-check.mjs` | Project-native structural and command contract check | Platform Engineering; update when repository invariants change |
 | `scripts/live-react-vite-smoke.mjs` | Live React/Vite breakpoint and verification smoke | Platform Engineering; update when the fixture flow changes |
+| `scripts/live-next-smoke.mjs` | Live Next runtime MCP and browser smoke | Platform Engineering; update when the fixture flow changes |
 | `docs/` | Durable architecture, security, reliability, planning, and harness knowledge | Platform Engineering; update with boundary changes |
 
 ## Components and boundaries
@@ -33,7 +36,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. It records metadata for console and network events, never response bodies, and exposes only the operations defined by `BrowserAdapter`.
 
-React intelligence is available through an explicit development bridge at `window.__WEB_DEBUG_REACT__`. `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when that bridge is present. The React/Vite fixture installs the bridge before React loads. Vite-specific HMR/module-graph semantics and Next.js server semantics are still future adapters; their absence is a warning, not a discovery failure.
+React intelligence is available through an explicit development bridge at `window.__WEB_DEBUG_REACT__`. `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when that bridge is present. The React/Vite fixture installs the bridge before React loads. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint and records project metadata, route discovery, compilation issues, log path, and explicit unavailable-runtime warnings. Full Next server debugging and Server Action resolution remain future adapters; their absence is a warning, not a discovery failure.
 
 ## Data and control flow
 
@@ -42,7 +45,8 @@ React intelligence is available through an explicit development bridge at `windo
 3. Browser actions are bounded and same-origin. Console, request, response, and page-error observers retain bounded metadata in memory.
 4. `web_breakpoint_set` and `web_debug_control` use the local CDP Debugger domain. `web_debug_evaluate` uses CDP Runtime with side effects rejected by default.
 5. `web_issue_capture` collects DOM, console, network, screenshot, paused-frame, and optional React bridge data, then applies the redaction policy again before returning the evidence bundle.
-6. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
+6. If the project has Next capability, `NextAdapter` queries the local `/_next/mcp` endpoint during capture and adds its bounded runtime metadata to the browser evidence.
+7. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
 
 ## Runtime topology
 

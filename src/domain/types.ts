@@ -47,7 +47,7 @@ export type BrowserAction =
   | { kind: "navigate"; url: string }
   | { kind: "click"; selector: string }
   | { kind: "fill"; selector: string; value: string }
-  | { kind: "wait"; selector?: string; timeoutMs?: number }
+  | { kind: "wait"; selector?: string; text?: string; timeoutMs?: number }
   | { kind: "reload" };
 
 export interface ActionResult {
@@ -126,6 +126,20 @@ export interface ReactSnapshot {
   warnings: string[];
 }
 
+export interface NextSnapshot {
+  detected: true;
+  endpoint: string;
+  tools: string[];
+  projectMetadata: unknown | null;
+  errors: unknown | null;
+  routes: unknown | null;
+  logs: unknown | null;
+  compilationIssues: unknown | null;
+  pageMetadata: unknown | null;
+  requestInsights: unknown | null;
+  warnings: string[];
+}
+
 export interface BrowserSnapshot {
   url: string;
   title: string;
@@ -136,6 +150,7 @@ export interface BrowserSnapshot {
   screenshotPath: string | null;
   debugger: DebuggerSnapshot;
   react: ReactSnapshot | null;
+  next: NextSnapshot | null;
   warnings: string[];
 }
 

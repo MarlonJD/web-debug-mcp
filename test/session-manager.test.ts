@@ -45,6 +45,7 @@ class FakeBrowserAdapter implements BrowserAdapter {
       screenshotPath: null,
       debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
       react: null,
+      next: null,
       warnings: [],
     };
   }

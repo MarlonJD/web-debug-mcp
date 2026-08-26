@@ -13,10 +13,11 @@ The first increment favors bounded, recoverable local sessions over background p
 | Browser process exits | Playwright/CDP operation error | Close the session, retain artifact paths, start a fresh isolated session | Live smoke when a browser is available |
 | Evidence grows without bound | Ring buffers, item caps, text caps, and eight-frame debugger limit | Use the returned truncation warning and request a narrower follow-up | Redaction and evidence tests |
 | MCP process receives SIGINT/SIGTERM | Process signal handler | Close owned sessions and the MCP connection | Manual fixture lifecycle; future process test |
+| Next runtime endpoint is unavailable or returns malformed SSE | `NextAdapter` timeout/JSON-RPC warning | Keep browser evidence, report the Next capability warning, and retry after the dev server is ready | `next-adapter.test.ts` and `npm run smoke:next` |
 
 ## Operational signals
 
-MCP responses carry structured error codes for expected failures. Evidence carries warnings for truncation, unavailable DOM/screenshot data, and non-isolated external attachment. Diagnostic text must go to stderr so the MCP stdout stream remains parseable.
+MCP responses carry structured error codes for expected failures. Evidence carries warnings for truncation, unavailable DOM/screenshot data, non-isolated external attachment, and unavailable optional Next runtime tools. Diagnostic text must go to stderr so the MCP stdout stream remains parseable.
 
 ## Recovery boundary
 

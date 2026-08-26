@@ -18,6 +18,7 @@ const browserActionSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("wait"),
     selector: z.string().min(1).max(500).optional(),
+    text: z.string().min(1).max(500).optional(),
     timeoutMs: z.number().int().min(0).max(30_000).optional(),
   }),
   z.object({ kind: z.literal("reload") }),

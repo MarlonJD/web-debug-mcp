@@ -5,12 +5,14 @@ import { randomUUID } from "node:crypto";
 
 import { ChromiumAdapter } from "../adapters/chromium.js";
 import type { BrowserAdapter, BrowserAdapterFactory } from "../adapters/browser.js";
+import { NextAdapter } from "../adapters/next.js";
 import type {
   ActionResult,
   BrowserAction,
   DebugSessionSummary,
   EvidenceBundle,
   ProjectDescriptor,
+  NextSnapshot,
   ReproScenario,
   ScenarioCheck,
   VerificationResult,
@@ -39,6 +41,7 @@ interface ManagedSession {
   descriptor: ProjectDescriptor;
   summary: DebugSessionSummary;
   adapter: BrowserAdapter;
+  nextAdapter: NextAdapter | null;
 }
 
 const MAX_SESSIONS = 8;
@@ -75,7 +78,12 @@ export class SessionManager {
       capabilities: descriptor.capabilities,
       warnings: [...descriptor.warnings],
     };
-    const managed: ManagedSession = { descriptor, summary, adapter };
+    const managed: ManagedSession = {
+      descriptor,
+      summary,
+      adapter,
+      nextAdapter: descriptor.capabilities.next ? new NextAdapter() : null,
+    };
     this.sessions.set(id, managed);
 
     try {
@@ -127,6 +135,18 @@ export class SessionManager {
       artifactDir: session.summary.artifactDir,
       captureScreenshot,
     });
+    let next: NextSnapshot | null = null;
+    if (session.nextAdapter) {
+      try {
+        next = await session.nextAdapter.snapshot(browser.url);
+      } catch (error) {
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [
+          `Next runtime snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`,
+        ]);
+      }
+      if (next?.warnings) session.summary.warnings = mergeWarnings(session.summary.warnings, next.warnings);
+    }
+    const combinedBrowser = { ...browser, next };
     session.summary.url = browser.url;
     session.summary.status = browser.debugger.paused ? "paused" : "ready";
     session.summary.target = {
@@ -136,12 +156,12 @@ export class SessionManager {
       isolated: session.summary.target?.isolated ?? false,
     };
     session.summary.warnings = mergeWarnings(session.summary.warnings, browser.warnings);
-    if (session.descriptor.capabilities.react && browser.react === null) {
+    if (session.descriptor.capabilities.react && combinedBrowser.react === null) {
       session.summary.warnings = mergeWarnings(session.summary.warnings, [
         "React was detected but the opt-in web-debug React bridge was not found.",
       ]);
     }
-    return composeEvidence(session.descriptor, session.summary, browser);
+    return composeEvidence(session.descriptor, session.summary, combinedBrowser);
   }
 
   async setBreakpoint(

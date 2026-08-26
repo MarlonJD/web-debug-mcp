@@ -2,7 +2,7 @@
 
 `web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
 
-The first increment supports framework-neutral browser targets plus an opt-in React/Vite development bridge. Next.js is detected as a capability but its server/runtime adapter is intentionally not included yet. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+The first increment supports framework-neutral browser targets, an opt-in React/Vite development bridge, and Next.js development-server metadata. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
 
 ## What is included
 
@@ -16,6 +16,7 @@ The first increment supports framework-neutral browser targets plus an opt-in Re
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
 - A live React/Vite fixture and CDP breakpoint smoke.
+- A live Next.js App Router fixture and `/_next/mcp` runtime smoke.
 
 ## Requirements
 
@@ -39,6 +40,8 @@ Run the fixture with `npm run serve:fixture`. The server binds to `127.0.0.1` an
 Run `npm run smoke:live` after setting `WEB_DEBUG_CHROME_EXECUTABLE_PATH` when the default macOS Chrome path is not available. It starts the vanilla fixture, sets a breakpoint in `app.js`, clicks the button, captures a pause-safe evidence path, and cleans up the owned browser and fixture processes.
 
 Run `npm run smoke:react-vite` to start the Vite fixture, verify React component/state evidence, pause at `fixtures/react-vite/src/App.jsx`, and replay the submitted-payment flow.
+
+Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata, and exercise the client route handler flow.
 
 Run the MCP server with `npm run dev` during development or `node dist/index.js` after `npm run build`. MCP protocol messages use stdout; diagnostics must stay on stderr.
 
@@ -64,4 +67,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, automatic React DevTools integration, Vite HMR/module-graph adapter, Next.js server adapter, Safari adapter, or time-travel replay implementation yet. Those are tracked as future work only after the core evidence contract is stable.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, automatic React DevTools integration, Vite HMR/module-graph adapter, Next.js server debugger/Server Action adapter, Safari adapter, or time-travel replay implementation yet. The current Next adapter reads the built-in dev-server MCP metadata surface only.

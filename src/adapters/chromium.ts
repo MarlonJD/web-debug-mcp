@@ -184,7 +184,13 @@ export class ChromiumAdapter implements BrowserAdapter {
         await this.runUntilCompleteOrPaused(() => page.locator(action.selector).fill(action.value));
         break;
       case "wait":
-        if (action.selector) {
+        if (action.text) {
+          await page.waitForFunction(
+            ({ selector, text }) => (document.querySelector(selector)?.textContent ?? "").includes(text),
+            { selector: action.selector ?? "body", text: action.text },
+            { timeout: boundedTimeout(action.timeoutMs) },
+          );
+        } else if (action.selector) {
           await page.locator(action.selector).waitFor({ state: "visible", timeout: boundedTimeout(action.timeoutMs) });
         } else {
           await page.waitForTimeout(boundedTimeout(action.timeoutMs));
@@ -262,6 +268,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       screenshotPath,
       debugger: await this.debuggerSnapshot(),
       react,
+      next: null,
       warnings,
     };
   }

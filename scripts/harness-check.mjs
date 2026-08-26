@@ -49,13 +49,24 @@ const requiredFiles = [
   "fixtures/react-vite/src/main.jsx",
   "fixtures/react-vite/src/App.jsx",
   "fixtures/react-vite/src/react-debug-hook.js",
+  "fixtures/next/package.json",
+  "fixtures/next/next.config.mjs",
+  "fixtures/next/app/layout.jsx",
+  "fixtures/next/app/page.jsx",
+  "fixtures/next/app/client-status.jsx",
+  "fixtures/next/app/api/health/route.js",
   "scripts/live-smoke.mjs",
   "scripts/live-react-vite-smoke.mjs",
   "scripts/serve-react-vite.mjs",
+  "scripts/live-next-smoke.mjs",
+  "scripts/serve-next.mjs",
+  "src/adapters/next.ts",
+  "test/next-fixture-contract.test.ts",
+  "test/next-adapter.test.ts",
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");

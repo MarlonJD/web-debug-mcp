@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Finish native harness check, validate the MCP build, and create the first commit |
+| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-26 | Validate and checkpoint the Next runtime metadata adapter |
 <!-- harness:plans:active:end -->
 
 ## Completed

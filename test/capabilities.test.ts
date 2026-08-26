@@ -21,4 +21,11 @@ describe("project capability detection", () => {
     expect(descriptor.capabilities.react).toBe(true);
     expect(descriptor.capabilities.browser).toBe(true);
   });
+
+  it("detects the Next App Router fixture and server runtime capability", () => {
+    const descriptor = detectProject(resolve("fixtures/next"));
+    expect(descriptor.frameworks).toEqual(["next", "react"]);
+    expect(descriptor.capabilities.next).toBe(true);
+    expect(descriptor.capabilities.serverRuntime).toBe(true);
+  });
 });
