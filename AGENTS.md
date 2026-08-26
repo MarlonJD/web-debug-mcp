@@ -32,6 +32,7 @@ Use this file as the short route into the project contract. Keep detailed ration
 | Live browser smoke | `npm run smoke:live` | JSON reports `passed: true` for vanilla CDP breakpoint evidence |
 | React/Vite smoke | `npm run smoke:react-vite` | JSON reports `passed: true` for React state, render-cause/commit evidence, Vite transform diff, source, and module evidence |
 | Next smoke | `npm run smoke:next` | JSON reports `passed: true` for Next runtime metadata, bounded server log evidence, and UI evidence |
+| Safari smoke | `npm run smoke:safari` | JSON reports `passed: true` for Safari WebDriver actions, DOM, screenshot, and explicit capability warnings |
 
 ## Working contract
 

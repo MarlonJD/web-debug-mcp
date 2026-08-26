@@ -2,13 +2,14 @@
 
 `web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
 
-The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection. Deep Next server tracing remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+The first increment supports framework-neutral browser targets, Chromium/CDP, Safari WebDriver actions, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection. CDP-only debugger/console depth remains explicit per browser. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
 
 ## What is included
 
 - Project capability detection without starting a process.
 - Local Chromium attach mode through an explicit CDP endpoint.
 - Local Chromium launch mode through an explicit executable path.
+- Safari WebDriver mode through local `safaridriver` or an explicit WebDriver endpoint.
 - Same-origin browser actions: navigate, click, fill, wait, and reload.
 - JavaScript breakpoints, pause control, bounded call frames, and read-only evaluation by default.
 - Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
@@ -60,6 +61,8 @@ The plugin serves the local read-only module graph endpoint used during a debug 
 
 Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata and a bounded server-log tail, and exercise the client route handler flow.
 
+Run `npm run smoke:safari` to exercise the vanilla fixture through Safari WebDriver. Enable Safari Settings → Developer → Allow remote automation first; Safari runs visibly and reports CDP-only debugger/console/network gaps as warnings.
+
 Run the MCP server with `npm run dev` during development or `node dist/index.js` after `npm run build`. MCP protocol messages use stdout; diagnostics must stay on stderr.
 
 ## MCP workflow
@@ -85,4 +88,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari adapter, or time-travel replay implementation yet. The current React adapter provides bounded commit summaries/inferred causes and the Vite adapter provides bounded transform diffs.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari CDP-equivalent debugger/console/network support, or time-travel replay implementation yet. Safari WebDriver actions, DOM, screenshots, and explicit unsupported-capability warnings are available.

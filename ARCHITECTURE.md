@@ -18,6 +18,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/core/evidence.ts` | Redacted evidence bundle composition | Platform Engineering; update when evidence consumers change |
 | `src/adapters/browser.ts` | Browser transport interface | Platform Engineering; update when an adapter capability changes |
 | `src/adapters/chromium.ts` | Playwright/CDP browser and JavaScript debugger adapter | Platform Engineering; update with Chromium protocol behavior |
+| `src/adapters/safari.ts` | Safari WebDriver browser/action adapter | Platform Engineering; update with W3C WebDriver behavior |
 | `src/adapters/react.ts` | Injected React runtime bridge reader | Platform Engineering; update with the bridge contract |
 | `src/adapters/react-bridge.ts` | Development-page React DevTools hook bridge script | Platform Engineering; update with the bridge contract |
 | `src/adapters/next.ts` | Next.js development MCP/SSE runtime metadata reader | Platform Engineering; update with the `/_next/mcp` contract |
@@ -29,6 +30,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `scripts/harness-check.mjs` | Project-native structural and command contract check | Platform Engineering; update when repository invariants change |
 | `scripts/live-react-vite-smoke.mjs` | Live React/Vite breakpoint and verification smoke | Platform Engineering; update when the fixture flow changes |
 | `scripts/live-next-smoke.mjs` | Live Next runtime MCP and browser smoke | Platform Engineering; update when the fixture flow changes |
+| `scripts/live-safari-smoke.mjs` | Live Safari WebDriver action and evidence smoke | Platform Engineering; update when Safari transport or fixture behavior changes |
 | `docs/` | Durable architecture, security, reliability, planning, and harness knowledge | Platform Engineering; update with boundary changes |
 
 ## Components and boundaries
@@ -37,7 +39,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `SessionManager` owns one in-memory record per session and limits active sessions to eight. It creates temporary artifact directories, invokes the browser adapter, updates lifecycle status, and composes evidence. It is the policy boundary for session lookup and close behavior.
 
-`ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. It records metadata for console and network events, never response bodies, and exposes only the operations defined by `BrowserAdapter`.
+`ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. `SafariAdapter` owns W3C WebDriver requests to local `safaridriver` or an explicit endpoint; it supports actions, DOM, screenshots, and explicit JavaScript evaluation, while CDP-only debugger/console/network sections remain warnings. Chromium records metadata for console and network events, never response bodies, and both adapters expose only the operations defined by `BrowserAdapter`.
 
 React intelligence is available through a development bridge at `window.__WEB_DEBUG_REACT__`. `ChromiumAdapter` injects the bridge into the isolated browser context before application scripts run, and `ReactAdapter` reads bounded component nodes, props, hook values, source locations, render counts, commit summaries, and inferred render causes only when React commits are observed. `ViteAdapter` reads the fixture’s local read-only module graph/HMR endpoint and bounded transform diffs, while `vite-plugin.ts` owns the Vite server middleware, transform snapshots, and hot-update summary. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint, records project metadata, route discovery, compilation issues, and log path, reads only a bounded redacted tail when that log resolves inside the detected project root, and handles explicit route compilation or Server Action lookup through `web_next_inspect`. Full React DevTools profiling/flamegraphs and precise render-cause attribution, complete Vite transform provenance/source maps, Next server execution tracing, and Server Action execution remain future adapters; their absence is a warning, not a discovery failure.
 

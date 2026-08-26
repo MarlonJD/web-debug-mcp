@@ -19,6 +19,7 @@ The first increment favors bounded, recoverable local sessions over background p
 | Vite debug endpoint is unavailable or returns malformed JSON | `ViteAdapter` timeout/HTTP/JSON warning | Keep browser evidence, report the Vite capability warning, and verify the Vite plugin is installed | `vite-adapter.test.ts` and `npm run smoke:react-vite` |
 | Vite transform history is missing or too large | Plugin keeps 200 source snapshots, 32 KiB/module, and 12 KiB/diff bounds; absence remains nullable | Keep module graph/HMR evidence and report a missing diff rather than failing the session | `vite-adapter.test.ts` and `npm run smoke:react-vite` |
 | React commit profiling data is unavailable or grows too large | Bridge uses bounded commit history, Fiber weak maps, and nullable duration fields | Keep component/state evidence and report the React bridge warning; do not fail the browser session | `react-fixture-contract.test.ts` and `npm run smoke:react-vite` |
+| Safari remote automation is disabled or WebDriver is unavailable | `SafariAdapter` returns a bounded startup error; the smoke reports `status: "blocked"` | Enable Safari remote automation or provide a loopback WebDriver endpoint; use Chromium when CDP debugger evidence is required | `safari-adapter.test.ts` and `npm run smoke:safari` |
 
 ## Operational signals
 
