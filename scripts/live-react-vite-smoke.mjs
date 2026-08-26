@@ -58,12 +58,15 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 150));
   const after = await manager.capture(breakpointSession.id, false);
   const afterComponent = findComponent(after.browser.react?.components ?? [], "CheckoutForm");
+  const lastCommit = after.browser.react?.commits.at(-1);
 
   const assertions = {
     scenarioPassed: verification.passed,
     reactDetected: Boolean(verifiedComponent),
     submittedText: verification.evidence.browser.dom.bodyText.includes("Payment submitted: 249.90"),
     submittedState: componentContainsValue(afterComponent, true),
+    renderCause: afterComponent?.renderCause === "state" || afterComponent?.renderCause === "props+state",
+    commitProfiler: (after.browser.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
     appModule: Boolean(appModule),
@@ -82,6 +85,7 @@ try {
     pausedFrame,
     pausedConsole: paused.browser.console,
     afterConsole: after.browser.console,
+    reactAfter: after.browser.react,
     appModule,
     artifactDir,
   }, null, 2)}\n`);

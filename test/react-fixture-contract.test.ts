@@ -15,6 +15,9 @@ describe("React/Vite fixture contract", () => {
     expect(bridge).toContain("REACT_DEBUG_BRIDGE_SCRIPT");
     expect(bridge).toContain("window.__WEB_DEBUG_REACT__");
     expect(bridge).toContain("commitCount");
+    expect(bridge).toContain("commitSummaries");
+    expect(bridge).toContain("renderCause");
+    expect(bridge).toContain("actualDurationMs");
     expect(bridge).toContain("recordRenderTree");
   });
 });

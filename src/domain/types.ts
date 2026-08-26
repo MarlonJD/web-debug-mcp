@@ -109,12 +109,25 @@ export interface DebuggerSnapshot {
   breakpoints: DebuggerBreakpoint[];
 }
 
+export type ReactRenderCause = "mount" | "props" | "state" | "props+state" | "parent";
+
+export interface ReactCommitSummary {
+  index: number;
+  timestamp: number;
+  rendererId: number | null;
+  componentCount: number;
+  changedComponentCount: number;
+  durationMs: number | null;
+}
+
 export interface ReactComponentNode {
   name: string;
   source: { file: string; line: number; column: number } | null;
   props: Record<string, unknown>;
   hooks: unknown[];
   renderCount: number;
+  renderCause: ReactRenderCause;
+  actualDurationMs: number | null;
   children: ReactComponentNode[];
 }
 
@@ -122,6 +135,7 @@ export interface ReactSnapshot {
   detected: true;
   rendererCount: number;
   commitCount: number;
+  commits: ReactCommitSummary[];
   components: ReactComponentNode[];
   warnings: string[];
 }
