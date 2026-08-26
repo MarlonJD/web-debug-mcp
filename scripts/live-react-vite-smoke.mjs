@@ -50,6 +50,7 @@ try {
   const verifiedComponent = findComponent(verification.evidence.browser.react?.components ?? [], "CheckoutForm");
   const viteEvidence = verification.evidence.browser.vite;
   const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
+  const replaySeek = await manager.seekReplay(verificationSession.id, 1);
   await manager.close(verificationSession.id);
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
@@ -83,6 +84,8 @@ try {
     submittedState: componentContainsValue(afterComponent, true),
     renderCause: afterComponent?.renderCause === "state" || afterComponent?.renderCause === "props+state",
     commitProfiler: (after.browser.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
+    replayTimeline: verification.evidence.replay.frames.length >= 3,
+    replaySeek: replaySeek.frame.index === 1 && replaySeek.frame.trigger === "action",
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
     appModule: Boolean(appModule),
@@ -103,6 +106,7 @@ try {
     pausedConsole: paused.browser.console,
     afterConsole: after.browser.console,
     reactAfter: after.browser.react,
+    replaySeek,
     appModule,
     hmrEvidence,
     artifactDir,

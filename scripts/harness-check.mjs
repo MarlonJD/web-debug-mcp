@@ -100,6 +100,7 @@ for (const toolName of [
   "web_browser_action",
   "web_issue_capture",
   "web_next_inspect",
+  "web_replay_seek",
   "web_breakpoint_set",
   "web_debug_control",
   "web_debug_evaluate",

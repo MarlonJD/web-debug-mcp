@@ -130,6 +130,17 @@ export function createServer(manager = new SessionManager()): McpServer {
   );
 
   server.registerTool(
+    "web_replay_seek",
+    {
+      title: "Seek captured web replay frame",
+      description: "Return one retained, redacted replay frame from the selected session without mutating the browser.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000) }),
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+    async ({ sessionId, frameIndex }) => respond(() => manager.seekReplay(sessionId, frameIndex)),
+  );
+
+  server.registerTool(
     "web_breakpoint_set",
     {
       title: "Set JavaScript breakpoint",

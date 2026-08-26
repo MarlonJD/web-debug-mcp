@@ -19,12 +19,16 @@ import type {
   ProjectDescriptor,
   NextSnapshot,
   ReproScenario,
+  ReplayFrame,
+  ReplaySeekResult,
+  ReplayTimeline,
   ScenarioCheck,
   VerificationResult,
 } from "../domain/types.js";
 import { detectProject } from "./capabilities.js";
 import { WebDebugError } from "./errors.js";
 import { composeEvidence } from "./evidence.js";
+import { redactValue, safeUrl } from "./redaction.js";
 
 export interface StartSessionInput {
   projectRoot: string;
@@ -50,9 +54,13 @@ interface ManagedSession {
   adapter: BrowserAdapter;
   nextAdapter: NextAdapter | null;
   viteAdapter: ViteAdapter | null;
+  replayFrames: ReplayFrame[];
+  replayNextIndex: number;
+  replayTruncated: boolean;
 }
 
 const MAX_SESSIONS = 8;
+const MAX_REPLAY_FRAMES = 50;
 
 export class SessionManager {
   private readonly sessions = new Map<string, ManagedSession>();
@@ -101,6 +109,9 @@ export class SessionManager {
       adapter,
       nextAdapter: descriptor.capabilities.next ? new NextAdapter() : null,
       viteAdapter: descriptor.capabilities.vite ? new ViteAdapter() : null,
+      replayFrames: [],
+      replayNextIndex: 0,
+      replayTruncated: false,
     };
     this.sessions.set(id, managed);
 
@@ -145,6 +156,7 @@ export class SessionManager {
         title: result.title,
       };
     }
+    await this.recordReplayFrame(session, "action", action);
     return result;
   }
 
@@ -201,7 +213,8 @@ export class SessionManager {
         "React was detected but the injected web-debug React bridge was not found.",
       ]);
     }
-    return composeEvidence(session.descriptor, session.summary, combinedBrowser);
+    await this.recordReplayFrame(session, "capture", null, browser);
+    return composeEvidence(session.descriptor, session.summary, combinedBrowser, this.replayTimeline(session));
   }
 
   async inspectNext(sessionId: string, inspection: NextInspection): Promise<NextInspectionResult> {
@@ -210,6 +223,27 @@ export class SessionManager {
       throw new WebDebugError("NEXT_UNAVAILABLE", "The selected project does not expose a Next.js runtime adapter.");
     }
     return session.nextAdapter.inspect(session.summary.url, inspection);
+  }
+
+  async seekReplay(sessionId: string, frameIndex: number): Promise<ReplaySeekResult> {
+    const session = this.requireSession(sessionId);
+    if (!Number.isInteger(frameIndex) || frameIndex < 0) {
+      throw new WebDebugError("REPLAY_FRAME_INVALID", "Replay frame index must be a non-negative integer.");
+    }
+    const frame = session.replayFrames.find((candidate) => candidate.index === frameIndex);
+    if (!frame) {
+      throw new WebDebugError(
+        "REPLAY_FRAME_NOT_FOUND",
+        `Replay frame ${frameIndex} is unavailable. Frames ${session.replayFrames[0]?.index ?? 0}-${session.replayFrames.at(-1)?.index ?? -1} are retained.`,
+      );
+    }
+    return redactValue({
+      sessionId,
+      frame,
+      availableFrames: session.replayFrames.length,
+      oldestFrameIndex: session.replayFrames[0]?.index ?? frame.index,
+      newestFrameIndex: session.replayFrames.at(-1)?.index ?? frame.index,
+    }) as ReplaySeekResult;
   }
 
   async setBreakpoint(
@@ -292,6 +326,62 @@ export class SessionManager {
   private activeSessionCount(): number {
     return [...this.sessions.values()].filter(({ summary }) => summary.status !== "closed").length;
   }
+
+  private async recordReplayFrame(
+    session: ManagedSession,
+    trigger: ReplayFrame["trigger"],
+    action: BrowserAction | null,
+    providedSnapshot?: EvidenceBundle["browser"],
+  ): Promise<void> {
+    let browser = providedSnapshot;
+    if (!browser) {
+      try {
+        browser = await session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false });
+      } catch (error) {
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [
+          `Replay frame unavailable: ${error instanceof Error ? error.message : String(error)}`,
+        ]);
+        return;
+      }
+    }
+
+    session.replayFrames.push({
+      index: session.replayNextIndex++,
+      capturedAt: new Date().toISOString(),
+      trigger,
+      action: sanitizeReplayAction(action),
+      url: safeUrl(browser.url),
+      title: browser.title,
+      dom: {
+        bodyText: browser.dom.bodyText,
+        elements: browser.dom.elements.slice(0, 50),
+      },
+      console: browser.console.slice(-20),
+      network: browser.network.slice(-20),
+      debugger: browser.debugger,
+      react: browser.react,
+    });
+    if (session.replayFrames.length > MAX_REPLAY_FRAMES) {
+      session.replayFrames.shift();
+      session.replayTruncated = true;
+    }
+  }
+
+  private replayTimeline(session: ManagedSession): ReplayTimeline {
+    return {
+      enabled: true,
+      maxFrames: MAX_REPLAY_FRAMES,
+      truncated: session.replayTruncated,
+      frames: session.replayFrames,
+    };
+  }
+}
+
+function sanitizeReplayAction(action: BrowserAction | null): BrowserAction | null {
+  if (!action) return null;
+  if (action.kind === "fill") return { ...action, value: "[REDACTED_REPLAY_INPUT]" };
+  if (action.kind === "navigate") return { ...action, url: safeUrl(action.url) };
+  return { ...action };
 }
 
 function mergeWarnings(existing: string[], additions: string[]): string[] {

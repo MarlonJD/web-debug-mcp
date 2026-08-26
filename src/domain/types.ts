@@ -174,6 +174,35 @@ export interface NextInspectionResult {
   warnings: string[];
 }
 
+export interface ReplayFrame {
+  index: number;
+  capturedAt: string;
+  trigger: "action" | "capture";
+  action: BrowserAction | null;
+  url: string;
+  title: string;
+  dom: DomSnapshot;
+  console: ConsoleEntry[];
+  network: NetworkEntry[];
+  debugger: DebuggerSnapshot;
+  react: ReactSnapshot | null;
+}
+
+export interface ReplayTimeline {
+  enabled: true;
+  maxFrames: number;
+  truncated: boolean;
+  frames: ReplayFrame[];
+}
+
+export interface ReplaySeekResult {
+  sessionId: string;
+  frame: ReplayFrame;
+  availableFrames: number;
+  oldestFrameIndex: number;
+  newestFrameIndex: number;
+}
+
 export interface ViteModuleSummary {
   id: string | null;
   url: string;
@@ -232,6 +261,7 @@ export interface EvidenceBundle {
   session: DebugSessionSummary;
   project: ProjectDescriptor;
   browser: BrowserSnapshot;
+  replay: ReplayTimeline;
   redaction: {
     applied: true;
     policy: "default-sensitive-fields";

@@ -84,6 +84,16 @@ describe("session manager", () => {
     const result = await manager.verifyScenario(session.id, scenario.id);
     expect(result.passed).toBe(true);
     expect(result.evidence.redaction.applied).toBe(true);
+    expect(result.evidence.replay.frames).toHaveLength(3);
+    expect(result.evidence.replay.frames[0]?.trigger).toBe("action");
+
+    const replayFrame = await manager.seekReplay(session.id, 1);
+    expect(replayFrame.frame.trigger).toBe("action");
+    expect(replayFrame.availableFrames).toBe(3);
+
+    await manager.act(session.id, { kind: "fill", selector: "#amount", value: "secret-value" });
+    const sanitizedFrame = await manager.seekReplay(session.id, 3);
+    expect(sanitizedFrame.frame.action).toMatchObject({ value: "[REDACTED_REPLAY_INPUT]" });
 
     const closed = await manager.close(session.id);
     expect(closed.status).toBe("closed");
