@@ -50,6 +50,13 @@ describe("Safari WebDriver adapter", () => {
     await expect(adapter.evaluate("1 + 1", false)).rejects.toMatchObject({ code: "EVALUATION_SIDE_EFFECTS_BLOCKED" });
   });
 
+  it("blocks remote WebDriver endpoints without explicit opt-in", async () => {
+    const adapter = new SafariAdapter("http://192.0.2.1:4444");
+    await expect(adapter.start({ url: "http://127.0.0.1:4176/", headless: false })).rejects.toMatchObject({
+      code: "REMOTE_WEBDRIVER_BLOCKED",
+    });
+  });
+
   it("subscribes to BiDi console and network events when Safari provides a WebSocket", async () => {
     const messages: Array<{ method: string; params?: Record<string, unknown> }> = [];
     class FakeWebSocket {
