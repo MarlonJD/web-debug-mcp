@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ViteAdapter } from "../src/adapters/vite.js";
+import { createTransformDiff } from "../src/adapters/vite-plugin.js";
 
 describe("Vite module graph adapter", () => {
   it("reads a bounded local graph snapshot", async () => {
@@ -31,5 +32,17 @@ describe("Vite module graph adapter", () => {
     expect(snapshot?.hmr.active).toBe(true);
     expect(snapshot?.modules[0]?.importedModules).toEqual(["/src/App.jsx"]);
     vi.unstubAllGlobals();
+  });
+
+  it("creates a bounded line diff for transformed module snapshots", () => {
+    const diff = createTransformDiff(
+      { code: "const value = 1;\nreturn value;", truncated: false },
+      { code: "const value = 2;\nreturn value;", truncated: false },
+    );
+    expect(diff.addedLines).toBe(1);
+    expect(diff.removedLines).toBe(1);
+    expect(diff.patch).toContain("-const value = 1;");
+    expect(diff.patch).toContain("+const value = 2;");
+    expect(diff.truncated).toBe(false);
   });
 });

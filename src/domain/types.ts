@@ -183,6 +183,13 @@ export interface ViteModuleSummary {
   lastHMRTimestamp: number;
 }
 
+export interface ViteTransformDiff {
+  patch: string;
+  addedLines: number;
+  removedLines: number;
+  truncated: boolean;
+}
+
 export interface ViteSnapshot {
   detected: true;
   endpoint: string;
@@ -191,7 +198,12 @@ export interface ViteSnapshot {
   modules: ViteModuleSummary[];
   hmr: {
     active: boolean;
-    lastUpdate: { file: string; timestamp: number; moduleCount: number } | null;
+    lastUpdate: {
+      file: string;
+      timestamp: number;
+      moduleCount: number;
+      transformDiff: ViteTransformDiff | null;
+    } | null;
   };
   warnings: string[];
 }
