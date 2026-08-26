@@ -140,6 +140,17 @@ export interface ReactComponentNode {
   children: ReactComponentNode[];
 }
 
+export interface ReactFlamegraphNode {
+  name: string;
+  depth: number;
+  source: { file: string; line: number; column: number } | null;
+  renderCount: number;
+  renderCause: ReactRenderCause;
+  actualDurationMs: number | null;
+  selfDurationMs: number | null;
+  treeDurationMs: number | null;
+}
+
 export interface ReactSnapshot {
   detected: true;
   rendererCount: number;
@@ -150,6 +161,7 @@ export interface ReactSnapshot {
     capped: boolean;
   };
   components: ReactComponentNode[];
+  flamegraph: ReactFlamegraphNode[];
   warnings: string[];
 }
 

@@ -87,6 +87,7 @@ try {
     renderCause: afterComponent?.renderCause === "state" || afterComponent?.renderCause === "props+state",
     renderCauseDetails: (afterComponent?.hookChanges ?? []).includes(1) && (afterComponent?.propChanges ?? []).length === 0,
     flamegraphDurations: typeof afterComponent?.treeDurationMs === "number" && typeof afterComponent?.selfDurationMs === "number",
+    flamegraphView: (after.browser.react?.flamegraph.length ?? 0) >= 2 && after.browser.react?.flamegraph.some((node) => node.name === "CheckoutForm" && node.depth >= 1),
     commitProfiler: (after.browser.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
     profilerMode: after.browser.react?.profiler.mode === "devtools-hook",
     replayTimeline: verification.evidence.replay.frames.length >= 3,

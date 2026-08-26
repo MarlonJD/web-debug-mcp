@@ -66,6 +66,8 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
         components.push(...nodes);
       }
       if (roots.size === 0) warnings.push("No committed React root was observed yet.");
+      const flamegraph = [];
+      for (const component of components) collectFlamegraph(component, 0);
 
       return {
         detected: true,
@@ -74,8 +76,27 @@ export const REACT_DEBUG_BRIDGE_SCRIPT = String.raw`(() => {
         commits: commitSummaries.slice(),
         profiler: { mode: "devtools-hook", capped: profilerCapped },
         components,
+        flamegraph,
         warnings,
       };
+
+      function collectFlamegraph(node, depth) {
+        if (flamegraph.length >= 200) {
+          profilerCapped = true;
+          return;
+        }
+        flamegraph.push({
+          name: node.name,
+          depth,
+          source: node.source,
+          renderCount: node.renderCount,
+          renderCause: node.renderCause,
+          actualDurationMs: node.actualDurationMs,
+          selfDurationMs: node.selfDurationMs,
+          treeDurationMs: node.treeDurationMs,
+        });
+        for (const child of node.children) collectFlamegraph(child, depth + 1);
+      }
 
       function collectChildren(fiber, depth) {
         if (!fiber || depth > 20 || componentCount >= 200) return [];
