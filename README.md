@@ -26,7 +26,7 @@ The current increment supports framework-neutral browser targets, Chromium/CDP, 
 
 ## Requirements
 
-- Node.js 20 or newer.
+- Node.js 20 or newer. Safari BiDi requires Node 20.10+ with `--experimental-websocket` or Node 21+; older runtimes keep Safari WebDriver actions and the documented network fallback but report BiDi console limitations.
 - A Chromium-based browser when running a live session.
 - Either an explicit `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or an explicit `cdpEndpoint` supplied to `web_session_start`.
 

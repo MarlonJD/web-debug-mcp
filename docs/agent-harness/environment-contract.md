@@ -11,7 +11,7 @@ The fixture servers bind only to `127.0.0.1`: vanilla uses `npm run serve:fixtur
 - `cdpEndpoint`, pointing at a browser the caller deliberately selected; or
 - `WEB_DEBUG_CHROME_EXECUTABLE_PATH`, pointing at a Chromium executable used to create a fresh Playwright context.
 
-Safari sessions use `browser: "safari"` with local `safaridriver` or an explicit loopback WebDriver endpoint. Safari runs visibly, can subscribe to WebDriver BiDi console/network events, and may disclose a bounded Performance Resource Timing fallback when the installed Safari does not emit network events. Safari JavaScript debugger parity is not part of this contract.
+Safari sessions use `browser: "safari"` with local `safaridriver` or an explicit loopback WebDriver endpoint. Safari runs visibly, can subscribe to WebDriver BiDi console/network events when the Node runtime exposes WebSocket support, and may disclose a bounded Performance Resource Timing fallback when the installed Safari does not emit network events. Safari JavaScript debugger parity is not part of this contract.
 
 Launch mode is the preferred deterministic path. Attach mode is supported for interactive debugging but the session summary marks it `isolated: false` and evidence includes a warning.
 
