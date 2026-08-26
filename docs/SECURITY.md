@@ -12,14 +12,14 @@
 | Browser profile | Launch mode creates a fresh Playwright context; attach mode is marked non-isolated | `ChromiumAdapter` target metadata | Session summary and issue capture warning | Platform Engineering; browser lifecycle changes |
 | Evaluation | CDP evaluation rejects side effects by default | `web_debug_evaluate` schema and `throwOnSideEffect` | Type check plus future live fixture test | Platform Engineering; evaluator behavior changes |
 | Artifact storage | Screenshots use a temporary per-session directory and are not written into the project | `SessionManager` temporary directory allocation | Session manager test and runtime contract | Platform Engineering; artifact policy changes |
-| Next runtime metadata | Next MCP calls stay on the selected local origin and collect metadata/tool results, not browser credentials or raw response bodies | `NextAdapter` endpoint derivation, timeout, and redaction | `next-adapter.test.ts` and live Next smoke | Platform Engineering; Next endpoint contract changes |
+| Next runtime metadata and logs | Next MCP calls stay on the selected local origin; log tails resolve inside the detected project root and are byte/line bounded and redacted | `NextAdapter` endpoint derivation, path boundary, caps, and redaction | `next-adapter.test.ts` and live Next smoke | Platform Engineering; Next endpoint or log-field changes |
 | React/Vite runtime metadata | Injected React bridge and Vite middleware expose only bounded development data on the selected local browser origin | `ReactAdapter`, `ViteAdapter`, bridge serializer, and redaction | React/Vite contract and live smoke | Platform Engineering; bridge or module-field changes |
 
 ## Sensitive data policy
 
 The core adapter does not collect cookies, authorization headers, browser storage, or raw response bodies. It does collect URLs, console text, debugger locals, DOM text, and screenshot pixels because those are required for debugging; each is bounded and redacted before returning to the MCP caller. Callers must use disposable local credentials and synthetic data for live sessions.
 
-The Next adapter reads the development server’s MCP metadata surface over the already selected local origin. It does not authenticate to a remote Next server, read the returned log file, or execute arbitrary Next runtime tools; only the allowlisted metadata tools are called. The Vite plugin similarly exposes only bounded module metadata on the local dev server and is not intended for production.
+The Next adapter reads the development server’s MCP metadata surface over the already selected local origin. It does not authenticate to a remote Next server or execute arbitrary Next runtime tools; only the allowlisted metadata tools are called. When `get_logs` returns a path, the adapter resolves it, requires the file to stay inside the detected project root and retain the expected Next development-log basename, then reads only a bounded tail and redacts it. The Vite plugin similarly exposes only bounded module metadata on the local dev server and is not intended for production.
 
 The redaction layer is defensive, not a guarantee of secrecy. New adapters must document every new field and add a regression test before exposing it through `EvidenceBundle`.
 

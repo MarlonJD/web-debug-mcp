@@ -14,6 +14,7 @@ The first increment favors bounded, recoverable local sessions over background p
 | Evidence grows without bound | Ring buffers, item caps, text caps, and eight-frame debugger limit | Use the returned truncation warning and request a narrower follow-up | Redaction and evidence tests |
 | MCP process receives SIGINT/SIGTERM | Process signal handler | Close owned sessions and the MCP connection | Manual fixture lifecycle; future process test |
 | Next runtime endpoint is unavailable or returns malformed SSE | `NextAdapter` timeout/JSON-RPC warning | Keep browser evidence, report the Next capability warning, and retry after the dev server is ready | `next-adapter.test.ts` and `npm run smoke:next` |
+| Next development log is missing, outside the project, or too large | `NextAdapter` path boundary, byte/line caps, and warning | Keep the Next metadata and browser evidence; inspect the returned warning or the local dev server directly | `next-adapter.test.ts` and `npm run smoke:next` |
 | Vite debug endpoint is unavailable or returns malformed JSON | `ViteAdapter` timeout/HTTP/JSON warning | Keep browser evidence, report the Vite capability warning, and verify the Vite plugin is installed | `vite-adapter.test.ts` and `npm run smoke:react-vite` |
 
 ## Operational signals

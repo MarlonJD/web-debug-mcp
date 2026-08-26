@@ -2,7 +2,7 @@
 
 `web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
 
-The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with a bounded server-log tail. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
 
 ## What is included
 
@@ -14,6 +14,7 @@ The first increment supports framework-neutral browser targets, an automatically
 - Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
 - React component tree, hook values, source locations, and render counts when the development build exposes React commits.
 - Vite module/importer graph and HMR status through the `webDebugVitePlugin()` development plugin.
+- Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
 - A live React/Vite fixture, automatic React bridge, and module-graph/HMR smoke.
@@ -56,7 +57,7 @@ export default {
 
 The plugin serves the local read-only module graph endpoint used during a debug session. It should not be enabled in a production server.
 
-Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata, and exercise the client route handler flow.
+Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata and a bounded server-log tail, and exercise the client route handler flow.
 
 Run the MCP server with `npm run dev` during development or `node dist/index.js` after `npm run build`. MCP protocol messages use stdout; diagnostics must stay on stderr.
 
