@@ -598,7 +598,11 @@ class SafariBidiClient {
   private nextId = 1;
 
   static async connect(url: string, onEvent: (event: BidiEvent) => void): Promise<SafariBidiClient> {
-    const socket = new WebSocket(url);
+    const WebSocketConstructor = getWebSocketConstructor();
+    if (!WebSocketConstructor) {
+      throw new Error("Safari WebDriver BiDi requires Node WebSocket support; use Node 20.10+ with --experimental-websocket or Node 21+.");
+    }
+    const socket = new WebSocketConstructor(url);
     try {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error("Safari WebDriver BiDi connection timed out.")), MAX_REQUEST_MS);
@@ -612,7 +616,7 @@ class SafariBidiClient {
         };
       });
     } catch (error) {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close();
+      if (socket.readyState === 1 || socket.readyState === 0) socket.close();
       throw error;
     }
     const client = new SafariBidiClient(socket, onEvent);
@@ -634,7 +638,7 @@ class SafariBidiClient {
 
   async close(): Promise<void> {
     this.rejectPending(new Error("Safari WebDriver BiDi client closed."));
-    if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+    if (this.socket.readyState === 1 || this.socket.readyState === 0) {
       this.socket.close();
     }
   }
@@ -733,6 +737,11 @@ function isRecord(value: unknown): value is Record<string, any> {
 
 function isDomSnapshot(value: unknown): value is DomSnapshot {
   return isRecord(value) && typeof value.bodyText === "string" && Array.isArray(value.elements);
+}
+
+function getWebSocketConstructor(): typeof WebSocket | null {
+  const candidate = (globalThis as { WebSocket?: unknown }).WebSocket;
+  return typeof candidate === "function" ? candidate as typeof WebSocket : null;
 }
 
 function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
