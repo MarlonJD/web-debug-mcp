@@ -44,6 +44,7 @@ try {
   const assertions = {
     scenarioPassed: verification.passed,
     safariTarget: session.target?.browser === "safari",
+    profileBoundary: session.target?.isolated === false && evidence.warnings.some((warning) => warning.includes("profile isolation")),
     domEvidence: evidence.dom.bodyText.includes("Payment submitted"),
     screenshot: Boolean(evidence.screenshotPath),
     networkEvidence: evidence.network.length > 0,

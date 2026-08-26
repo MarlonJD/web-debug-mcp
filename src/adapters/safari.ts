@@ -162,6 +162,7 @@ export class SafariAdapter implements BrowserAdapter {
     ];
     if (this.bidiWarning) warnings.push(this.bidiWarning);
     if (this.headlessRequested) warnings.push("Safari WebDriver does not support headless mode; the session uses a visible Safari window.");
+    warnings.push("Safari WebDriver uses a visible Safari browser profile; profile isolation is not guaranteed.");
 
     let url = "";
     try {
@@ -496,7 +497,7 @@ export class SafariAdapter implements BrowserAdapter {
       url: safeUrl(await this.currentUrl()),
       title: await this.readTitle(),
       viewport: await this.viewport(),
-      isolated: true,
+      isolated: false,
     };
   }
 }

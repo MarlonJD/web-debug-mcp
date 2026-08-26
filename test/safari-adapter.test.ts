@@ -32,6 +32,7 @@ describe("Safari WebDriver adapter", () => {
       const snapshot = await adapter.snapshot({ artifactDir: "/tmp/web-debug-safari-test", captureScreenshot: false });
 
       expect(target.browser).toBe("safari");
+      expect(target.isolated).toBe(false);
       expect(target.viewport).toEqual({ width: 1280, height: 800 });
       expect(snapshot.dom.bodyText).toContain("Payment submitted");
       expect(snapshot.console).toEqual([]);
