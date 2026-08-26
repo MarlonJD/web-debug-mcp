@@ -67,6 +67,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 21:06Z) Add a 50-frame bounded replay timeline, sanitised actions, and `web_replay_seek`.
 - [x] (2026-08-26 21:06Z) Verify replay capture/seek and form-value sanitisation in deterministic and React/Vite live tests.
 - [x] (2026-08-26 21:06Z) Commit and push the replay milestone as `4ddf88e` on `origin/main`.
+- [x] (2026-08-26 22:10Z) Re-run the sandbox-external Safari WebDriver smoke after enabling macOS remote automation; all Safari assertions passed.
 
 ## Surprises & Discoveries
 
@@ -100,6 +101,8 @@ The remote-target policy milestone is implemented and pushed. It covers explicit
 The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with bounded transform diffs, bounded replay timeline/seek, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Safari WebDriver transport, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Safari debugger parity, state-restoring replay, remote targets, hosted deployment, and production evidence; live Safari verification is blocked by the host setting recorded in the debt tracker.
 
 The final suite passed 20 deterministic tests, typecheck, build, 115 native harness checks, adaptive harness with zero errors/warnings, vanilla CDP, React/Vite profiler/replay/transform evidence, and Next route/action/log evidence. Safari returned the documented blocked result because macOS remote automation is disabled; no external remote host was available for live attach.
+
+The Safari permission blocker is resolved for this host: the real external retry passed with `browser: "safari"`, DOM/action/screenshot evidence, and explicit CDP-gap warnings. The external remote-CDP host remains unavailable.
 
 ## Context and Orientation
 
@@ -193,6 +196,7 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The React profiler validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:react-vite` with two commits, `CheckoutForm` render cause `state`, changed-component evidence, breakpoint, screenshot, and no browser errors; the Vite and Chromium processes exited afterward.
 - The Vite transform validation passed `npm test` (16 tests), typecheck, build, and `npm run smoke:react-vite` with a bounded transformed-code diff and restored fixture source; the Vite and Chromium processes exited afterward.
 - The Safari validation passed deterministic adapter tests and the cleanup-safe smoke reached safaridriver, then reported `status: "blocked"` because macOS remote automation was disabled; no password was retried.
+- The follow-up Safari validation passed `npm run smoke:safari` outside the sandbox with action, DOM, screenshot, and cleanup assertions; console/debugger/network gaps remained explicit warnings.
 - The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with three retained frames, frame seek, sanitised fill actions, and no browser errors.
 - The remote-target validation passed endpoint policy tests and local launch metadata; an approved external host was not available for live remote attach.
 
@@ -229,3 +233,4 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-26 20:49Z) Change: Recorded Vite transform-diff commit `86ff0da` and live verification. Reason: Preserve bounded HMR source provenance before Safari and replay work.
 - (2026-08-26 21:00Z) Change: Recorded Safari WebDriver commit `8604c77` and the host permission blocker. Reason: Preserve real Safari transport coverage without claiming CDP debugger parity.
 - (2026-08-26 21:06Z) Change: Recorded replay timeline commit `4ddf88e` and live verification. Reason: Preserve captured-state seek while keeping state restoration explicitly out of scope.
+- (2026-08-26 22:10Z) Change: Recorded successful external Safari WebDriver smoke after the macOS automation setting was enabled. Reason: Replace the prior host-permission blocker with verified local Safari evidence.
