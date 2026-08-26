@@ -17,6 +17,8 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 
 ## Progress
 
+- [x] (2026-08-26 21:16Z) Run the final deterministic, harness, vanilla, React/Vite, Next, and Safari smoke set and record Safari permission and external-target evidence literally.
+
 - [x] (2026-08-26 21:12Z) Add explicit CDP endpoint protocol/host validation and remote target metadata.
 - [x] (2026-08-26 21:12Z) Verify default-deny remote CDP policy and local launch target isolation metadata.
 - [x] (2026-08-26 21:12Z) Commit and push the remote-target policy milestone as 0fbee2d on origin/main.
@@ -97,6 +99,8 @@ The remote-target policy milestone is implemented and pushed. It covers explicit
 
 The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with bounded transform diffs, bounded replay timeline/seek, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Safari WebDriver transport, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Safari debugger parity, state-restoring replay, remote targets, hosted deployment, and production evidence; live Safari verification is blocked by the host setting recorded in the debt tracker.
 
+The final suite passed 20 deterministic tests, typecheck, build, 115 native harness checks, adaptive harness with zero errors/warnings, vanilla CDP, React/Vite profiler/replay/transform evidence, and Next route/action/log evidence. Safari returned the documented blocked result because macOS remote automation is disabled; no external remote host was available for live attach.
+
 ## Context and Orientation
 
 The MCP boundary is `src/index.ts`. `SessionManager` in `src/core/session-manager.ts` owns session IDs, temporary artifact directories, bounded replay frames, action replay, and verification. `ChromiumAdapter` in `src/adapters/chromium.ts` owns Playwright/CDP calls, injects the React bridge, and caches pause-safe browser state. `ReactAdapter` in `src/adapters/react.ts` reads the bridge’s bounded component and commit profiler snapshots. `ViteAdapter` in `src/adapters/vite.ts` reads the local Vite plugin endpoint. `NextAdapter` in `src/adapters/next.ts` reads the Next development MCP endpoint and handles bounded inspection operations. `src/core/redaction.ts` is applied both while collecting browser events and while composing the final `EvidenceBundle`.
@@ -106,6 +110,8 @@ The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures
 ## Plan of Work
 
 The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy and local-launch checks are complete; external-host live attach remains a separate evidence gate.
+
+The bounded requested milestones are implemented and pushed. The remaining items are fidelity/evidence upgrades rather than missing facade paths: Safari debugger parity, state-restoring replay, approved external-target live evidence, and hosted/production authority.
 
 The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. The Safari milestone adds W3C WebDriver actions/DOM/screenshots with explicit CDP capability warnings. The replay milestone adds captured-frame timeline/seek with sanitised action values. Remaining work is split into Safari debugger parity, state-restoring replay, and remote target milestones.
 
@@ -159,8 +165,9 @@ Acceptance requires all of the following:
 - `npm run smoke:next` reports allowlisted route compilation and Server Action resolution through `web_next_inspect`.
 - `npm run smoke:react-vite` reports bounded React commit summaries, durations where available, and an inferred state render cause.
 - `npm run smoke:react-vite` reports a bounded Vite transform diff for a real HMR update.
-- `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence or an explicit host-permission blocker.
 - `npm run smoke:react-vite` reports a bounded replay timeline and non-mutating frame seek.
+
+- `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence or the exact macOS permission blocker.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
@@ -187,6 +194,7 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The Vite transform validation passed `npm test` (16 tests), typecheck, build, and `npm run smoke:react-vite` with a bounded transformed-code diff and restored fixture source; the Vite and Chromium processes exited afterward.
 - The Safari validation passed deterministic adapter tests and the cleanup-safe smoke reached safaridriver, then reported `status: "blocked"` because macOS remote automation was disabled; no password was retried.
 - The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with three retained frames, frame seek, sanitised fill actions, and no browser errors.
+- The remote-target validation passed endpoint policy tests and local launch metadata; an approved external host was not available for live remote attach.
 
 ## Interfaces and Dependencies
 
@@ -201,6 +209,7 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 ## Revision History
 
 - (2026-08-26 21:12Z) Change: Recorded remote-target policy commit 0fbee2d and local policy verification. Reason: Make remote CDP control explicit, bounded, and visibly non-isolated.
+- (2026-08-26 21:16Z) Change: Recorded final cross-stack validation with literal Safari and external-target blockers. Reason: Close the requested bounded suite milestone without inferring unsupported evidence.
 
 - (2026-08-26 15:35Z) Change: Created the active implementation plan and selected the first local vertical slice. Reason: Make the empty supplied repository restartable and evidence-driven.
 - (2026-08-26 16:09Z) Change: Recorded source commit `5fbdf90` and remote branch verification. Reason: Preserve the first bootstrap checkpoint and leave the active plan ready for the adapter milestone.
