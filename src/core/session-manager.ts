@@ -12,6 +12,8 @@ import type {
   BrowserAction,
   DebugSessionSummary,
   EvidenceBundle,
+  NextInspection,
+  NextInspectionResult,
   ProjectDescriptor,
   NextSnapshot,
   ReproScenario,
@@ -185,6 +187,14 @@ export class SessionManager {
       ]);
     }
     return composeEvidence(session.descriptor, session.summary, combinedBrowser);
+  }
+
+  async inspectNext(sessionId: string, inspection: NextInspection): Promise<NextInspectionResult> {
+    const session = this.requireSession(sessionId);
+    if (!session.nextAdapter) {
+      throw new WebDebugError("NEXT_UNAVAILABLE", "The selected project does not expose a Next.js runtime adapter.");
+    }
+    return session.nextAdapter.inspect(session.summary.url, inspection);
   }
 
   async setBreakpoint(

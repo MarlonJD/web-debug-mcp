@@ -70,6 +70,34 @@ describe("Next MCP adapter", () => {
       await rm(parent, { recursive: true, force: true });
     }
   });
+
+  it("inspects a Server Action and compiles a route through the allowlisted tools", async () => {
+    try {
+      const calls = stubNextFetch();
+      const adapter = new NextAdapter();
+      const action = await adapter.inspect("http://127.0.0.1:4175/", {
+        kind: "resolveServerAction",
+        actionId: "action-123",
+      });
+      const route = await adapter.inspect("http://127.0.0.1:4175/", {
+        kind: "compileRoute",
+        path: "/",
+      });
+
+      expect(action.result).toEqual({
+        actionId: "action-123",
+        runtime: "node",
+        filename: "app/actions.js",
+        functionName: "submitPayment",
+      });
+      expect(route.result).toEqual({ routeSpecifier: "/", issues: [] });
+      expect(action.warnings).toEqual([]);
+      expect(route.warnings).toEqual([]);
+      expect(calls).toEqual(["tools/list", "get_server_action_by_id", "tools/list", "compile_route"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 function stubNextFetch(logFilePath = "/fixture/next/.next/dev/logs/next-development.log") {
@@ -78,7 +106,7 @@ function stubNextFetch(logFilePath = "/fixture/next/.next/dev/logs/next-developm
     const request = JSON.parse(init.body);
     calls.push(request.method === "tools/list" ? "tools/list" : request.params.name);
     const body = request.method === "tools/list"
-      ? { result: { tools: ["get_project_metadata", "get_errors", "get_routes", "get_logs", "get_compilation_issues", "get_page_metadata", "get_request_insights"].map((name) => ({ name })) } }
+      ? { result: { tools: ["get_project_metadata", "get_errors", "get_routes", "get_logs", "get_server_action_by_id", "get_compilation_issues", "get_page_metadata", "get_request_insights", "compile_route"].map((name) => ({ name })) } }
       : { result: { content: [{ type: "text", text: toolText(request.params.name, logFilePath) }] } };
     return new Response(`event: message\ndata: ${JSON.stringify({ ...body, jsonrpc: "2.0", id: request.id })}\n\n`, {
       status: 200,
@@ -97,6 +125,8 @@ function toolText(name, logFilePath) {
     get_compilation_issues: { issues: [] },
     get_page_metadata: { error: "No browser sessions connected." },
     get_request_insights: { error: "Request Insights is not enabled." },
+    get_server_action_by_id: { actionId: "action-123", runtime: "node", filename: "app/actions.js", functionName: "submitPayment" },
+    compile_route: { routeSpecifier: "/", issues: [] },
   };
   return JSON.stringify(values[name]);
 }

@@ -2,7 +2,7 @@ import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { open, realpath } from "node:fs/promises";
 
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
-import type { NextSnapshot } from "../domain/types.js";
+import type { NextInspection, NextInspectionResult, NextSnapshot } from "../domain/types.js";
 
 interface RpcResponse {
   result?: unknown;
@@ -65,6 +65,41 @@ export class NextAdapter {
       pageMetadata: values.get("get_page_metadata") ?? null,
       requestInsights: values.get("get_request_insights") ?? null,
       logTail,
+      warnings,
+    };
+  }
+
+  async inspect(baseUrl: string, inspection: NextInspection): Promise<NextInspectionResult> {
+    const endpoint = new URL("/_next/mcp", baseUrl).toString();
+    const client = new NextMcpClient(endpoint);
+    const listed = await client.request("tools/list", {});
+    const tools = extractToolNames(listed.result);
+    const warnings: string[] = [];
+    const toolName = inspection.kind === "compileRoute" ? "compile_route" : "get_server_action_by_id";
+    if (!tools.includes(toolName)) {
+      warnings.push(`Next runtime tool is not advertised: ${toolName}`);
+      return { detected: true, endpoint: safeUrl(endpoint), kind: inspection.kind, result: null, warnings };
+    }
+
+    let args: Record<string, unknown>;
+    if (inspection.kind === "resolveServerAction") {
+      args = { actionId: inspection.actionId };
+    } else {
+      const hasRouteSpecifier = Boolean(inspection.routeSpecifier);
+      const hasPath = Boolean(inspection.path);
+      if (hasRouteSpecifier === hasPath) {
+        throw new Error("Next route compilation requires exactly one of routeSpecifier or path.");
+      }
+      args = hasRouteSpecifier ? { routeSpecifier: inspection.routeSpecifier } : { path: inspection.path };
+    }
+
+    const result = await client.callTool(toolName, args);
+    if (result.warning) warnings.push(result.warning);
+    return {
+      detected: true,
+      endpoint: safeUrl(endpoint),
+      kind: inspection.kind,
+      result: result.value,
       warnings,
     };
   }
@@ -154,9 +189,9 @@ class NextMcpClient {
     }
   }
 
-  async callTool(name: string): Promise<ToolResult> {
+  async callTool(name: string, args: Record<string, unknown> = {}): Promise<ToolResult> {
     try {
-      const response = await this.request("tools/call", { name, arguments: {} });
+      const response = await this.request("tools/call", { name, arguments: args });
       return parseToolResult(name, response.result);
     } catch (error) {
       return {

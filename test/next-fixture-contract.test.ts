@@ -8,6 +8,7 @@ describe("Next fixture contract", () => {
     const layout = readFileSync(resolve("fixtures/next/app/layout.jsx"), "utf8");
     const page = readFileSync(resolve("fixtures/next/app/page.jsx"), "utf8");
     const client = readFileSync(resolve("fixtures/next/app/client-status.jsx"), "utf8");
+    const actions = readFileSync(resolve("fixtures/next/app/actions.js"), "utf8");
     const route = readFileSync(resolve("fixtures/next/app/api/health/route.js"), "utf8");
     const config = readFileSync(resolve("fixtures/next/next.config.mjs"), "utf8");
 
@@ -16,6 +17,9 @@ describe("Next fixture contract", () => {
     expect(page).toContain("Next server component ready");
     expect(client).toContain('"use client"');
     expect(client).toContain("/api/health");
+    expect(client).toContain("action={submitPayment}");
+    expect(actions).toContain('"use server"');
+    expect(actions).toContain("export async function submitPayment");
     expect(route).toContain("export function GET");
     expect(config).toContain("agentRules: false");
   });

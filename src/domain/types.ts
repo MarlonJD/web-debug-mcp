@@ -145,6 +145,18 @@ export interface NextSnapshot {
   warnings: string[];
 }
 
+export type NextInspection =
+  | { kind: "compileRoute"; routeSpecifier?: string; path?: string }
+  | { kind: "resolveServerAction"; actionId: string };
+
+export interface NextInspectionResult {
+  detected: true;
+  endpoint: string;
+  kind: NextInspection["kind"];
+  result: unknown | null;
+  warnings: string[];
+}
+
 export interface ViteModuleSummary {
   id: string | null;
   url: string;

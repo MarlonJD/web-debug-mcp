@@ -22,6 +22,7 @@ describe("MCP server contract", () => {
       "web_debug_evaluate",
       "web_fix_verify",
       "web_issue_capture",
+      "web_next_inspect",
       "web_project_detect",
       "web_repro_record",
       "web_session_close",

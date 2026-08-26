@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import type { BrowserAction, ScenarioCheck } from "./domain/types.js";
+import type { BrowserAction, NextInspection, ScenarioCheck } from "./domain/types.js";
 import { WebDebugError, errorMessage } from "./core/errors.js";
 import { SessionManager } from "./core/session-manager.js";
 
@@ -28,6 +28,20 @@ const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("urlContains"), value: z.string().min(1).max(500) }),
   z.object({ kind: z.literal("textContains"), value: z.string().min(1).max(500) }),
   z.object({ kind: z.literal("noConsoleErrors") }),
+]);
+
+const nextInspectionSchema = z.union([
+  z.object({
+    kind: z.literal("compileRoute"),
+    routeSpecifier: z.string().startsWith("/").min(1).max(500).optional(),
+    path: z.string().startsWith("/").min(1).max(2_000).optional(),
+  }).refine((input) => Boolean(input.routeSpecifier) !== Boolean(input.path), {
+    message: "Provide exactly one of routeSpecifier or path for compileRoute.",
+  }),
+  z.object({
+    kind: z.literal("resolveServerAction"),
+    actionId: z.string().min(1).max(200),
+  }),
 ]);
 
 export function createServer(manager = new SessionManager()): McpServer {
@@ -100,6 +114,17 @@ export function createServer(manager = new SessionManager()): McpServer {
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async ({ sessionId, captureScreenshot }) => respond(() => manager.capture(sessionId, captureScreenshot)),
+  );
+
+  server.registerTool(
+    "web_next_inspect",
+    {
+      title: "Inspect Next.js runtime",
+      description: "Compile one Next.js route or resolve one Server Action through the selected local Next development server.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), inspection: nextInspectionSchema }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ sessionId, inspection }) => respond(() => manager.inspectNext(sessionId, inspection as NextInspection)),
   );
 
   server.registerTool(
