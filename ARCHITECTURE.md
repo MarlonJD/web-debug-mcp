@@ -2,7 +2,7 @@
 
 ## System context
 
-`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The agent asks for a project capability report, starts an explicitly selected browser session, performs small same-origin actions, and receives evidence that joins browser state with JavaScript debugger state.
+`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The agent asks for a project capability report, starts an explicitly selected Chromium or Safari session, performs small same-origin actions, and receives evidence that joins browser state with debugger/framework signals where the selected browser exposes them.
 
 The server is a development tool. It runs over MCP stdio, launches or attaches to local Chromium, and stores screenshots under a temporary per-session artifact directory. It does not host an HTTP service for remote clients and does not modify application source during a debug session.
 
@@ -64,7 +64,9 @@ Codex MCP client
       ▼
 web-debug-mcp process
       ├── SessionManager
-      └── ChromiumAdapter ── Playwright/CDP ── loopback Chromium
+      └── Browser adapters
+            ├── ChromiumAdapter ── Playwright/CDP ── Chromium
+            └── SafariAdapter ── WebDriver/BiDi ── visible Safari
                                       │
                                       └── local web app
 ```
