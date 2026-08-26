@@ -68,6 +68,7 @@ const requiredFiles = [
   "src/adapters/vite-plugin.ts",
   "test/next-fixture-contract.test.ts",
   "test/next-adapter.test.ts",
+  "test/chromium-policy.test.ts",
   "test/vite-adapter.test.ts",
 ];
 for (const relativePath of requiredFiles) read(relativePath);

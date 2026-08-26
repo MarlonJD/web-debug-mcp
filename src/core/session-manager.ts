@@ -206,6 +206,7 @@ export class SessionManager {
       viewport: browser.viewport,
       isolated: session.summary.target?.isolated ?? false,
       browser: session.summary.target?.browser ?? "chromium",
+      remote: session.summary.target?.remote ?? false,
     };
     session.summary.warnings = mergeWarnings(session.summary.warnings, browser.warnings);
     if (session.descriptor.capabilities.react && combinedBrowser.react === null) {

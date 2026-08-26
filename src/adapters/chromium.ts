@@ -82,6 +82,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   private page: Page | null = null;
   private cdp: CDPSession | null = null;
   private externalBrowser = false;
+  private remoteTarget = false;
   private allowRemote = false;
   private baseOrigin: string | null = null;
   private requestCounter = 0;
@@ -102,12 +103,15 @@ export class ChromiumAdapter implements BrowserAdapter {
     assertAllowedUrl(options.url, this.allowRemote);
 
     if (options.cdpEndpoint) {
+      assertAllowedCdpEndpoint(options.cdpEndpoint, this.allowRemote);
+      this.remoteTarget = !isLoopback(new URL(options.cdpEndpoint).hostname);
       this.browser = await chromium.connectOverCDP(options.cdpEndpoint);
       this.externalBrowser = true;
       const contexts = this.browser.contexts();
       this.context = contexts[0] ?? (await this.browser.newContext());
       this.page = this.context.pages()[0] ?? (await this.context.newPage());
     } else {
+      this.remoteTarget = false;
       const executablePath = options.executablePath ?? process.env.WEB_DEBUG_CHROME_EXECUTABLE_PATH;
       if (!executablePath) {
         throw new WebDebugError(
@@ -474,6 +478,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     const page = this.requirePage();
     return {
       browser: "chromium",
+      remote: this.remoteTarget,
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
       viewport: page.viewportSize(),
@@ -562,6 +567,24 @@ function assertAllowedUrl(raw: string, allowRemote: boolean): void {
     throw new WebDebugError(
       "REMOTE_TARGET_BLOCKED",
       "Remote browser targets are blocked by default. Set allowRemote only for an explicitly approved debugging target.",
+    );
+  }
+}
+
+function assertAllowedCdpEndpoint(raw: string, allowRemote: boolean): void {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new WebDebugError("CDP_ENDPOINT_INVALID", `Invalid CDP endpoint: ${safeUrl(raw)}`);
+  }
+  if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
+    throw new WebDebugError("CDP_ENDPOINT_PROTOCOL_BLOCKED", "CDP endpoints must use http, https, ws, or wss.");
+  }
+  if (!allowRemote && !isLoopback(url.hostname)) {
+    throw new WebDebugError(
+      "REMOTE_CDP_BLOCKED",
+      "Remote CDP endpoints are blocked by default. Set allowRemote only for an explicitly approved target.",
     );
   }
 }

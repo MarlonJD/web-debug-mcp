@@ -48,6 +48,7 @@ export class SafariAdapter implements BrowserAdapter {
   private driverProcess: ChildProcess | null = null;
   private allowRemote = false;
   private baseOrigin: string | null = null;
+  private remoteTarget = false;
   private headlessRequested = true;
   private lastKnownTitle = "";
   private lastKnownDom: DomSnapshot = { bodyText: "", elements: [] };
@@ -67,6 +68,7 @@ export class SafariAdapter implements BrowserAdapter {
       ?? process.env.WEB_DEBUG_SAFARI_WEBDRIVER_ENDPOINT;
     const endpoint = configured ?? DEFAULT_DRIVER_ENDPOINT;
     assertAllowedEndpoint(endpoint, this.allowRemote);
+    this.remoteTarget = !isLoopback(new URL(endpoint).hostname);
     this.client = new WebDriverClient(endpoint);
 
     if (!configured) await this.ensureDriver(endpoint);
@@ -88,6 +90,7 @@ export class SafariAdapter implements BrowserAdapter {
     this.client = null;
     this.sessionId = null;
     this.baseOrigin = null;
+    this.remoteTarget = false;
     if (this.driverProcess) {
       this.driverProcess.kill("SIGTERM");
       this.driverProcess = null;
@@ -352,6 +355,7 @@ export class SafariAdapter implements BrowserAdapter {
   private async target(): Promise<BrowserTarget> {
     return {
       browser: "safari",
+      remote: this.remoteTarget,
       url: safeUrl(await this.currentUrl()),
       title: await this.readTitle(),
       viewport: await this.viewport(),

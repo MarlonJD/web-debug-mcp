@@ -29,7 +29,7 @@ const adapter = new ChromiumAdapter();
 
 try {
   await fixtureReady;
-  await adapter.start({ url, executablePath: browserPath, headless: true });
+  const target = await adapter.start({ url, executablePath: browserPath, headless: true });
   const breakpoint = await adapter.setBreakpoint({ sourceUrl, line: 12 });
   await adapter.act({ kind: "click", selector: "#submit" });
   const snapshot = await adapter.snapshot({ artifactDir, captureScreenshot: true });
@@ -40,11 +40,12 @@ try {
     source: frame?.url === sourceUrl,
     line: frame?.line === 12,
     locals: Object.values(frame?.locals ?? {}).some((value) => value === 249.9),
+    localTarget: target.remote === false,
     screenshot: Boolean(snapshot.screenshotPath),
     consoleClean: snapshot.console.length === 0,
   };
   const passed = Object.values(assertions).every(Boolean);
-  process.stdout.write(`${JSON.stringify({ passed, assertions, breakpoint, artifactDir }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ passed, assertions, target, breakpoint, artifactDir }, null, 2)}\n`);
   if (snapshot.debugger.paused) await adapter.control("resume");
   if (!passed) process.exitCode = 1;
 } finally {

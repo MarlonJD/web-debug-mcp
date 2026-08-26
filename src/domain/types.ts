@@ -28,6 +28,7 @@ export interface ProjectDescriptor {
 
 export interface BrowserTarget {
   browser: BrowserEngine;
+  remote: boolean;
   url: string;
   title: string;
   viewport: { width: number; height: number } | null;
