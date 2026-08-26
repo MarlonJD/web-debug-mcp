@@ -1,6 +1,6 @@
 # Agent Harness Map
 
-This project uses a small adaptive harness. It makes the local MCP workflow, evidence shape, safety limits, and verification commands discoverable without claiming hosted or production certification.
+This project uses a small adaptive harness. It makes the local MCP workflow, evidence shape, safety limits, and verification commands discoverable without claiming hosted or production certification. The repository now records the remaining certification inputs explicitly rather than treating local checks as external authority.
 
 | Authority | Purpose |
 | --- | --- |
@@ -12,4 +12,4 @@ This project uses a small adaptive harness. It makes the local MCP workflow, evi
 | [`operating-loop.md`](operating-loop.md) | Defines reproduce, inspect, change, and verify responsibilities |
 | [`entropy-cleanup-checklist.md`](entropy-cleanup-checklist.md) | Keeps tools, docs, and evidence boundaries from drifting |
 
-The full HMAC-backed harness certification profile is not adopted by this first commit. It would require a complete coverage inventory, trusted source/attestation commits, and fresh evidence records; none are being fabricated here.
+The full HMAC-backed harness certification profile is not asserted by this repository yet. The bundled verifier still reports `CERT001` until a caller supplies the external owner-only HMAC key and the direct-child attestation overlay with fresh v2 evidence records. An approved external CDP host and provider-backed production authority are also unavailable in this environment; neither is inferred from local smoke output.

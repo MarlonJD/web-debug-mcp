@@ -7,11 +7,11 @@
 - project capabilities and warnings;
 - session ID, target URL, isolation state, and artifact directory;
 - bounded DOM summary and page text;
-- bounded console and network metadata;
+- bounded console and network metadata, with Safari network provenance disclosed as BiDi or Performance Resource Timing;
 - screenshot path when capture succeeds;
 - debugger pause reason, call frames, scopes, and redacted locals;
 - explicit redaction policy and truncation warnings.
-- a bounded `replay` timeline whose fill actions are sanitised and whose frames are inspectable through `web_replay_seek`.
+- a bounded `replay` timeline whose fill actions are sanitised and whose frames are inspectable or safely restorable through `web_replay_seek`.
 
 ## Handoff labels
 

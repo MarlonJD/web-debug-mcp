@@ -2,7 +2,7 @@
 id: web-debug-mcp-mvp
 status: active
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 completed:
 owner: Platform Engineering
 -->
@@ -13,7 +13,7 @@ Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan re
 
 ## Purpose / Big Picture
 
-Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, Chromium/CDP, Safari WebDriver actions, an automatically injected React bridge with bounded commit profiling, Vite module-graph/HMR metadata with bounded transform diffs, Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection, and captured-frame replay seek while keeping deeper Safari debugger parity, state-restoring replay, and remote-target paths behind explicit adapters.
+Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, Chromium/CDP, Safari WebDriver/BiDi actions and evidence, an automatically injected React bridge with bounded commit profiling and render-cause details, Vite module-graph/HMR metadata with transform provenance/diffs and source-map summaries, Next.js development-server metadata with bounded server-log, request-insight, route-compilation, and Server Action execution evidence, and captured-frame replay seek/restore while keeping exact framework parity, external-host evidence, and production certification behind explicit boundaries.
 
 ## Progress
 
@@ -68,12 +68,21 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 21:06Z) Verify replay capture/seek and form-value sanitisation in deterministic and React/Vite live tests.
 - [x] (2026-08-26 21:06Z) Commit and push the replay milestone as `4ddf88e` on `origin/main`.
 - [x] (2026-08-26 22:10Z) Re-run the sandbox-external Safari WebDriver smoke after enabling macOS remote automation; all Safari assertions passed.
+- [x] (2026-08-27 01:42Z) Add Safari WebDriver BiDi subscription, bounded console/network evidence, and a disclosed Performance Resource Timing fallback for Safari versions without network events.
+- [x] (2026-08-27 01:42Z) Add mocked BiDi transport coverage and re-run the real Safari smoke with console, network-source, DOM, screenshot, and debugger-boundary assertions.
+- [x] (2026-08-27 01:42Z) Commit and push the Safari BiDi milestone as `9d72ae2` on `origin/main`.
+- [x] (2026-08-27 01:46Z) Verify that no approved external remote CDP endpoint is present and preserve the default-deny/policy-only status without fabricating an external attach result.
+- [x] (2026-08-27 01:47Z) Run the adaptive harness check, plan validation, typecheck, deterministic tests, build, and Safari smoke after the BiDi milestone.
+- [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
+- [ ] Obtain the caller-supplied owner-only HMAC key and trusted attestation scope needed for the direct-child harness certification overlay; do not claim `CERT000` without them.
 
 ## Surprises & Discoveries
 
 The supplied GitHub repository was empty and had no repository-local instructions. The current AviaWorkspace checkout has unrelated modifications, so the new project was kept in a sibling directory. The first live browser path cannot assume a browser binary; launch mode therefore requires an explicit executable path and attach mode requires an explicit CDP endpoint.
 
 Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues; the React profiler smoke initially exposed Fiber alternate identity churn and then verified the corrected state render cause and commit timeline; the Vite smoke initially exposed lifecycle pause races during HMR and then verified a bounded transformed-code diff after the update and restore cycle; the Safari smoke reached safaridriver but was blocked by the macOS Allow remote automation setting and did not consume or retry a password; the replay smoke verified retained action/capture frames, non-mutating seek, and sanitised fill values.
+
+The Safari 26.5 BiDi probe accepted `session.subscribe` and delivered console events but did not consistently emit network events; the adapter therefore discloses and bounds a Performance Resource Timing fallback. Safari 27 and Safari Technology Preview 247 now expose Apple’s official Safari MCP server, so this project keeps one internal Safari compatibility adapter rather than adding a duplicate public MCP catalog. A remote-CDP alias test was intentionally discarded after Chrome normalized the address to local loopback; only an approved external endpoint would count as live remote evidence. The certification verifier currently stops at missing `certification.json`; a caller-supplied external HMAC key and direct-child attestation overlay are required for `harness-ready` and are not inferred.
 
 ## Decision Log
 
@@ -93,16 +102,20 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 - Decision: Cache post-plugin Vite transform snapshots and produce a minimal changed-block diff on HMR. Rationale: the module graph identifies what changed, while the bounded diff shows why without exposing unbounded source or requiring a second Vite MCP server. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Add Safari through W3C WebDriver with an explicit `browser: "safari"` selection. Rationale: it provides real Safari actions, DOM, screenshots, and evaluation without mislabeling Playwright WebKit as Safari; CDP-only debugger, console, and network evidence stays explicitly unavailable. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Keep replay as a bounded captured-state timeline with an explicit seek tool. Rationale: it gives agents inspectable before/after evidence without claiming browser state restoration, while sanitising fill values and retaining the existing action-based fix verification. Date/Author: 2026-08-26 / Platform Engineering.
+- Decision: Use Safari WebDriver BiDi for console and network subscription, with Performance Resource Timing as an explicitly disclosed fallback. Rationale: Safari 26.5 delivered reliable BiDi console events but did not consistently emit network events; preserving bounded metadata is useful as long as the source is visible and no CDP parity is claimed. Date/Author: 2026-08-27 / Platform Engineering.
+- Decision: Do not add Apple’s Safari 27 MCP as another public server in this repository. Rationale: Safari 27 already provides an official browser-native Safari MCP surface; duplicating it would create the MCP sprawl this project is designed to avoid. The internal adapter remains a compatibility path for older Safari and shared session orchestration. Date/Author: 2026-08-27 / Platform Engineering.
+- Decision: Restore replay frames only by replaying safe retained actions. Rationale: navigation, click, wait, and reload can be reissued within the session origin, while sanitised form inputs and redacted URLs must fail closed; this is not application-state time travel. Date/Author: 2026-08-27 / Platform Engineering.
+- Decision: Keep external remote attach and HMAC certification as evidence-gated work. Rationale: a policy test or locally selected key cannot substitute for an approved external target, caller-supplied key, or trusted attestation scope. Date/Author: 2026-08-27 / Platform Engineering.
 
 ## Outcomes & Retrospective
 
 The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host is still required for live remote-attach evidence.
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with bounded transform diffs, bounded replay timeline/seek, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Safari WebDriver transport, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Safari debugger parity, state-restoring replay, remote targets, hosted deployment, and production evidence; live Safari verification is blocked by the host setting recorded in the debt tracker.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, and remote push are complete for the implemented local suite. The plan remains active only for an approved external remote target and caller-supplied harness certification evidence; exact framework parity, hosted deployment, and production authority remain explicit non-claims.
 
-The final suite passed 20 deterministic tests, typecheck, build, 115 native harness checks, adaptive harness with zero errors/warnings, vanilla CDP, React/Vite profiler/replay/transform evidence, and Next route/action/log evidence. Safari returned the documented blocked result because macOS remote automation is disabled; no external remote host was available for live attach.
+The current deterministic suite passes 21 tests, typecheck, build, 115 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/replay/transform evidence, Next route/action/log/request evidence, and Safari BiDi/fallback evidence. No approved external remote host was available for live attach, and the certification verifier correctly reports `CERT001` because no certification overlay or caller-supplied HMAC key exists.
 
-The Safari permission blocker is resolved for this host: the real external retry passed with `browser: "safari"`, DOM/action/screenshot evidence, and explicit CDP-gap warnings. The external remote-CDP host remains unavailable.
+The Safari permission blocker is resolved for this host: the real retry passed with `browser: "safari"`, DOM/action/screenshot evidence, BiDi console evidence, bounded network evidence, and explicit debugger/fallback warnings. Safari 27’s official Safari MCP is recorded as the browser-native alternative; this repository intentionally does not duplicate its public catalog. The external remote-CDP host and formal harness attestation remain unavailable.
 
 ## Context and Orientation
 
@@ -112,11 +125,11 @@ The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures
 
 ## Plan of Work
 
-The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy and local-launch checks are complete; external-host live attach remains a separate evidence gate.
+The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy is complete; external-host live attach remains a separate evidence gate because no approved endpoint is available in this environment.
 
-The bounded requested milestones are implemented and pushed. The remaining items are fidelity/evidence upgrades rather than missing facade paths: Safari debugger parity, state-restoring replay, approved external-target live evidence, and hosted/production authority.
+The bounded requested milestones are implemented and pushed. React profiler/render-cause details, Vite transform provenance/source-map summaries, Next request/action evidence, Safari BiDi/fallback evidence, and safe replay restore are now covered without adding duplicate MCP catalogs. The remaining items are authority/evidence gates: approved external-target live evidence and the caller-supplied HMAC/direct-child attestation required by the full harness profile.
 
-The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. The Safari milestone adds W3C WebDriver actions/DOM/screenshots with explicit CDP capability warnings. The replay milestone adds captured-frame timeline/seek with sanitised action values. Remaining work is split into Safari debugger parity, state-restoring replay, and remote target milestones.
+The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestones add automatic component/state evidence, bounded commit profiler/render-cause details, module graph/HMR state, transform provenance/diffs, and source-map summaries without adding public MCP servers. The Next milestones add direct SSE JSON-RPC metadata, bounded logs/request insights, route compilation, Server Action lookup, and request-linked execution evidence. The Safari milestones add W3C WebDriver actions/DOM/screenshots plus BiDi console/network subscription with a disclosed fallback. The replay milestones add captured-frame timeline/seek and safe action restore. Remote policy is fail-closed and external attach remains authority-gated; formal harness certification remains caller-input-gated.
 
 ## Concrete Steps
 
@@ -143,9 +156,13 @@ For the React profiler milestone, run `npm run smoke:react-vite` after the norma
 
 For the Vite transform milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with a non-empty bounded `transformDiff` after a real HMR update and the fixture source restored afterward.
 
-For the Safari milestone, run `npm run smoke:safari` after the normal checks. Expected signal: JSON reports `passed: true` for Safari WebDriver actions/DOM/screenshot; if macOS remote automation is disabled, the command must report `status: "blocked"` with the exact setting requirement.
+For the Safari milestone, run `npm run smoke:safari` after the normal checks. Expected signal: JSON reports `passed: true` for Safari WebDriver actions/DOM/screenshot, BiDi console evidence, and network evidence with its source disclosed; if macOS remote automation is disabled, the command must report `status: "blocked"` with the exact setting requirement.
 
-For the replay milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with retained frames, successful `web_replay_seek`, and no raw fill value in a replay action.
+For the replay milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with retained frames, successful `web_replay_seek`, safe-action restore, and no raw fill value in a replay action.
+
+For the remote-target evidence gate, run `npm test -- --run test/chromium-policy.test.ts` and inspect the environment for an explicitly approved external CDP endpoint. A local alias or policy-only result is not external evidence; absent an approved endpoint, record the gate as unavailable.
+
+For the formal harness gate, run the project-native checks and the bundled `harness.py certify` command only with a caller-supplied owner-only HMAC key, a trusted direct-child attestation commit, and fresh v2 records. Missing key/authority must remain a literal blocker rather than a generated placeholder.
 
 ## Validation and Acceptance
 
@@ -168,9 +185,12 @@ Acceptance requires all of the following:
 - `npm run smoke:next` reports allowlisted route compilation and Server Action resolution through `web_next_inspect`.
 - `npm run smoke:react-vite` reports bounded React commit summaries, durations where available, and an inferred state render cause.
 - `npm run smoke:react-vite` reports a bounded Vite transform diff for a real HMR update.
-- `npm run smoke:react-vite` reports a bounded replay timeline and non-mutating frame seek.
+- `npm run smoke:react-vite` reports a bounded replay timeline, non-mutating frame seek, and successful safe-action restore.
 
-- `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence or the exact macOS permission blocker.
+- `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence, BiDi console evidence, network-source disclosure, and the explicit debugger boundary or the exact macOS permission blocker.
+
+- Remote CDP policy rejects unapproved targets by default; a live external attach remains unverified until an approved endpoint is supplied.
+- Formal `harness-ready` certification is not claimed until the caller supplies the external HMAC key and direct-child attestation overlay required by the bundled verifier.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
@@ -196,9 +216,10 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The React profiler validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:react-vite` with two commits, `CheckoutForm` render cause `state`, changed-component evidence, breakpoint, screenshot, and no browser errors; the Vite and Chromium processes exited afterward.
 - The Vite transform validation passed `npm test` (16 tests), typecheck, build, and `npm run smoke:react-vite` with a bounded transformed-code diff and restored fixture source; the Vite and Chromium processes exited afterward.
 - The Safari validation passed deterministic adapter tests and the cleanup-safe smoke reached safaridriver, then reported `status: "blocked"` because macOS remote automation was disabled; no password was retried.
-- The follow-up Safari validation passed `npm run smoke:safari` outside the sandbox with action, DOM, screenshot, and cleanup assertions; console/debugger/network gaps remained explicit warnings.
-- The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with three retained frames, frame seek, sanitised fill actions, and no browser errors.
-- The remote-target validation passed endpoint policy tests and local launch metadata; an approved external host was not available for live remote attach.
+- The follow-up Safari validation passed `npm run smoke:safari` outside the sandbox with action, DOM, screenshot, BiDi console, disclosed network fallback, debugger-boundary, and cleanup assertions.
+- The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with retained frames, frame seek, safe restore, sanitised fill actions, and no browser errors.
+- The remote-target validation passed endpoint policy tests; a local alias was discarded as external evidence after Chrome normalized it to loopback, and no approved external host was available for live remote attach.
+- The Safari BiDi validation passed the deterministic transport test, typecheck, build, harness checks, plan validation, and real Safari smoke; the full harness verifier remains at `CERT001` because no caller-supplied HMAC key or certification overlay exists.
 
 ## Interfaces and Dependencies
 
@@ -208,7 +229,7 @@ The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses 
 
 The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_next_inspect`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
 
-The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, render count, inferred render cause, and optional actual duration; it also returns a capped commit summary timeline. Render causes are inferred from serialized prop/hook signatures across Fiber alternates and are not a substitute for the full React DevTools profiler. The Vite adapter reads the bounded graph/HMR summary and transform diff served by `webDebugVitePlugin()` at `/__web_debug/vite`. The Safari adapter uses W3C WebDriver through local `safaridriver` or an explicit endpoint for actions, DOM, screenshots, and explicitly side-effect-enabled evaluation; CDP debugger/console/network parity is not claimed. The replay timeline retains up to 50 sanitised frames, and `web_replay_seek` returns a captured frame without mutating the browser. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation or Server Action lookup only through `web_next_inspect`.
+The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, render count, inferred render cause, prop/hook change details, and optional actual/self/tree durations; it also returns a capped commit summary timeline. Render causes are inferred from serialized prop/hook signatures across Fiber alternates and are not a substitute for the full React DevTools profiler. The Vite adapter reads the bounded graph/HMR summary, transformed-code diff, transform provenance, and source-map summary served by `webDebugVitePlugin()` at `/__web_debug/vite`. The Safari adapter uses W3C WebDriver through local `safaridriver` or an explicit endpoint for actions, DOM, screenshots, and explicitly side-effect-enabled evaluation; WebDriver BiDi supplies console/network events where implemented, with a disclosed Performance Resource Timing fallback, while JavaScript debugger parity is not claimed. The replay timeline retains up to 50 sanitised frames, and `web_replay_seek` can return a frame or replay safe retained actions without exposing sanitised inputs. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation, Server Action lookup, request insights, and request-linked action execution evidence through the existing single facade.
 
 ## Revision History
 
@@ -234,3 +255,6 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-26 21:00Z) Change: Recorded Safari WebDriver commit `8604c77` and the host permission blocker. Reason: Preserve real Safari transport coverage without claiming CDP debugger parity.
 - (2026-08-26 21:06Z) Change: Recorded replay timeline commit `4ddf88e` and live verification. Reason: Preserve captured-state seek while keeping state restoration explicitly out of scope.
 - (2026-08-26 22:10Z) Change: Recorded successful external Safari WebDriver smoke after the macOS automation setting was enabled. Reason: Replace the prior host-permission blocker with verified local Safari evidence.
+- (2026-08-27 01:42Z) Change: Recorded Safari BiDi commit `9d72ae2` and live evidence. Reason: Add bounded console/network subscription with an explicit Performance Resource Timing fallback while preserving the Safari debugger boundary.
+- (2026-08-27 01:46Z) Change: Recorded the absence of an approved external CDP host and discarded the normalized loopback alias experiment as external evidence. Reason: Keep remote-target status literal and fail closed.
+- (2026-08-27 01:47Z) Change: Recorded the current certification blocker: `harness.py certify` returns `CERT001` because no caller-supplied HMAC key or attestation overlay exists. Reason: Do not fabricate harness or production authority.

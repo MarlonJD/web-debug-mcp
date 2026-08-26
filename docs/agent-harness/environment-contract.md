@@ -11,6 +11,8 @@ The fixture servers bind only to `127.0.0.1`: vanilla uses `npm run serve:fixtur
 - `cdpEndpoint`, pointing at a browser the caller deliberately selected; or
 - `WEB_DEBUG_CHROME_EXECUTABLE_PATH`, pointing at a Chromium executable used to create a fresh Playwright context.
 
+Safari sessions use `browser: "safari"` with local `safaridriver` or an explicit loopback WebDriver endpoint. Safari runs visibly, can subscribe to WebDriver BiDi console/network events, and may disclose a bounded Performance Resource Timing fallback when the installed Safari does not emit network events. Safari JavaScript debugger parity is not part of this contract.
+
 Launch mode is the preferred deterministic path. Attach mode is supported for interactive debugging but the session summary marks it `isolated: false` and evidence includes a warning.
 
 ## Lifecycle
@@ -20,7 +22,7 @@ Launch mode is the preferred deterministic path. Attach mode is supported for in
 3. Perform bounded actions and capture evidence.
 4. Close the session when the workflow ends.
 
-The manager caps active sessions at eight. Browser waits are capped at 30 seconds. Console and network history are bounded in memory. Screenshots are written under a temporary `web-debug-mcp-*` directory and the returned path is the evidence handle.
+The manager caps active sessions at eight. Browser waits are capped at 30 seconds. Console and network history are bounded in memory. Replay retains up to 50 frames; `restore: true` can reissue only safe retained actions and fails closed for sanitised inputs. Screenshots are written under a temporary `web-debug-mcp-*` directory and the returned path is the evidence handle.
 
 Next development output under `fixtures/next/.next/` is generated state and is ignored by Git. Next’s generated agent-rule files are disabled in the fixture with `agentRules: false` so the source tree remains deterministic.
 
@@ -30,4 +32,4 @@ Stop the fixture server with SIGINT or SIGTERM. Close MCP sessions with `web_ses
 
 ## Unsupported environments
 
-Remote browsers, non-loopback targets, Safari/WebKit, production applications, credential-bearing browser profiles, and hosted MCP deployment are not part of this contract.
+Non-loopback targets and remote CDP/WebDriver endpoints require explicit opt-in and are marked non-isolated; no approved external remote target is currently available for live evidence. Production applications, credential-bearing browser profiles, and hosted MCP deployment are not part of this local contract.
