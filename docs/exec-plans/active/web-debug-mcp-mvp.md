@@ -35,7 +35,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 19:10Z) Add the Next.js `/_next/mcp` SSE adapter, App Router fixture, and bounded text-wait action.
 - [x] (2026-08-26 19:10Z) Verify Next project metadata, routes, compilation issues, route-handler state, and console health against Next 16.3.3.
 - [x] (2026-08-26 19:15Z) Run the full validation set with vanilla, React/Vite, and Next live smokes passing and no owned process remaining.
-- [ ] Commit and push the Next.js milestone separately from the React/Vite checkpoint.
+- [x] (2026-08-26 19:18Z) Commit and push the Next.js milestone as `8e97c48` on `origin/main`.
 
 ## Surprises & Discoveries
 
@@ -55,7 +55,7 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 
 ## Outcomes & Retrospective
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, React/Vite semantic bridge, React/Vite live smoke, Next runtime metadata adapter, and Next live smoke are complete for the current milestone. The Next commit and push remain. Deep Next server debugging, automatic React DevTools integration, Safari, replay, remote targets, hosted deployment, and production evidence remain intentionally deferred.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, React/Vite semantic bridge, React/Vite live smoke, Next runtime metadata adapter, Next live smoke, and remote push are complete for the current milestone. The plan remains active for deep Next server debugging, automatic React DevTools integration, Vite HMR/module graph, Safari, replay, remote targets, hosted deployment, and production evidence.
 
 ## Context and Orientation
 
@@ -133,3 +133,4 @@ The React adapter consumes the opt-in `window.__WEB_DEBUG_REACT__` bridge expose
 - (2026-08-26 18:57Z) Change: Recorded milestone commit `bdf83d0` and remote verification. Reason: Preserve the React/Vite checkpoint and leave future Next.js work as a separate active milestone.
 - (2026-08-26 19:10Z) Change: Added and exercised the Next runtime metadata adapter and fixture. Reason: Extend the single MCP evidence contract to Next App Router runtime signals without adding a second MCP server.
 - (2026-08-26 19:15Z) Change: Recorded the final three-stack validation evidence before the Next milestone checkpoint. Reason: Keep the active plan aligned with the tested tree and explicit commit/push step.
+- (2026-08-26 19:18Z) Change: Recorded Next milestone commit `8e97c48` and remote verification. Reason: Preserve the Next metadata checkpoint and keep the active plan ready for deep server debugging.
