@@ -14,7 +14,7 @@
 | Artifact storage | Screenshots use a temporary per-session directory and are not written into the project | `SessionManager` temporary directory allocation | Session manager test and runtime contract | Platform Engineering; artifact policy changes |
 | Next runtime metadata and logs | Next MCP calls stay on the selected local origin; log tails resolve inside the detected project root and are byte/line bounded and redacted | `NextAdapter` endpoint derivation, path boundary, caps, and redaction | `next-adapter.test.ts` and live Next smoke | Platform Engineering; Next endpoint or log-field changes |
 | Next inspection operations | Only `compile_route` and `get_server_action_by_id` are reachable through schema-bounded `web_next_inspect` requests; arbitrary Next MCP tools and Server Action execution remain blocked | `src/index.ts` schema, `SessionManager`, and `NextAdapter` allowlist | MCP contract, adapter tests, and live Next smoke | Platform Engineering; inspection operation changes |
-| React/Vite runtime metadata | Injected React bridge and Vite middleware expose only bounded development data on the selected local browser origin | `ReactAdapter`, `ViteAdapter`, bridge serializer, and redaction | React/Vite contract and live smoke | Platform Engineering; bridge or module-field changes |
+| React/Vite runtime metadata | Injected React bridge and Vite middleware expose only bounded development data on the selected local browser origin; profiler signatures never expose raw Fiber objects | `ReactAdapter`, `ViteAdapter`, bridge serializer, weak maps, and redaction | React/Vite contract and live smoke | Platform Engineering; bridge or module-field changes |
 
 ## Sensitive data policy
 
