@@ -17,6 +17,7 @@ The first increment favors bounded, recoverable local sessions over background p
 | Next development log is missing, outside the project, or too large | `NextAdapter` path boundary, byte/line caps, and warning | Keep the Next metadata and browser evidence; inspect the returned warning or the local dev server directly | `next-adapter.test.ts` and `npm run smoke:next` |
 | Next route compile or Server Action lookup is unavailable | `web_next_inspect` returns a bounded error/warning from the local Next MCP endpoint | Keep the session and capture evidence; retry after the route/server manifest is ready | `next-adapter.test.ts` and `npm run smoke:next` |
 | Vite debug endpoint is unavailable or returns malformed JSON | `ViteAdapter` timeout/HTTP/JSON warning | Keep browser evidence, report the Vite capability warning, and verify the Vite plugin is installed | `vite-adapter.test.ts` and `npm run smoke:react-vite` |
+| Vite transform history is missing or too large | Plugin keeps 200 source snapshots, 32 KiB/module, and 12 KiB/diff bounds; absence remains nullable | Keep module graph/HMR evidence and report a missing diff rather than failing the session | `vite-adapter.test.ts` and `npm run smoke:react-vite` |
 | React commit profiling data is unavailable or grows too large | Bridge uses bounded commit history, Fiber weak maps, and nullable duration fields | Keep component/state evidence and report the React bridge warning; do not fail the browser session | `react-fixture-contract.test.ts` and `npm run smoke:react-vite` |
 
 ## Operational signals

@@ -13,7 +13,7 @@ The first increment supports framework-neutral browser targets, an automatically
 - JavaScript breakpoints, pause control, bounded call frames, and read-only evaluation by default.
 - Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
 - React component tree, hook values, source locations, render counts, bounded commit summaries, and inferred render causes when the development build exposes React commits.
-- Vite module/importer graph and HMR status through the `webDebugVitePlugin()` development plugin.
+- Vite module/importer graph, HMR status, and bounded transform diffs through the `webDebugVitePlugin()` development plugin.
 - Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
 - Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`.
 - Reproducible action scenarios with simple post-fix checks.
@@ -85,4 +85,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, Vite hot-update diff/transform tracing, Next.js server execution/trace adapter, Safari adapter, or time-travel replay implementation yet. The current React adapter provides bounded commit summaries and inferred causes.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/flamegraph or precise render-cause attribution, complete Vite transform provenance/source maps, Next.js server execution/trace adapter, Safari adapter, or time-travel replay implementation yet. The current React adapter provides bounded commit summaries/inferred causes and the Vite adapter provides bounded transform diffs.

@@ -13,7 +13,7 @@ Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan re
 
 ## Purpose / Big Picture
 
-Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, an automatically injected React bridge with bounded commit profiling, Vite module-graph/HMR metadata, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection while keeping deeper transform, Safari, replay, and remote-target paths behind explicit adapters.
+Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, an automatically injected React bridge with bounded commit profiling, Vite module-graph/HMR metadata with bounded transform diffs, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection while keeping deeper Safari, replay, and remote-target paths behind explicit adapters.
 
 ## Progress
 
@@ -51,12 +51,15 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 20:42Z) Add bounded React commit summaries, durations, and inferred render causes across Fiber alternates.
 - [x] (2026-08-26 20:42Z) Verify state-driven render cause and commit profiler evidence on the live React/Vite fixture.
 - [x] (2026-08-26 20:42Z) Commit and push the React profiler milestone as `25612a5` on `origin/main`.
+- [x] (2026-08-26 20:49Z) Add bounded Vite transform snapshots and line diffs to the HMR evidence.
+- [x] (2026-08-26 20:49Z) Verify a real `App.jsx` HMR edit/restore cycle through the Vite adapter.
+- [x] (2026-08-26 20:49Z) Commit and push the Vite transform-diff milestone as `86ff0da` on `origin/main`.
 
 ## Surprises & Discoveries
 
 The supplied GitHub repository was empty and had no repository-local instructions. The current AviaWorkspace checkout has unrelated modifications, so the new project was kept in a sibling directory. The first live browser path cannot assume a browser binary; launch mode therefore requires an explicit executable path and attach mode requires an explicit CDP endpoint.
 
-Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues; the React profiler smoke initially exposed Fiber alternate identity churn and then verified the corrected state render cause and commit timeline.
+Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues; the React profiler smoke initially exposed Fiber alternate identity churn and then verified the corrected state render cause and commit timeline; the Vite smoke initially exposed lifecycle pause races during HMR and then verified a bounded transformed-code diff after the update and restore cycle.
 
 ## Decision Log
 
@@ -71,10 +74,11 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 - Decision: Expose Vite module graph/HMR state through an internal Vite plugin and `ViteAdapter`. Rationale: Vite does not provide this graph as a generic public HTTP endpoint; a local read-only plugin keeps the public MCP surface stable and makes the dependency graph inspectable. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Expose Next route compilation and Server Action lookup through one `web_next_inspect` tool. Rationale: route compilation has an explicit development-server effect and action lookup needs caller-provided input, so neither belongs implicitly in read-only capture; one high-level tool preserves the single MCP facade. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Derive React render causes from bounded DevTools-hook commit snapshots and Fiber alternate pairs. Rationale: the suite can expose useful state/prop/parent signals without shipping raw Fiber objects or adding a second profiler server; durations and commit history remain nullable and capped. Date/Author: 2026-08-26 / Platform Engineering.
+- Decision: Cache post-plugin Vite transform snapshots and produce a minimal changed-block diff on HMR. Rationale: the module graph identifies what changed, while the bounded diff shows why without exposing unbounded source or requiring a second Vite MCP server. Date/Author: 2026-08-26 / Platform Engineering.
 
 ## Outcomes & Retrospective
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Next live smoke, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Vite transform diffing, Safari, replay, remote targets, hosted deployment, and production evidence.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with bounded transform diffs, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Next live smoke, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, Safari, replay, remote targets, hosted deployment, and production evidence.
 
 ## Context and Orientation
 
@@ -84,7 +88,7 @@ The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures
 
 ## Plan of Work
 
-The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. Remaining work is split into Vite transform diffing, Safari transport, replay timeline, and remote target milestones.
+The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. Remaining work is split into Safari transport, replay timeline, and remote target milestones.
 
 ## Concrete Steps
 
@@ -109,6 +113,8 @@ For the Next inspection milestone, run `npm run smoke:next` after the normal che
 
 For the React profiler milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with at least two commits, a changed component count, a state-derived `renderCause`, and no browser errors.
 
+For the Vite transform milestone, run `npm run smoke:react-vite` after the normal checks. Expected signal: JSON reports `passed: true` with a non-empty bounded `transformDiff` after a real HMR update and the fixture source restored afterward.
+
 ## Validation and Acceptance
 
 Acceptance requires all of the following:
@@ -127,6 +133,7 @@ Acceptance requires all of the following:
 - `npm run smoke:next` reports a bounded, redacted Next development-log tail whose file remains inside the detected project root.
 - `npm run smoke:next` reports allowlisted route compilation and Server Action resolution through `web_next_inspect`.
 - `npm run smoke:react-vite` reports bounded React commit summaries, durations where available, and an inferred state render cause.
+- `npm run smoke:react-vite` reports a bounded Vite transform diff for a real HMR update.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
@@ -150,6 +157,7 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The Next server-evidence validation passed `npm test` (14 tests), typecheck, build, and `npm run smoke:next` with relative log-tail evidence; the safe-path and out-of-bound-path tests passed and the Next/Chromium processes exited afterward.
 - The Next inspection validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:next` with `/` compilation `issues: []` and a real `submitPayment` Server Action manifest resolution; the Next/Chromium processes exited afterward.
 - The React profiler validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:react-vite` with two commits, `CheckoutForm` render cause `state`, changed-component evidence, breakpoint, screenshot, and no browser errors; the Vite and Chromium processes exited afterward.
+- The Vite transform validation passed `npm test` (16 tests), typecheck, build, and `npm run smoke:react-vite` with a bounded transformed-code diff and restored fixture source; the Vite and Chromium processes exited afterward.
 
 ## Interfaces and Dependencies
 
@@ -157,7 +165,7 @@ The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses 
 
 The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_next_inspect`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
 
-The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, render count, inferred render cause, and optional actual duration; it also returns a capped commit summary timeline. Render causes are inferred from serialized prop/hook signatures across Fiber alternates and are not a substitute for the full React DevTools profiler. The Vite adapter reads the bounded graph/HMR summary served by `webDebugVitePlugin()` at `/__web_debug/vite`. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation or Server Action lookup only through `web_next_inspect`.
+The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, render count, inferred render cause, and optional actual duration; it also returns a capped commit summary timeline. Render causes are inferred from serialized prop/hook signatures across Fiber alternates and are not a substitute for the full React DevTools profiler. The Vite adapter reads the bounded graph/HMR summary and transform diff served by `webDebugVitePlugin()` at `/__web_debug/vite`. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation or Server Action lookup only through `web_next_inspect`.
 
 ## Revision History
 
@@ -176,3 +184,4 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-26 20:08Z) Change: Recorded server-evidence commit `7fabde7` and remote verification. Reason: Preserve the bounded Next log-tail checkpoint before deeper server and Server Action work.
 - (2026-08-26 20:38Z) Change: Recorded Next inspection commit `89a9553` and remote verification. Reason: Preserve the explicit route compilation and Server Action lookup checkpoint before React/Vite/browser transport work.
 - (2026-08-26 20:42Z) Change: Recorded React profiler commit `25612a5` and live verification. Reason: Preserve bounded commit and inferred render-cause evidence before Vite transform work.
+- (2026-08-26 20:49Z) Change: Recorded Vite transform-diff commit `86ff0da` and live verification. Reason: Preserve bounded HMR source provenance before Safari and replay work.
