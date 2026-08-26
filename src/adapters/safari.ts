@@ -7,12 +7,14 @@ import type {
   BrowserAction,
   BrowserSnapshot,
   BrowserTarget,
+  ConsoleEntry,
   DebuggerBreakpoint,
   DebuggerSnapshot,
   DomSnapshot,
+  NetworkEntry,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
-import { boundText, redactValue, safeUrl } from "../core/redaction.js";
+import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -37,6 +39,16 @@ interface WebDriverElement {
   [key: string]: unknown;
 }
 
+interface CreatedWebDriverSession {
+  id: string;
+  webSocketUrl?: string;
+}
+
+interface BidiEvent {
+  method?: string;
+  params?: Record<string, any>;
+}
+
 /**
  * Safari transport through the macOS safaridriver W3C WebDriver endpoint.
  * WebDriver provides browser actions, DOM, screenshots, and explicit JS
@@ -49,6 +61,11 @@ export class SafariAdapter implements BrowserAdapter {
   private allowRemote = false;
   private baseOrigin: string | null = null;
   private remoteTarget = false;
+  private bidi: SafariBidiClient | null = null;
+  private bidiWarning: string | null = null;
+  private performanceNetworkFallbackUsed = false;
+  private readonly consoleEntries: ConsoleEntry[] = [];
+  private readonly networkEntries = new Map<string, NetworkEntry>();
   private headlessRequested = true;
   private lastKnownTitle = "";
   private lastKnownDom: DomSnapshot = { bodyText: "", elements: [] };
@@ -73,7 +90,17 @@ export class SafariAdapter implements BrowserAdapter {
 
     if (!configured) await this.ensureDriver(endpoint);
     try {
-      this.sessionId = await this.client.createSession();
+      const created = await this.client.createSession();
+      this.sessionId = created.id;
+      if (created.webSocketUrl) {
+        try {
+          this.bidi = await SafariBidiClient.connect(created.webSocketUrl, (event) => this.recordBidiEvent(event));
+        } catch (error) {
+          this.bidiWarning = `Safari WebDriver BiDi unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)} Console events are unavailable; network evidence will use Performance Resource Timing when available.`;
+        }
+      } else {
+        this.bidiWarning = "Safari WebDriver did not return a BiDi WebSocket URL; console events are unavailable; network evidence will use Performance Resource Timing when available.";
+      }
       await this.navigate(options.url);
       this.baseOrigin = new URL(options.url).origin;
       this.lastKnownTitle = await this.readTitle();
@@ -86,11 +113,17 @@ export class SafariAdapter implements BrowserAdapter {
   }
 
   async close(): Promise<void> {
+    await this.bidi?.close();
+    this.bidi = null;
     await this.client?.deleteSession().catch(() => undefined);
     this.client = null;
     this.sessionId = null;
     this.baseOrigin = null;
     this.remoteTarget = false;
+    this.bidiWarning = null;
+    this.performanceNetworkFallbackUsed = false;
+    this.consoleEntries.length = 0;
+    this.networkEntries.clear();
     if (this.driverProcess) {
       this.driverProcess.kill("SIGTERM");
       this.driverProcess = null;
@@ -125,8 +158,9 @@ export class SafariAdapter implements BrowserAdapter {
 
   async snapshot(options: SnapshotOptions): Promise<BrowserSnapshot> {
     const warnings = [
-      "Safari WebDriver does not expose Chromium CDP console, network, or JavaScript debugger domains; those evidence sections are empty.",
+      "Safari WebDriver does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
     ];
+    if (this.bidiWarning) warnings.push(this.bidiWarning);
     if (this.headlessRequested) warnings.push("Safari WebDriver does not support headless mode; the session uses a visible Safari window.");
 
     let url = "";
@@ -163,13 +197,31 @@ export class SafariAdapter implements BrowserAdapter {
       }
     }
 
+    if (this.networkEntries.size === 0) {
+      try {
+        const performanceEntries = await this.readPerformanceNetwork();
+        for (const entry of performanceEntries) this.networkEntries.set(entry.requestId, entry);
+        if (performanceEntries.length > 0) this.performanceNetworkFallbackUsed = true;
+      } catch (error) {
+        warnings.push(`Safari network evidence unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      }
+    }
+    if (this.performanceNetworkFallbackUsed) {
+      warnings.push("Safari WebDriver BiDi did not emit network events; network evidence uses bounded Performance Resource Timing metadata.");
+    }
+
+    const consoleBound = boundItems(this.consoleEntries, 100);
+    const networkBound = boundItems([...this.networkEntries.values()], 100);
+    if (consoleBound.truncated) warnings.push("Safari console entries were truncated to 100 items.");
+    if (networkBound.truncated) warnings.push("Safari network entries were truncated to 100 items.");
+
     return {
       url: safeUrl(url),
       title,
       viewport: await this.viewport(),
       dom,
-      console: [],
-      network: [],
+      console: consoleBound.items,
+      network: networkBound.items,
       screenshotPath,
       debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
       react: null,
@@ -212,6 +264,90 @@ export class SafariAdapter implements BrowserAdapter {
     };
   }
 
+  private recordBidiEvent(event: BidiEvent): void {
+    const params = event.params ?? {};
+    if (event.method === "log.entryAdded") {
+      const callFrame = params.stackTrace?.callFrames?.[0];
+      const text = typeof params.text === "string" ? params.text : JSON.stringify(params.args ?? "");
+      this.consoleEntries.push({
+        level: mapBidiLogLevel(params.level),
+        text: boundText(text ?? "", 2_000),
+        ...(typeof callFrame?.url === "string" && callFrame.url ? { url: safeUrl(callFrame.url) } : {}),
+        ...(Number.isInteger(callFrame?.lineNumber) ? { line: callFrame.lineNumber + 1 } : {}),
+        ...(Number.isInteger(callFrame?.columnNumber) ? { column: callFrame.columnNumber + 1 } : {}),
+      });
+      this.trimConsole();
+      return;
+    }
+    if (event.method === "network.beforeRequestSent") {
+      const request = params.request;
+      if (!isRecord(request) || typeof request.request !== "string" || typeof request.url !== "string") return;
+      this.networkEntries.set(request.request, {
+        requestId: request.request,
+        method: typeof request.method === "string" ? request.method : "GET",
+        url: safeUrl(request.url),
+        resourceType: typeof params.initiator?.type === "string" ? params.initiator.type : "other",
+        status: null,
+        ok: null,
+      });
+      this.trimNetwork();
+      return;
+    }
+    if (event.method === "network.responseCompleted") {
+      const response = params.response;
+      if (!isRecord(response) || typeof response.request !== "string") return;
+      const entry = this.networkEntries.get(response.request);
+      if (!entry) return;
+      entry.status = typeof response.status === "number" ? response.status : null;
+      entry.ok = typeof entry.status === "number" ? entry.status >= 200 && entry.status < 400 : null;
+      return;
+    }
+    if (event.method === "network.fetchError") {
+      const request = params.request;
+      if (!isRecord(request) || typeof request.request !== "string") return;
+      const entry = this.networkEntries.get(request.request);
+      if (!entry) return;
+      entry.ok = false;
+      entry.failure = typeof params.errorText === "string" ? boundText(params.errorText, 500) : "fetch error";
+    }
+  }
+
+  private trimConsole(): void {
+    if (this.consoleEntries.length > 200) this.consoleEntries.splice(0, this.consoleEntries.length - 200);
+  }
+
+  private trimNetwork(): void {
+    if (this.networkEntries.size <= 200) return;
+    const first = this.networkEntries.keys().next().value;
+    if (first) this.networkEntries.delete(first);
+  }
+
+  private async readPerformanceNetwork(): Promise<NetworkEntry[]> {
+    const value = await this.executeSync<unknown>(
+      `return performance.getEntriesByType("resource").slice(-200).map((entry, index) => ({
+        requestId: "performance-" + index + "-" + entry.startTime,
+        method: "GET",
+        url: entry.name,
+        resourceType: entry.initiatorType || "other",
+        status: typeof entry.responseStatus === "number" ? entry.responseStatus : null,
+      }));`,
+      [],
+    );
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((entry) => {
+      if (!isRecord(entry) || typeof entry.requestId !== "string" || typeof entry.url !== "string") return [];
+      const status = typeof entry.status === "number" ? entry.status : null;
+      return [{
+        requestId: entry.requestId,
+        method: typeof entry.method === "string" ? entry.method : "GET",
+        url: safeUrl(entry.url),
+        resourceType: typeof entry.resourceType === "string" ? entry.resourceType : "other",
+        status,
+        ok: status === null ? null : status >= 200 && status < 400,
+      }];
+    });
+  }
+
   private async ensureDriver(endpoint: string): Promise<void> {
     this.client = this.requireClient();
     try {
@@ -220,7 +356,8 @@ export class SafariAdapter implements BrowserAdapter {
     } catch {
       const port = Number(process.env.WEB_DEBUG_SAFARI_PORT ?? (new URL(endpoint).port || "4444"));
       const driverPath = process.env.WEB_DEBUG_SAFARIDRIVER_PATH ?? "safaridriver";
-      this.driverProcess = spawn(driverPath, ["--port", String(port)], {
+      const bidiPort = Number(process.env.WEB_DEBUG_SAFARI_BIDI_PORT ?? "4446");
+      this.driverProcess = spawn(driverPath, ["--port", String(port), "--bidi", String(bidiPort)], {
         stdio: ["ignore", "ignore", "ignore"],
       });
       await this.waitForDriver(endpoint);
@@ -371,17 +508,30 @@ class WebDriverClient {
     await this.send("/status", "GET");
   }
 
-  async createSession(): Promise<string> {
+  async createSession(): Promise<CreatedWebDriverSession> {
     const response = await this.send("/session", "POST", {
-      capabilities: { alwaysMatch: { browserName: "safari", acceptInsecureCerts: true } },
+      capabilities: {
+        alwaysMatch: {
+          browserName: "safari",
+          acceptInsecureCerts: true,
+          webSocketUrl: true,
+          "safari:experimentalWebSocketUrl": true,
+        },
+      },
     });
     const value = isRecord(response.value) ? response.value : {};
+    const capabilities = isRecord(value.capabilities) ? value.capabilities : {};
     const sessionId = typeof response.sessionId === "string"
       ? response.sessionId
       : typeof value.sessionId === "string" ? value.sessionId : null;
     if (!sessionId) throw new WebDebugError("SAFARI_SESSION_CREATE_FAILED", "Safari WebDriver returned no session ID.");
     this.sessionId = sessionId;
-    return sessionId;
+    return {
+      id: sessionId,
+      ...(typeof capabilities.webSocketUrl === "string"
+        ? { webSocketUrl: capabilities.webSocketUrl }
+        : typeof value.webSocketUrl === "string" ? { webSocketUrl: value.webSocketUrl } : {}),
+    };
   }
 
   async deleteSession(): Promise<void> {
@@ -429,6 +579,114 @@ class WebDriverClient {
   private sessionId: string | null = null;
 }
 
+class SafariBidiClient {
+  private constructor(
+    private readonly socket: WebSocket,
+    private readonly onEvent: (event: BidiEvent) => void,
+  ) {
+    this.socket.onmessage = (event) => this.handleMessage(event);
+    this.socket.onerror = () => this.rejectPending(new Error("Safari WebDriver BiDi socket error."));
+    this.socket.onclose = () => this.rejectPending(new Error("Safari WebDriver BiDi socket closed."));
+  }
+
+  private readonly pending = new Map<number, {
+    resolve: (value: unknown) => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  }>();
+  private nextId = 1;
+
+  static async connect(url: string, onEvent: (event: BidiEvent) => void): Promise<SafariBidiClient> {
+    const socket = new WebSocket(url);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Safari WebDriver BiDi connection timed out.")), MAX_REQUEST_MS);
+        socket.onopen = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        socket.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error("Safari WebDriver BiDi connection failed."));
+        };
+      });
+    } catch (error) {
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close();
+      throw error;
+    }
+    const client = new SafariBidiClient(socket, onEvent);
+    try {
+      await client.command("session.subscribe", {
+        events: [
+          "log.entryAdded",
+          "network.beforeRequestSent",
+          "network.responseCompleted",
+          "network.fetchError",
+        ],
+      });
+    } catch (error) {
+      await client.close();
+      throw error;
+    }
+    return client;
+  }
+
+  async close(): Promise<void> {
+    this.rejectPending(new Error("Safari WebDriver BiDi client closed."));
+    if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
+      this.socket.close();
+    }
+  }
+
+  private async command(method: string, params: Record<string, unknown>): Promise<unknown> {
+    const id = this.nextId++;
+    const result = new Promise<unknown>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`Safari WebDriver BiDi command timed out: ${method}`));
+      }, MAX_REQUEST_MS);
+      this.pending.set(id, { resolve, reject, timeout });
+    });
+    this.socket.send(JSON.stringify({ id, method, params }));
+    return result;
+  }
+
+  private handleMessage(event: MessageEvent): void {
+    const raw = typeof event.data === "string" ? event.data : String(event.data);
+    let message: unknown;
+    try {
+      message = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (!isRecord(message)) return;
+    if (typeof message.id === "number") {
+      const pending = this.pending.get(message.id);
+      if (!pending) return;
+      this.pending.delete(message.id);
+      clearTimeout(pending.timeout);
+      if (message.type === "error" || typeof message.error === "string") {
+        const detail = typeof message.message === "string" ? message.message : String(message.error ?? "unknown error");
+        pending.reject(new Error(`Safari WebDriver BiDi request failed: ${boundText(detail, 500)}`));
+      } else {
+        pending.resolve(message.result);
+      }
+      return;
+    }
+    if (typeof message.method === "string") {
+      this.onEvent({ method: message.method, params: isRecord(message.params) ? message.params : {} });
+    }
+  }
+
+  private rejectPending(error: Error): void {
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timeout);
+      pending.reject(error);
+    }
+    this.pending.clear();
+  }
+}
+
 function boundedTimeout(timeoutMs: number | undefined): number {
   return Math.min(Math.max(timeoutMs ?? 1_000, 0), 30_000);
 }
@@ -474,4 +732,19 @@ function isRecord(value: unknown): value is Record<string, any> {
 
 function isDomSnapshot(value: unknown): value is DomSnapshot {
   return isRecord(value) && typeof value.bodyText === "string" && Array.isArray(value.elements);
+}
+
+function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
+  switch (level) {
+    case "error":
+      return "error";
+    case "warn":
+      return "warning";
+    case "debug":
+      return "debug";
+    case "info":
+      return "info";
+    default:
+      return "log";
+  }
 }

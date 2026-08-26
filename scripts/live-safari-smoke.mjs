@@ -25,6 +25,7 @@ try {
     browser: "safari",
     headless: false,
   });
+  await manager.evaluate(session.id, "console.info('Safari BiDi smoke event')", true);
   const scenario = manager.recordScenario({
     name: "submit Safari payment",
     url,
@@ -39,12 +40,15 @@ try {
   });
   const verification = await manager.verifyScenario(session.id, scenario.id);
   const evidence = verification.evidence.browser;
+  const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
     scenarioPassed: verification.passed,
     safariTarget: session.target?.browser === "safari",
     domEvidence: evidence.dom.bodyText.includes("Payment submitted"),
     screenshot: Boolean(evidence.screenshotPath),
-    consoleUnavailableIsExplicit: evidence.console.length === 0 && evidence.warnings.some((warning) => warning.includes("CDP console")),
+    networkEvidence: evidence.network.length > 0,
+    networkSourceDisclosed: !usesPerformanceNetwork || evidence.warnings.some((warning) => warning.includes("Performance Resource Timing")),
+    bidiConsoleEvidence: evidence.console.some((entry) => entry.text.includes("Safari BiDi smoke event")),
     debuggerUnavailableIsExplicit: evidence.debugger.paused === false && evidence.warnings.some((warning) => warning.includes("JavaScript debugger")),
   };
   const passed = Object.values(assertions).every(Boolean);
@@ -53,6 +57,10 @@ try {
     assertions,
     target: session.target,
     warnings: evidence.warnings,
+    networkCount: evidence.network.length,
+    networkSample: evidence.network.slice(0, 5),
+    networkSource: usesPerformanceNetwork ? "performance-resource-timing" : "webdriver-bidi",
+    consoleCount: evidence.console.length,
     bodyText: evidence.dom.bodyText,
     screenshotPath: evidence.screenshotPath,
   }, null, 2)}\n`);
