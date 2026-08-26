@@ -44,6 +44,7 @@ try {
   const routes = nextEvidence?.routes;
   const projectMetadata = nextEvidence?.projectMetadata;
   const compilationIssues = nextEvidence?.compilationIssues;
+  const logTail = nextEvidence?.logTail;
   const assertions = {
     scenarioPassed: verification.passed,
     nextDetected: nextEvidence?.detected === true,
@@ -53,6 +54,7 @@ try {
     projectPath: isRecord(projectMetadata) && typeof projectMetadata.projectPath === "string" && projectMetadata.projectPath.endsWith("/fixtures/next"),
     devServerUrl: isRecord(projectMetadata) && projectMetadata.devServerUrl === url.slice(0, -1),
     compilationClean: isRecord(compilationIssues) && Array.isArray(compilationIssues.issues) && compilationIssues.issues.length === 0,
+    logTail: isRecord(logTail) && typeof logTail.file === "string" && logTail.file.endsWith(".next/dev/logs/next-development.log") && typeof logTail.text === "string",
     serverRenderedText: verification.evidence.browser.dom.bodyText.includes("Next server component ready"),
     clientRenderedText: verification.evidence.browser.dom.bodyText.includes("Healthy"),
     consoleClean: verification.evidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
@@ -63,6 +65,7 @@ try {
     assertions,
     tools: nextEvidence?.tools ?? [],
     warnings: nextEvidence?.warnings ?? [],
+    logTail,
     bodyText: verification.evidence.browser.dom.bodyText,
     console: verification.evidence.browser.console,
   }, null, 2)}\n`);

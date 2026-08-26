@@ -141,7 +141,7 @@ export class SessionManager {
     let next: NextSnapshot | null = null;
     if (session.nextAdapter) {
       try {
-        next = await session.nextAdapter.snapshot(browser.url);
+        next = await session.nextAdapter.snapshot(browser.url, session.descriptor.projectRoot);
       } catch (error) {
         session.summary.warnings = mergeWarnings(session.summary.warnings, [
           `Next runtime snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`,

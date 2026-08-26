@@ -1,3 +1,6 @@
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { open, realpath } from "node:fs/promises";
+
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
 import type { NextSnapshot } from "../domain/types.js";
 
@@ -21,8 +24,12 @@ const OPTIONAL_TOOLS = [
   "get_request_insights",
 ] as const;
 
+const MAX_LOG_BYTES = 64 * 1024;
+const MAX_LOG_LINES = 200;
+const MAX_LOG_CHARS = 32_000;
+
 export class NextAdapter {
-  async snapshot(baseUrl: string): Promise<NextSnapshot | null> {
+  async snapshot(baseUrl: string, projectRoot?: string): Promise<NextSnapshot | null> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
     const listed = await client.request("tools/list", {});
@@ -42,6 +49,10 @@ export class NextAdapter {
       if (result.warning) warnings.push(result.warning);
     }
 
+    const logTail = projectRoot
+      ? await readLogTail(values.get("get_logs"), projectRoot, warnings)
+      : null;
+
     return {
       detected: true,
       endpoint: safeUrl(endpoint),
@@ -53,8 +64,56 @@ export class NextAdapter {
       compilationIssues: values.get("get_compilation_issues") ?? null,
       pageMetadata: values.get("get_page_metadata") ?? null,
       requestInsights: values.get("get_request_insights") ?? null,
+      logTail,
       warnings,
     };
+  }
+}
+
+async function readLogTail(
+  value: unknown,
+  projectRoot: string,
+  warnings: string[],
+): Promise<NonNullable<NextSnapshot["logTail"]> | null> {
+  if (!isRecord(value) || typeof value.logFilePath !== "string") return null;
+
+  let rootPath: string;
+  let logPath: string;
+  try {
+    rootPath = await realpath(resolve(projectRoot));
+    logPath = await realpath(resolve(value.logFilePath));
+  } catch {
+    warnings.push("Next development log tail is unavailable because the returned log file could not be resolved.");
+    return null;
+  }
+
+  const relativePath = relative(rootPath, logPath);
+  if (!relativePath || isAbsolute(relativePath) || relativePath.startsWith(`..${sep}`) || basename(logPath) !== "next-development.log") {
+    warnings.push("Next development log tail was skipped because the returned log file is outside the project boundary.");
+    return null;
+  }
+
+  let handle;
+  try {
+    handle = await open(logPath, "r");
+    const size = (await handle.stat()).size;
+    const length = Math.min(size, MAX_LOG_BYTES);
+    const buffer = Buffer.alloc(length);
+    if (length > 0) await handle.read(buffer, 0, length, Math.max(0, size - length));
+    const rawText = buffer.toString("utf8");
+    const lines = rawText.split(/\r?\n/);
+    const truncated = size > MAX_LOG_BYTES || lines.length > MAX_LOG_LINES;
+    const text = boundText(lines.slice(-MAX_LOG_LINES).join("\n"), MAX_LOG_CHARS);
+    return {
+      file: relativePath.split(sep).join("/"),
+      text,
+      truncated,
+    };
+  } catch (error) {
+    warnings.push(`Next development log tail unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+    return null;
+  } finally {
+    await handle?.close().catch(() => undefined);
   }
 }
 

@@ -137,6 +137,11 @@ export interface NextSnapshot {
   compilationIssues: unknown | null;
   pageMetadata: unknown | null;
   requestInsights: unknown | null;
+  logTail: {
+    file: string;
+    text: string;
+    truncated: boolean;
+  } | null;
   warnings: string[];
 }
 
