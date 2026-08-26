@@ -122,6 +122,7 @@ check(safariSource.includes("profile isolation"), "Safari adapter must disclose 
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");
 check(vitePluginSource.includes("summarizeSourceMap"), "Vite plugin must preserve source-map provenance summaries");
 check(nextSource.includes("serverActionExecutions"), "Next adapter must preserve Server Action execution evidence");
+check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve normalized server request traces");
 
 const config = JSON.parse(read("docs/agent-harness/config.json"));
 check(config.schema_version === 1, "harness config schema_version must be 1");
