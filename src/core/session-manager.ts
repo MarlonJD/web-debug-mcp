@@ -226,7 +226,7 @@ export class SessionManager {
     return session.nextAdapter.inspect(session.summary.url, inspection);
   }
 
-  async seekReplay(sessionId: string, frameIndex: number): Promise<ReplaySeekResult> {
+  async seekReplay(sessionId: string, frameIndex: number, restore = false): Promise<ReplaySeekResult> {
     const session = this.requireSession(sessionId);
     if (!Number.isInteger(frameIndex) || frameIndex < 0) {
       throw new WebDebugError("REPLAY_FRAME_INVALID", "Replay frame index must be a non-negative integer.");
@@ -238,9 +238,11 @@ export class SessionManager {
         `Replay frame ${frameIndex} is unavailable. Frames ${session.replayFrames[0]?.index ?? 0}-${session.replayFrames.at(-1)?.index ?? -1} are retained.`,
       );
     }
+    if (restore) await this.restoreReplayFrame(session, frame);
     return redactValue({
       sessionId,
       frame,
+      restored: restore,
       availableFrames: session.replayFrames.length,
       oldestFrameIndex: session.replayFrames[0]?.index ?? frame.index,
       newestFrameIndex: session.replayFrames.at(-1)?.index ?? frame.index,
@@ -375,6 +377,27 @@ export class SessionManager {
       truncated: session.replayTruncated,
       frames: session.replayFrames,
     };
+  }
+
+  private async restoreReplayFrame(session: ManagedSession, targetFrame: ReplayFrame): Promise<void> {
+    const actions = session.replayFrames
+      .filter((frame) => frame.index <= targetFrame.index && frame.action)
+      .map((frame) => frame.action as BrowserAction);
+    if (actions.some((action) => action.kind === "fill")) {
+      throw new WebDebugError(
+        "REPLAY_RESTORE_UNAVAILABLE",
+        "This replay includes a sanitized fill action; restore it by rerunning the original scenario with its input supplied explicitly.",
+      );
+    }
+    if (actions.some((action) => action.kind === "navigate" && action.url.includes("[REDACTED"))) {
+      throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This replay includes a redacted navigation URL and cannot be restored safely.");
+    }
+
+    const firstAction = actions[0];
+    if (!firstAction || firstAction.kind !== "navigate") {
+      await session.adapter.act({ kind: "navigate", url: targetFrame.url });
+    }
+    for (const action of actions) await session.adapter.act(action);
   }
 }
 

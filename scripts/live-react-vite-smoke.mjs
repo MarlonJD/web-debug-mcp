@@ -52,6 +52,7 @@ try {
   const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
   const appTransform = appModule?.transform;
   const replaySeek = await manager.seekReplay(verificationSession.id, 1);
+  const replayRestore = await manager.seekReplay(verificationSession.id, 1, true);
   await manager.close(verificationSession.id);
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
@@ -90,6 +91,7 @@ try {
     profilerMode: after.browser.react?.profiler.mode === "devtools-hook",
     replayTimeline: verification.evidence.replay.frames.length >= 3,
     replaySeek: replaySeek.frame.index === 1 && replaySeek.frame.trigger === "action",
+    replayRestore: replayRestore.restored === true,
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
     appModule: Boolean(appModule),

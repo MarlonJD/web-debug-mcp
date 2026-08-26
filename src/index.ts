@@ -133,11 +133,11 @@ export function createServer(manager = new SessionManager()): McpServer {
     "web_replay_seek",
     {
       title: "Seek captured web replay frame",
-      description: "Return one retained, redacted replay frame from the selected session without mutating the browser.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000) }),
-      annotations: { readOnlyHint: true, idempotentHint: true },
+      description: "Return one retained, redacted replay frame; set restore=true to replay its safely restorable actions into the browser.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000), restore: z.boolean().default(false) }),
+      annotations: { readOnlyHint: false, idempotentHint: true },
     },
-    async ({ sessionId, frameIndex }) => respond(() => manager.seekReplay(sessionId, frameIndex)),
+    async ({ sessionId, frameIndex, restore }) => respond(() => manager.seekReplay(sessionId, frameIndex, restore)),
   );
 
   server.registerTool(

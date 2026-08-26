@@ -90,11 +90,16 @@ describe("session manager", () => {
 
     const replayFrame = await manager.seekReplay(session.id, 1);
     expect(replayFrame.frame.trigger).toBe("action");
+    expect(replayFrame.restored).toBe(false);
     expect(replayFrame.availableFrames).toBe(3);
+
+    const restoredFrame = await manager.seekReplay(session.id, 1, true);
+    expect(restoredFrame.restored).toBe(true);
 
     await manager.act(session.id, { kind: "fill", selector: "#amount", value: "secret-value" });
     const sanitizedFrame = await manager.seekReplay(session.id, 3);
     expect(sanitizedFrame.frame.action).toMatchObject({ value: "[REDACTED_REPLAY_INPUT]" });
+    await expect(manager.seekReplay(session.id, 3, true)).rejects.toMatchObject({ code: "REPLAY_RESTORE_UNAVAILABLE" });
 
     const closed = await manager.close(session.id);
     expect(closed.status).toBe("closed");

@@ -220,6 +220,7 @@ export interface ReplayTimeline {
 export interface ReplaySeekResult {
   sessionId: string;
   frame: ReplayFrame;
+  restored: boolean;
   availableFrames: number;
   oldestFrameIndex: number;
   newestFrameIndex: number;
