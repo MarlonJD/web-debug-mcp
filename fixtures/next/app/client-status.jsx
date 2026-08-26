@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
 export function ClientStatus({ submitPayment }) {
   const [status, setStatus] = useState("Ready");
+  const [paymentState, paymentAction, paymentPending] = useActionState(submitPayment, null);
 
   async function checkHealth() {
     const response = await fetch("/api/health");
@@ -16,9 +17,10 @@ export function ClientStatus({ submitPayment }) {
       <h2 id="client-status-title">Client health</h2>
       <button id="health-button" type="button" onClick={checkHealth}>Check health</button>
       <p role="status">{status}</p>
-      <form action={submitPayment}>
-        <button id="payment-button" type="submit">Submit payment</button>
+      <form action={paymentAction}>
+        <button id="payment-button" type="submit" disabled={paymentPending}>Submit payment</button>
       </form>
+      <p id="server-action-status">{paymentState?.status ?? "Not submitted"}</p>
     </section>
   );
 }

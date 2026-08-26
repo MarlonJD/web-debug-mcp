@@ -44,13 +44,19 @@ try {
     ],
   });
   const verification = await manager.verifyScenario(session.id, scenario.id);
+  await manager.act(session.id, { kind: "click", selector: "#payment-button" });
+  await manager.act(session.id, { kind: "wait", selector: "#server-action-status", text: "Submitted", timeoutMs: 5_000 });
+  const actionCapture = await manager.capture(session.id, false);
   const nextEvidence = verification.evidence.browser.next;
+  const actionNextEvidence = actionCapture.browser.next;
   const routes = nextEvidence?.routes;
   const projectMetadata = nextEvidence?.projectMetadata;
   const compilationIssues = nextEvidence?.compilationIssues;
   const logTail = nextEvidence?.logTail;
   const routeCompilation = routeInspection.result;
   const actionResolution = actionInspection.result;
+  const actionExecution = actionNextEvidence?.serverActionExecutions.find((execution) => execution.actionId === actionId);
+  const requestInsights = actionNextEvidence?.requestInsights;
   const assertions = {
     scenarioPassed: verification.passed,
     nextDetected: nextEvidence?.detected === true,
@@ -63,6 +69,8 @@ try {
     logTail: isRecord(logTail) && typeof logTail.file === "string" && logTail.file.endsWith(".next/dev/logs/next-development.log") && typeof logTail.text === "string",
     routeCompiled: isRecord(routeCompilation) && routeCompilation.routeSpecifier === "/" && Array.isArray(routeCompilation.issues),
     serverActionResolved: isRecord(actionResolution) && actionResolution.actionId === actionId && typeof actionResolution.filename === "string" && actionResolution.filename.endsWith("actions.js"),
+    serverActionExecuted: isRecord(actionExecution) && isRecord(actionExecution.request) && actionExecution.request.method === "POST" && actionExecution.request.ok === true && isRecord(actionExecution.resolution) && actionExecution.resolution.actionId === actionId,
+    requestInsights: isRecord(requestInsights) && Array.isArray(requestInsights.requests) && requestInsights.requests.length > 0,
     serverRenderedText: verification.evidence.browser.dom.bodyText.includes("Next server component ready"),
     clientRenderedText: verification.evidence.browser.dom.bodyText.includes("Healthy"),
     consoleClean: verification.evidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
@@ -75,6 +83,8 @@ try {
     warnings: nextEvidence?.warnings ?? [],
     routeInspection,
     actionInspection,
+    actionExecution,
+    actionNextEvidence,
     logTail,
     bodyText: verification.evidence.browser.dom.bodyText,
     console: verification.evidence.browser.console,

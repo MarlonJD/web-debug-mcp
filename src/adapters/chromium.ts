@@ -420,6 +420,8 @@ export class ChromiumAdapter implements BrowserAdapter {
     page.on("request", (request) => {
       const requestId = `${Date.now()}-${this.requestCounter++}`;
       this.requestIds.set(request, requestId);
+      const headers = request.headers();
+      const nextActionId = headers["next-action"] ? boundText(headers["next-action"], 200) : undefined;
       this.networkEntries.set(requestId, {
         requestId,
         method: request.method(),
@@ -427,6 +429,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         resourceType: request.resourceType(),
         status: null,
         ok: null,
+        ...(nextActionId ? { nextActionId } : {}),
       });
       this.trimNetwork();
     });

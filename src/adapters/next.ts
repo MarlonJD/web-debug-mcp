@@ -2,7 +2,7 @@ import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { open, realpath } from "node:fs/promises";
 
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
-import type { NextInspection, NextInspectionResult, NextSnapshot } from "../domain/types.js";
+import type { NetworkEntry, NextInspection, NextInspectionResult, NextSnapshot } from "../domain/types.js";
 
 interface RpcResponse {
   result?: unknown;
@@ -29,7 +29,7 @@ const MAX_LOG_LINES = 200;
 const MAX_LOG_CHARS = 32_000;
 
 export class NextAdapter {
-  async snapshot(baseUrl: string, projectRoot?: string): Promise<NextSnapshot | null> {
+  async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = []): Promise<NextSnapshot | null> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
     const listed = await client.request("tools/list", {});
@@ -52,6 +52,7 @@ export class NextAdapter {
     const logTail = projectRoot
       ? await readLogTail(values.get("get_logs"), projectRoot, warnings)
       : null;
+    const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, warnings);
 
     return {
       detected: true,
@@ -65,6 +66,7 @@ export class NextAdapter {
       pageMetadata: values.get("get_page_metadata") ?? null,
       requestInsights: values.get("get_request_insights") ?? null,
       logTail,
+      serverActionExecutions,
       warnings,
     };
   }
@@ -103,6 +105,48 @@ export class NextAdapter {
       warnings,
     };
   }
+}
+
+async function resolveExecutedServerActions(
+  client: NextMcpClient,
+  tools: string[],
+  network: NetworkEntry[],
+  warnings: string[],
+): Promise<NextSnapshot["serverActionExecutions"]> {
+  const requests = network.filter((entry) => entry.nextActionId).slice(-10);
+  if (requests.length === 0) return [];
+  const executions: NextSnapshot["serverActionExecutions"] = [];
+  const seen = new Set<string>();
+  for (const request of requests) {
+    const actionId = request.nextActionId;
+    if (!actionId || seen.has(actionId)) continue;
+    seen.add(actionId);
+    if (!tools.includes("get_server_action_by_id")) {
+      const warning = "Next runtime tool is not advertised: get_server_action_by_id";
+      warnings.push(warning);
+      executions.push({ actionId, request: actionRequest(request), resolution: null, warning });
+      continue;
+    }
+    const result = await client.callTool("get_server_action_by_id", { actionId });
+    if (result.warning) warnings.push(result.warning);
+    executions.push({
+      actionId,
+      request: actionRequest(request),
+      resolution: result.value,
+      ...(result.warning ? { warning: result.warning } : {}),
+    });
+  }
+  return executions;
+}
+
+function actionRequest(entry: NetworkEntry) {
+  return {
+    requestId: entry.requestId,
+    method: entry.method,
+    url: entry.url,
+    status: entry.status,
+    ok: entry.ok,
+  };
 }
 
 async function readLogTail(

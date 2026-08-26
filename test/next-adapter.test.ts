@@ -16,6 +16,7 @@ describe("Next MCP adapter", () => {
       expect(snapshot?.routes).toEqual({ appRouter: ["/", "/api/health"] });
       expect(snapshot?.compilationIssues).toEqual({ issues: [] });
       expect(snapshot?.logTail).toBeNull();
+      expect(snapshot?.serverActionExecutions).toEqual([]);
       expect(snapshot?.warnings).toContain("Next runtime tool get_errors: No browser sessions connected.");
       expect(calls).toEqual([
         "tools/list",

@@ -75,6 +75,7 @@ export interface NetworkEntry {
   resourceType: string;
   status: number | null;
   ok: boolean | null;
+  nextActionId?: string;
   failure?: string;
 }
 
@@ -168,6 +169,18 @@ export interface NextSnapshot {
     text: string;
     truncated: boolean;
   } | null;
+  serverActionExecutions: Array<{
+    actionId: string;
+    request: {
+      requestId: string;
+      method: string;
+      url: string;
+      status: number | null;
+      ok: boolean | null;
+    };
+    resolution: unknown | null;
+    warning?: string;
+  }>;
   warnings: string[];
 }
 
