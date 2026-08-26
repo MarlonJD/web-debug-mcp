@@ -30,6 +30,11 @@ describe("MCP server contract", () => {
       "web_session_start",
       "web_session_status",
     ]);
+    const replayTool = listed.tools.find((tool) => tool.name === "web_replay_seek");
+    expect(replayTool?.description).toContain("mutate live state");
+    expect(replayTool?.annotations).toMatchObject({ readOnlyHint: false, idempotentHint: false });
+    const sessionTool = listed.tools.find((tool) => tool.name === "web_session_start");
+    expect(sessionTool?.description).toContain("Chromium or Safari");
 
     const result = await client.callTool({
       name: "web_project_detect",

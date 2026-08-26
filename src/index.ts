@@ -49,7 +49,7 @@ export function createServer(manager = new SessionManager()): McpServer {
     { name: "web-debug-mcp", version: "0.1.0" },
     {
       instructions:
-        "Use this local server to detect a web project, attach to an explicitly selected local browser target, reproduce a flow, and capture bounded evidence. Start with web_project_detect, then web_session_start and web_issue_capture. Chromium is the default; Safari uses an explicit WebDriver endpoint or local safaridriver. Remote targets, side-effect evaluation, secrets, cookies, and raw response bodies are blocked or redacted by default.",
+        "Use this local server to detect a web project, attach to an explicitly selected local Chromium or Safari target, reproduce a flow, and capture bounded evidence. Start with web_project_detect, then web_session_start and web_issue_capture. Chromium is the default; Safari uses an explicit WebDriver endpoint or local safaridriver. Remote targets require explicit opt-in, side-effect evaluation requires explicit opt-in, and secrets, cookies, and raw response bodies are blocked or redacted by default.",
       capabilities: { tools: {} },
     },
   );
@@ -69,7 +69,7 @@ export function createServer(manager = new SessionManager()): McpServer {
     "web_session_start",
     {
       title: "Start web debug session",
-      description: "Start or attach to a local Chromium page using an explicit URL and optional CDP endpoint or executable path.",
+      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings.",
       inputSchema: z.object({
         projectRoot: z.string().min(1).default(DEFAULT_PROJECT_ROOT),
         url: z.string().url(),
@@ -111,7 +111,7 @@ export function createServer(manager = new SessionManager()): McpServer {
     "web_issue_capture",
     {
       title: "Capture bounded web issue evidence",
-      description: "Combine browser state, DOM summary, console, network metadata, debugger state, and an optional screenshot into one redacted evidence bundle.",
+      description: "Combine browser state, DOM summary, console, network metadata, debugger/framework evidence, replay state, and an optional screenshot into one redacted evidence bundle.",
       inputSchema: z.object({ sessionId: z.string().uuid(), captureScreenshot: z.boolean().default(true) }),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
@@ -133,9 +133,9 @@ export function createServer(manager = new SessionManager()): McpServer {
     "web_replay_seek",
     {
       title: "Seek captured web replay frame",
-      description: "Return one retained, redacted replay frame; set restore=true to replay its safely restorable actions into the browser.",
+      description: "Return one retained, redacted replay frame; set restore=true to replay its safely restorable actions into the browser and mutate live state.",
       inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000), restore: z.boolean().default(false) }),
-      annotations: { readOnlyHint: false, idempotentHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
     async ({ sessionId, frameIndex, restore }) => respond(() => manager.seekReplay(sessionId, frameIndex, restore)),
   );
