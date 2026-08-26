@@ -49,7 +49,7 @@ export function createServer(manager = new SessionManager()): McpServer {
     { name: "web-debug-mcp", version: "0.1.0" },
     {
       instructions:
-        "Use this local server to detect a web project, attach to an explicitly selected local browser target, reproduce a flow, and capture bounded evidence. Start with web_project_detect, then web_session_start and web_issue_capture. Remote targets, side-effect evaluation, secrets, cookies, and raw response bodies are blocked or redacted by default.",
+        "Use this local server to detect a web project, attach to an explicitly selected local browser target, reproduce a flow, and capture bounded evidence. Start with web_project_detect, then web_session_start and web_issue_capture. Chromium is the default; Safari uses an explicit WebDriver endpoint or local safaridriver. Remote targets, side-effect evaluation, secrets, cookies, and raw response bodies are blocked or redacted by default.",
       capabilities: { tools: {} },
     },
   );
@@ -73,7 +73,9 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({
         projectRoot: z.string().min(1).default(DEFAULT_PROJECT_ROOT),
         url: z.string().url(),
+        browser: z.enum(["chromium", "safari"]).default("chromium"),
         cdpEndpoint: z.string().url().optional(),
+        webdriverEndpoint: z.string().url().optional(),
         executablePath: z.string().min(1).optional(),
         headless: z.boolean().default(true),
         allowRemote: z.boolean().default(false),

@@ -473,6 +473,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   private async target(): Promise<BrowserTarget> {
     const page = this.requirePage();
     return {
+      browser: "chromium",
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
       viewport: page.viewportSize(),

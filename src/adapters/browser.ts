@@ -3,6 +3,7 @@ import type {
   BrowserAction,
   BrowserSnapshot,
   BrowserTarget,
+  BrowserEngine,
   DebuggerBreakpoint,
   DebuggerSnapshot,
 } from "../domain/types.js";
@@ -10,6 +11,7 @@ import type {
 export interface BrowserStartOptions {
   url: string;
   cdpEndpoint?: string;
+  webdriverEndpoint?: string;
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
@@ -40,4 +42,8 @@ export interface BrowserAdapter {
   evaluate(expression: string, allowSideEffects: boolean): Promise<EvaluationResult>;
 }
 
-export type BrowserAdapterFactory = (options: { allowRemote?: boolean }) => BrowserAdapter;
+export type BrowserAdapterFactory = (options: {
+  allowRemote?: boolean;
+  browser?: BrowserEngine;
+  webdriverEndpoint?: string;
+}) => BrowserAdapter;

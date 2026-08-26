@@ -59,8 +59,10 @@ const requiredFiles = [
   "scripts/live-react-vite-smoke.mjs",
   "scripts/serve-react-vite.mjs",
   "scripts/live-next-smoke.mjs",
+  "scripts/live-safari-smoke.mjs",
   "scripts/serve-next.mjs",
   "src/adapters/next.ts",
+  "src/adapters/safari.ts",
   "src/adapters/react-bridge.ts",
   "src/adapters/vite.ts",
   "src/adapters/vite-plugin.ts",
@@ -70,7 +72,7 @@ const requiredFiles = [
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");

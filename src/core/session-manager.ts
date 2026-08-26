@@ -6,12 +6,14 @@ import { randomUUID } from "node:crypto";
 import { ChromiumAdapter } from "../adapters/chromium.js";
 import type { BrowserAdapter, BrowserAdapterFactory } from "../adapters/browser.js";
 import { NextAdapter } from "../adapters/next.js";
+import { SafariAdapter } from "../adapters/safari.js";
 import { ViteAdapter } from "../adapters/vite.js";
 import type {
   ActionResult,
   BrowserAction,
   DebugSessionSummary,
   EvidenceBundle,
+  BrowserEngine,
   NextInspection,
   NextInspectionResult,
   ProjectDescriptor,
@@ -27,7 +29,9 @@ import { composeEvidence } from "./evidence.js";
 export interface StartSessionInput {
   projectRoot: string;
   url: string;
+  browser?: BrowserEngine;
   cdpEndpoint?: string;
+  webdriverEndpoint?: string;
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
@@ -55,7 +59,8 @@ export class SessionManager {
   private readonly scenarios = new Map<string, ReproScenario>();
 
   constructor(
-    private readonly adapterFactory: BrowserAdapterFactory = () => new ChromiumAdapter(),
+    private readonly adapterFactory: BrowserAdapterFactory = ({ browser, webdriverEndpoint }) =>
+      browser === "safari" ? new SafariAdapter(webdriverEndpoint) : new ChromiumAdapter(),
   ) {}
 
   detect(projectRoot: string): ProjectDescriptor {
@@ -70,7 +75,15 @@ export class SessionManager {
     const descriptor = detectProject(input.projectRoot);
     const id = randomUUID();
     const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-"));
-    const adapter = this.adapterFactory({ allowRemote: input.allowRemote });
+    const browser = input.browser ?? "chromium";
+    if (browser === "chromium" && input.webdriverEndpoint) {
+      throw new WebDebugError("WEBDRIVER_BROWSER_MISMATCH", "webdriverEndpoint requires browser=safari.");
+    }
+    const adapter = this.adapterFactory({
+      allowRemote: input.allowRemote,
+      browser,
+      webdriverEndpoint: input.webdriverEndpoint,
+    });
     const summary: DebugSessionSummary = {
       id,
       projectRoot: descriptor.projectRoot,
@@ -94,6 +107,7 @@ export class SessionManager {
     try {
       const target = await adapter.start({
         url: input.url,
+        webdriverEndpoint: input.webdriverEndpoint,
         cdpEndpoint: input.cdpEndpoint,
         executablePath: input.executablePath,
         headless: input.headless,
@@ -179,6 +193,7 @@ export class SessionManager {
       title: browser.title,
       viewport: browser.viewport,
       isolated: session.summary.target?.isolated ?? false,
+      browser: session.summary.target?.browser ?? "chromium",
     };
     session.summary.warnings = mergeWarnings(session.summary.warnings, browser.warnings);
     if (session.descriptor.capabilities.react && combinedBrowser.react === null) {

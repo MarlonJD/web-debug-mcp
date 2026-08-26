@@ -1,5 +1,7 @@
 export type Framework = "vanilla" | "react" | "vite" | "next";
 
+export type BrowserEngine = "chromium" | "safari";
+
 export type SessionStatus = "starting" | "ready" | "paused" | "failed" | "closed";
 
 export interface ProjectCapabilities {
@@ -25,6 +27,7 @@ export interface ProjectDescriptor {
 }
 
 export interface BrowserTarget {
+  browser: BrowserEngine;
   url: string;
   title: string;
   viewport: { width: number; height: number } | null;

@@ -18,6 +18,7 @@
     "smoke:live": "npm run build && node scripts/live-smoke.mjs",
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
+    "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",
     "serve:fixture": "node scripts/serve-fixture.mjs",

@@ -13,6 +13,7 @@ import { SessionManager } from "../src/core/session-manager.js";
 
 class FakeBrowserAdapter implements BrowserAdapter {
   private target: BrowserTarget = {
+    browser: "chromium",
     url: "http://127.0.0.1:4173/",
     title: "Fixture",
     viewport: { width: 1440, height: 900 },
