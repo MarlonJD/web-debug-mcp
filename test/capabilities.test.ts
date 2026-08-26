@@ -13,4 +13,12 @@ describe("project capability detection", () => {
     expect(descriptor.capabilities.react).toBe(false);
     expect(descriptor.warnings).toContain("No package.json found; framework-specific adapters cannot be inferred.");
   });
+
+  it("detects the React/Vite fixture without requiring a running dev server", () => {
+    const descriptor = detectProject(resolve("fixtures/react-vite"));
+    expect(descriptor.frameworks).toEqual(["vite", "react"]);
+    expect(descriptor.capabilities.vite).toBe(true);
+    expect(descriptor.capabilities.react).toBe(true);
+    expect(descriptor.capabilities.browser).toBe(true);
+  });
 });

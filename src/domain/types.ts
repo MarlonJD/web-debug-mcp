@@ -109,6 +109,23 @@ export interface DebuggerSnapshot {
   breakpoints: DebuggerBreakpoint[];
 }
 
+export interface ReactComponentNode {
+  name: string;
+  source: { file: string; line: number; column: number } | null;
+  props: Record<string, unknown>;
+  hooks: unknown[];
+  renderCount: number;
+  children: ReactComponentNode[];
+}
+
+export interface ReactSnapshot {
+  detected: true;
+  rendererCount: number;
+  commitCount: number;
+  components: ReactComponentNode[];
+  warnings: string[];
+}
+
 export interface BrowserSnapshot {
   url: string;
   title: string;
@@ -118,6 +135,7 @@ export interface BrowserSnapshot {
   network: NetworkEntry[];
   screenshotPath: string | null;
   debugger: DebuggerSnapshot;
+  react: ReactSnapshot | null;
   warnings: string[];
 }
 

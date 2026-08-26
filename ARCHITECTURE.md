@@ -18,8 +18,11 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/core/evidence.ts` | Redacted evidence bundle composition | Platform Engineering; update when evidence consumers change |
 | `src/adapters/browser.ts` | Browser transport interface | Platform Engineering; update when an adapter capability changes |
 | `src/adapters/chromium.ts` | Playwright/CDP browser and JavaScript debugger adapter | Platform Engineering; update with Chromium protocol behavior |
+| `src/adapters/react.ts` | Opt-in React runtime bridge reader | Platform Engineering; update with the bridge contract |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |
+| `fixtures/react-vite/` | React component/state fixture served by Vite | Test ownership; update when framework evidence changes |
 | `scripts/harness-check.mjs` | Project-native structural and command contract check | Platform Engineering; update when repository invariants change |
+| `scripts/live-react-vite-smoke.mjs` | Live React/Vite breakpoint and verification smoke | Platform Engineering; update when the fixture flow changes |
 | `docs/` | Durable architecture, security, reliability, planning, and harness knowledge | Platform Engineering; update with boundary changes |
 
 ## Components and boundaries
@@ -30,7 +33,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. It records metadata for console and network events, never response bodies, and exposes only the operations defined by `BrowserAdapter`.
 
-Framework intelligence is not in the current implementation. React, Vite, and Next.js markers are reported as capabilities so later adapters can be added without changing the MCP contract. A future adapter must remain optional and must not make unsupported projects fail discovery.
+React intelligence is available through an explicit development bridge at `window.__WEB_DEBUG_REACT__`. `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when that bridge is present. The React/Vite fixture installs the bridge before React loads. Vite-specific HMR/module-graph semantics and Next.js server semantics are still future adapters; their absence is a warning, not a discovery failure.
 
 ## Data and control flow
 
@@ -38,7 +41,7 @@ Framework intelligence is not in the current implementation. React, Vite, and Ne
 2. `web_session_start` detects the project, allocates a session ID and temporary artifact directory, then starts the Chromium adapter.
 3. Browser actions are bounded and same-origin. Console, request, response, and page-error observers retain bounded metadata in memory.
 4. `web_breakpoint_set` and `web_debug_control` use the local CDP Debugger domain. `web_debug_evaluate` uses CDP Runtime with side effects rejected by default.
-5. `web_issue_capture` collects DOM, console, network, screenshot, and paused-frame data, then applies the redaction policy again before returning the evidence bundle.
+5. `web_issue_capture` collects DOM, console, network, screenshot, paused-frame, and optional React bridge data, then applies the redaction policy again before returning the evidence bundle.
 6. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
 
 ## Runtime topology
@@ -74,7 +77,7 @@ Production, hosted MCP, remote browser, Safari, and cloud deployment environment
 | Source code does not write protocol diagnostics to stdout | `scripts/harness-check.mjs` | Use stderr for diagnostics; keep stdout reserved for MCP transport |
 | Required source, fixture, docs, and command surfaces exist | `scripts/harness-check.mjs` | Restore the missing path or update the project contract with evidence |
 | Browser targets are loopback-only by default | `ChromiumAdapter` tests and input policy | Pass explicit `allowRemote` only for an authorized future use case and update security evidence |
-| Sensitive values are redacted before evidence leaves the adapter | `redaction.test.ts` and `composeEvidence` | Add a regression test for any newly observed sensitive shape |
+| Sensitive values are redacted before evidence leaves the adapter | `redaction.test.ts`, React bridge serialization, and `composeEvidence` | Add a regression test for any newly observed sensitive shape |
 | Session count and browser wait time are bounded | `SessionManager` and `ChromiumAdapter` constants | Use a smaller bounded operation or change the limit with a reliability review |
 
 ## Architecture decisions

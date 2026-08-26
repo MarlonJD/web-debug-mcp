@@ -136,6 +136,11 @@ export class SessionManager {
       isolated: session.summary.target?.isolated ?? false,
     };
     session.summary.warnings = mergeWarnings(session.summary.warnings, browser.warnings);
+    if (session.descriptor.capabilities.react && browser.react === null) {
+      session.summary.warnings = mergeWarnings(session.summary.warnings, [
+        "React was detected but the opt-in web-debug React bridge was not found.",
+      ]);
+    }
     return composeEvidence(session.descriptor, session.summary, browser);
   }
 

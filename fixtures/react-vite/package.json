@@ -1,0 +1,13 @@
+{
+  "name": "web-debug-react-vite-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.1.1",
+    "vite": "7.3.6"
+  }
+}

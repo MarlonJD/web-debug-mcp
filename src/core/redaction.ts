@@ -45,7 +45,7 @@ function redactValueInternal(
   if (value === null || typeof value !== "object") {
     return value;
   }
-  if (depth >= 4) {
+  if (depth >= 8) {
     return "[TRUNCATED_OBJECT]";
   }
   if (seen.has(value)) {

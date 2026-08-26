@@ -22,9 +22,11 @@ import type {
   DebuggerCallFrame,
   DebuggerSnapshot,
   NetworkEntry,
+  ReactSnapshot,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
+import { ReactAdapter } from "./react.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -88,8 +90,10 @@ export class ChromiumAdapter implements BrowserAdapter {
   private readonly breakpoints: DebuggerBreakpoint[] = [];
   private readonly pauseWaiters = new Set<() => void>();
   private readonly scriptUrls = new Map<string, string>();
+  private readonly reactAdapter = new ReactAdapter();
   private lastKnownTitle = "";
   private lastKnownDom: BrowserSnapshot["dom"] = { bodyText: "", elements: [] };
+  private lastKnownReact: ReactSnapshot | null = null;
   private pausedEvent: PausedEvent | null = null;
 
   async start(options: BrowserStartOptions): Promise<BrowserTarget> {
@@ -139,6 +143,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.baseOrigin = new URL(this.page.url()).origin;
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
+    this.lastKnownReact = await this.reactAdapter.snapshot(this.page).catch(() => null);
 
     return this.target();
   }
@@ -197,15 +202,23 @@ export class ChromiumAdapter implements BrowserAdapter {
     const page = this.requirePage();
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
+    let react = this.lastKnownReact;
 
     if (this.pausedEvent) {
       warnings.push("JavaScript is paused; DOM text is the last known unpaused snapshot.");
+      if (react) warnings.push("JavaScript is paused; React state is the last known unpaused snapshot.");
     } else {
       try {
         dom = await this.readDom(page);
         this.lastKnownDom = dom;
       } catch (error) {
         warnings.push(`DOM snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      try {
+        react = await this.reactAdapter.snapshot(page);
+        this.lastKnownReact = react;
+      } catch (error) {
+        warnings.push(`React snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -248,6 +261,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       network: networkBound.items,
       screenshotPath,
       debugger: await this.debuggerSnapshot(),
+      react,
       warnings,
     };
   }

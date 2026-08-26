@@ -43,11 +43,19 @@ const requiredFiles = [
   "src/adapters/chromium.ts",
   "fixtures/vanilla/index.html",
   "fixtures/vanilla/app.js",
+  "fixtures/react-vite/package.json",
+  "fixtures/react-vite/vite.config.ts",
+  "fixtures/react-vite/index.html",
+  "fixtures/react-vite/src/main.jsx",
+  "fixtures/react-vite/src/App.jsx",
+  "fixtures/react-vite/src/react-debug-hook.js",
   "scripts/live-smoke.mjs",
+  "scripts/live-react-vite-smoke.mjs",
+  "scripts/serve-react-vite.mjs",
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");

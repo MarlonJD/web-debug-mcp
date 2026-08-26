@@ -8,6 +8,7 @@
 | Project-native harness gate | `npm run harness:check` | Check required paths, public tools, docs, and stdout boundary | Prints `harness-check: PASS` | Platform Engineering; repository contract change | candidate |
 | Fixture runtime | `npm run serve:fixture` | Launch deterministic loopback browser target | Reports `http://127.0.0.1:4173/` | Test ownership; fixture behavior change | candidate |
 | Live browser smoke | `npm run smoke:live` | Exercise CDP breakpoint, pause-safe capture, screenshot, and cleanup | JSON reports `passed: true` | Platform Engineering; Chromium/CDP change | verified locally |
+| Live React/Vite smoke | `npm run smoke:react-vite` | Exercise React component/state bridge, Vite source URL, breakpoint, verification, and cleanup | JSON reports `passed: true` with React and breakpoint assertions | Platform Engineering; React/Vite adapter change | verified locally |
 | MCP runtime | `npm run dev` or `node dist/index.js` | Serve the MCP tool surface over stdio | Process stays alive with protocol stdout only | Platform Engineering; MCP API change | candidate |
 | Browser evidence | `web_session_start` → `web_issue_capture` | Collect bounded runtime evidence | JSON evidence bundle with redaction marker | Platform Engineering; adapter change | candidate |
 | Repro verification | `web_repro_record` → `web_fix_verify` | Replay a flow and evaluate checks | `passed: true` with evidence | Platform Engineering; scenario contract change | candidate |
