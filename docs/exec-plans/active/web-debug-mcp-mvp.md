@@ -80,6 +80,8 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:04Z) Guard optional Safari BiDi runtime support for Node versions without a usable global WebSocket and verify Safari smoke remains green; commit and push as `7d57a81`.
 - [x] (2026-08-27 02:10Z) Normalize Next request-insight traces and link the matching server trace into observed Server Action execution evidence; verify the real POST request, trace spans, and action resolution in the Next smoke.
 - [x] (2026-08-27 02:10Z) Commit and push the Next request-trace linkage milestone as `f0e28f0` on `origin/main`.
+- [x] (2026-08-27 02:16Z) Add deterministic coverage for missing Node WebSocket support and verify explicit Safari BiDi fallback behavior; commit and push as `1f587cc`.
+- [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
 - [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
 - [ ] Obtain the caller-supplied owner-only HMAC key and trusted attestation scope needed for the direct-child harness certification overlay; do not claim `CERT000` without them.
 
@@ -120,7 +122,7 @@ The remote-target policy milestone is implemented and pushed. It covers explicit
 
 The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, and remote push are complete for the implemented local suite. The plan remains active only for an approved external remote target and caller-supplied harness certification evidence; exact framework parity, hosted deployment, and production authority remain explicit non-claims.
 
-The current deterministic suite passes 23 tests, typecheck, build, 126 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach, and the certification verifier correctly reports `CERT001` because no certification overlay or caller-supplied HMAC key exists.
+The current deterministic suite passes 24 tests, typecheck, build, 127 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach, and the certification verifier correctly reports `CERT001` because no certification overlay or caller-supplied HMAC key exists.
 
 The Safari permission blocker is resolved for this host: the real retry passed with `browser: "safari"`, DOM/action/screenshot evidence, BiDi console evidence, bounded network evidence, and explicit debugger/fallback warnings. Safari 27’s official Safari MCP is recorded as the browser-native alternative; this repository intentionally does not duplicate its public catalog. The external remote-CDP host and formal harness attestation remain unavailable.
 
@@ -269,3 +271,5 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-27 01:58Z) Change: Recorded Safari profile-boundary commit `c03abaa` and endpoint-policy test commit `954de70`. Reason: Correctly expose visible Safari profile non-isolation and fail closed for remote WebDriver endpoints.
 - (2026-08-27 02:04Z) Change: Recorded Safari BiDi runtime guard commit `7d57a81`. Reason: Preserve the Node >=20 package contract by degrading optional BiDi support explicitly when global WebSocket is unavailable.
 - (2026-08-27 02:10Z) Change: Recorded Next request-trace linkage commit `f0e28f0` and live verification. Reason: Make server request tracing directly inspectable and connect observed `Next-Action` requests to their server spans without duplicating an MCP catalog.
+- (2026-08-27 02:16Z) Change: Recorded Safari BiDi fallback test commit `1f587cc`. Reason: Verify explicit degradation when the Node runtime lacks WebSocket support.
+- (2026-08-27 02:17Z) Change: Recorded native Next trace contract commit `a866284`. Reason: Keep the project gate aligned with the normalized server trace evidence.
