@@ -13,7 +13,7 @@ Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan re
 
 ## Purpose / Big Picture
 
-Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected Chromium target, capture runtime/debugger evidence, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, an automatically injected React bridge, Vite module-graph/HMR metadata, and Next.js development-server metadata with a bounded server-log tail while leaving deep server debugging behind optional adapter boundaries.
+Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, an automatically injected React bridge, Vite module-graph/HMR metadata, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection while keeping deeper profiler, transform, Safari, replay, and remote-target paths behind explicit adapters.
 
 ## Progress
 
@@ -45,12 +45,15 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 20:05Z) Add bounded, redacted Next development-log tail evidence with project-root path enforcement.
 - [x] (2026-08-26 20:05Z) Verify safe and out-of-bound log paths with deterministic tests and the live Next smoke.
 - [x] (2026-08-26 20:08Z) Commit and push the Next server-evidence milestone as `7fabde7` on `origin/main`.
+- [x] (2026-08-26 20:38Z) Add `web_next_inspect` for allowlisted route compilation and Server Action resolution.
+- [x] (2026-08-26 20:38Z) Verify the real Next action manifest, `/` compilation result, and browser flow on the live fixture.
+- [x] (2026-08-26 20:38Z) Commit and push the Next inspection milestone as `89a9553` on `origin/main`.
 
 ## Surprises & Discoveries
 
 The supplied GitHub repository was empty and had no repository-local instructions. The current AviaWorkspace checkout has unrelated modifications, so the new project was kept in a sibling directory. The first live browser path cannot assume a browser binary; launch mode therefore requires an explicit executable path and attach mode requires an explicit CDP endpoint.
 
-Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction.
+Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues.
 
 ## Decision Log
 
@@ -63,20 +66,21 @@ Evidence: clone reported an empty repository; `git status --short --branch` repo
 - Decision: Add `wait(selector,text,timeout)` as an explicit browser action. Rationale: async client state can commit after a click and after a network response; a bounded text condition is more reliable than an arbitrary sleep and remains visible in a recorded scenario. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Inject the React bridge from `ChromiumAdapter` before page scripts run. Rationale: React evidence should work for a selected development app without requiring an app-specific bridge import or a second MCP server. Date/Author: 2026-08-26 / Platform Engineering.
 - Decision: Expose Vite module graph/HMR state through an internal Vite plugin and `ViteAdapter`. Rationale: Vite does not provide this graph as a generic public HTTP endpoint; a local read-only plugin keeps the public MCP surface stable and makes the dependency graph inspectable. Date/Author: 2026-08-26 / Platform Engineering.
+- Decision: Expose Next route compilation and Server Action lookup through one `web_next_inspect` tool. Rationale: route compilation has an explicit development-server effect and action lookup needs caller-provided input, so neither belongs implicitly in read-only capture; one high-level tool preserves the single MCP facade. Date/Author: 2026-08-26 / Platform Engineering.
 
 ## Outcomes & Retrospective
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge, Vite module-graph/HMR adapter, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, Next live smoke, and remote push are complete for the current milestone. The plan remains active for deep Next server debugging, full React DevTools profiling, Vite hot-update diff/transform tracing, Safari, replay, remote targets, hosted deployment, and production evidence.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge, Vite module-graph/HMR adapter, React/Vite live smoke, Next runtime metadata adapter with bounded server-log tail, allowlisted route compilation and Server Action inspection, Next live smoke, and remote push are complete for the current milestone. The plan remains active for deep Next server execution tracing, bounded React commit profiling/render-cause evidence, Vite transform diffing, Safari, replay, remote targets, hosted deployment, and production evidence.
 
 ## Context and Orientation
 
-The MCP boundary is `src/index.ts`. `SessionManager` in `src/core/session-manager.ts` owns session IDs, temporary artifact directories, action replay, and verification. `ChromiumAdapter` in `src/adapters/chromium.ts` owns Playwright/CDP calls, injects the React bridge, and caches pause-safe browser state. `ReactAdapter` in `src/adapters/react.ts` reads the injected bridge. `ViteAdapter` in `src/adapters/vite.ts` reads the local Vite plugin endpoint. `src/core/redaction.ts` is applied both while collecting browser events and while composing the final `EvidenceBundle`.
+The MCP boundary is `src/index.ts`. `SessionManager` in `src/core/session-manager.ts` owns session IDs, temporary artifact directories, action replay, and verification. `ChromiumAdapter` in `src/adapters/chromium.ts` owns Playwright/CDP calls, injects the React bridge, and caches pause-safe browser state. `ReactAdapter` in `src/adapters/react.ts` reads the injected bridge. `ViteAdapter` in `src/adapters/vite.ts` reads the local Vite plugin endpoint. `NextAdapter` in `src/adapters/next.ts` reads the Next development MCP endpoint and handles bounded inspection operations. `src/core/redaction.ts` is applied both while collecting browser events and while composing the final `EvidenceBundle`.
 
 The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures/react-vite/` is served by `scripts/serve-react-vite.mjs`; `fixtures/next/` is served by `scripts/serve-next.mjs`. Unit and contract tests live under `test/` and use a fake browser adapter for lifecycle behavior. The project-native harness gate is `scripts/harness-check.mjs`.
 
 ## Plan of Work
 
-The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The current Next evidence increment adds a bounded server-log tail without arbitrary file reads. Deep Next server debugging, Server Action resolution, and hot-update diff tracing remain separate milestones.
+The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestone proves component/state evidence and executable source location. The Next milestone adds a direct SSE JSON-RPC adapter for App Router routes, project metadata, compilation issues, and runtime warnings. The framework-runtime milestone injects the React bridge automatically and adds a Vite module-graph/HMR endpoint without adding public MCP servers. The Next evidence milestone adds a bounded server-log tail, and the Next inspection milestone adds explicit route compilation and Server Action lookup. Remaining work is split into React commit profiling, Vite transform diffing, Safari transport, replay timeline, and remote target milestones.
 
 ## Concrete Steps
 
@@ -97,6 +101,8 @@ For the framework-runtime milestone, run `npm run smoke:react-vite` after the no
 
 For the Next server-evidence milestone, run `npm run smoke:next` after the normal checks. Expected signal: JSON reports `passed: true` with a relative, bounded `logTail` and no browser errors. A missing or out-of-bound log path must remain a warning, not a session failure.
 
+For the Next inspection milestone, run `npm run smoke:next` after the normal checks. Expected signal: JSON reports `passed: true` with a clean `/` route compilation result and a resolved Server Action filename/function from the real development manifest.
+
 ## Validation and Acceptance
 
 Acceptance requires all of the following:
@@ -113,6 +119,7 @@ Acceptance requires all of the following:
 - `npm run smoke:react-vite` reports the Vite module graph/HMR summary from the local development plugin.
 - `npm run smoke:next` reports Next `/_next/mcp` metadata and the route-handler state from a loopback Next dev server.
 - `npm run smoke:next` reports a bounded, redacted Next development-log tail whose file remains inside the detected project root.
+- `npm run smoke:next` reports allowlisted route compilation and Server Action resolution through `web_next_inspect`.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
@@ -134,14 +141,15 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - `npm run smoke:next` produced `passed: true` with Next tools, `/` and `/api/health` routes, project metadata, clean compilation issues, server/client rendered text, and no browser errors; the Next and Chromium processes exited afterward.
 - The framework-runtime validation passed `npm test` (12 tests), typecheck, build, native harness (107 checks), and React/Vite smoke with automatic bridge detection, `App.jsx` module/importer evidence, active HMR, breakpoint, screenshot, scenario verification, and no browser errors; the Vite and Chromium processes exited afterward.
 - The Next server-evidence validation passed `npm test` (14 tests), typecheck, build, and `npm run smoke:next` with relative log-tail evidence; the safe-path and out-of-bound-path tests passed and the Next/Chromium processes exited afterward.
+- The Next inspection validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:next` with `/` compilation `issues: []` and a real `submitPayment` Server Action manifest resolution; the Next/Chromium processes exited afterward.
 
 ## Interfaces and Dependencies
 
 The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses `McpServer.registerTool` with Zod 4 schemas. `playwright-core` 1.62.1 is used only through `BrowserAdapter`; it does not download a browser. `SessionManager` accepts a `BrowserAdapterFactory` so deterministic fake adapters can test lifecycle behavior without a browser. `EvidenceBundle` is version 1 and always carries a redaction marker.
 
-The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
+The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_next_inspect`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
 
-The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, and render count; absence of the bridge is a warning, not a session failure. The Vite adapter reads the bounded graph/HMR summary served by `webDebugVitePlugin()` at `/__web_debug/vite`. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, and reads a bounded log tail only after the returned path resolves inside the detected project root.
+The React adapter consumes the automatically injected, bounded `window.__WEB_DEBUG_REACT__` bridge. It returns component nodes with name, source location when available, props, hook state, and render count; absence of the bridge is a warning, not a session failure. The Vite adapter reads the bounded graph/HMR summary served by `webDebugVitePlugin()` at `/__web_debug/vite`. The fixture uses React 19.2.8, Vite 7.3.6, and `@vitejs/plugin-react` 5.1.1 because that combination satisfies the current Vitest peer range without forced dependency resolution. The Next adapter uses Next 16.3.3’s `/_next/mcp` endpoint, calls only the allowlisted metadata tools documented in `src/adapters/next.ts`, reads a bounded log tail only after the returned path resolves inside the detected project root, and handles route compilation or Server Action lookup only through `web_next_inspect`.
 
 ## Revision History
 
@@ -158,3 +166,4 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-26 19:55Z) Change: Recorded framework-runtime commit `61d3617`, full live smoke evidence, and remote verification. Reason: Preserve the automatic bridge and Vite graph/HMR checkpoint before the next deep-debugging milestone.
 - (2026-08-26 20:05Z) Change: Added bounded Next development-log tail evidence and project-root enforcement. Reason: Expose server-side runtime context through the existing capture bundle while keeping file access bounded and local.
 - (2026-08-26 20:08Z) Change: Recorded server-evidence commit `7fabde7` and remote verification. Reason: Preserve the bounded Next log-tail checkpoint before deeper server and Server Action work.
+- (2026-08-26 20:38Z) Change: Recorded Next inspection commit `89a9553` and remote verification. Reason: Preserve the explicit route compilation and Server Action lookup checkpoint before React/Vite/browser transport work.

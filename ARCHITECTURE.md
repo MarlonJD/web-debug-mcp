@@ -39,7 +39,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 `ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. It records metadata for console and network events, never response bodies, and exposes only the operations defined by `BrowserAdapter`.
 
-React intelligence is available through a development bridge at `window.__WEB_DEBUG_REACT__`. `ChromiumAdapter` injects the bridge into the isolated browser context before application scripts run, and `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when React commits are observed. `ViteAdapter` reads the fixture’s local read-only module graph/HMR endpoint, while `vite-plugin.ts` owns the Vite server middleware and hot-update summary. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint, records project metadata, route discovery, compilation issues, and log path, then reads only a bounded redacted tail when that log resolves inside the detected project root. Full React DevTools profiling, Vite hot-update diff/transform tracing, Next server debugging, and Server Action resolution remain future adapters; their absence is a warning, not a discovery failure.
+React intelligence is available through a development bridge at `window.__WEB_DEBUG_REACT__`. `ChromiumAdapter` injects the bridge into the isolated browser context before application scripts run, and `ReactAdapter` reads bounded component nodes, props, hook values, source locations, and render counts only when React commits are observed. `ViteAdapter` reads the fixture’s local read-only module graph/HMR endpoint, while `vite-plugin.ts` owns the Vite server middleware and hot-update summary. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint, records project metadata, route discovery, compilation issues, and log path, reads only a bounded redacted tail when that log resolves inside the detected project root, and handles explicit route compilation or Server Action lookup through `web_next_inspect`. Full React DevTools profiling, Vite hot-update diff/transform tracing, Next server execution tracing, and Server Action execution remain future adapters; their absence is a warning, not a discovery failure.
 
 ## Data and control flow
 
@@ -50,7 +50,8 @@ React intelligence is available through a development bridge at `window.__WEB_DE
 5. `web_issue_capture` collects DOM, console, network, screenshot, paused-frame, and optional React bridge data, then applies the redaction policy again before returning the evidence bundle.
 6. If the project has Vite capability, `ViteAdapter` queries the local `__web_debug/vite` endpoint during capture and adds its bounded module graph/HMR metadata to the browser evidence.
 7. If the project has Next capability, `NextAdapter` queries the local `/_next/mcp` endpoint during capture and adds its bounded runtime metadata to the browser evidence.
-8. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
+8. If a Next inspection is requested, `web_next_inspect` calls only `compile_route` or `get_server_action_by_id` with bounded arguments and returns redacted results.
+9. `web_repro_record` stores an action/check contract in memory. `web_fix_verify` reloads the scenario URL, replays actions, captures evidence, and evaluates the declared checks.
 
 ## Runtime topology
 

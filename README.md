@@ -2,7 +2,7 @@
 
 `web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
 
-The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with a bounded server-log tail. Deep Next server debugging remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+The first increment supports framework-neutral browser targets, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with bounded server-log, route-compilation, and Server Action inspection. Deep Next server tracing remains behind a later adapter. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
 
 ## What is included
 
@@ -15,6 +15,7 @@ The first increment supports framework-neutral browser targets, an automatically
 - React component tree, hook values, source locations, and render counts when the development build exposes React commits.
 - Vite module/importer graph and HMR status through the `webDebugVitePlugin()` development plugin.
 - Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
+- Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`.
 - Reproducible action scenarios with simple post-fix checks.
 - A deterministic vanilla fixture and a project-native harness check.
 - A live React/Vite fixture, automatic React bridge, and module-graph/HMR smoke.
@@ -67,8 +68,9 @@ Run the MCP server with `npm run dev` during development or `node dist/index.js`
 2. Call `web_session_start` with a loopback URL and an explicit browser connection or executable.
 3. Use `web_browser_action` and `web_breakpoint_set` to reproduce the issue.
 4. Call `web_issue_capture` for one bounded evidence bundle.
-5. Store a flow with `web_repro_record` and run it later with `web_fix_verify`.
-6. Call `web_session_close` when the session is no longer needed.
+5. For Next.js, call `web_next_inspect` to compile a route or resolve a Server Action ID.
+6. Store a flow with `web_repro_record` and run it later with `web_fix_verify`.
+7. Call `web_session_close` when the session is no longer needed.
 
 The server does not write into the project during a normal session. Screenshots are stored in a temporary per-session artifact directory and returned as paths.
 
@@ -83,4 +85,4 @@ The server does not write into the project during a normal session. Screenshots 
 
 ## Current boundary
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/render-cause integration, Vite hot-update diff/transform tracing, Next.js server debugger/Server Action adapter, Safari adapter, or time-travel replay implementation yet. The current Next adapter reads the built-in dev-server MCP metadata surface only.
+This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, remote browser control, full React DevTools profiler/render-cause integration, Vite hot-update diff/transform tracing, Next.js server execution/trace adapter, Safari adapter, or time-travel replay implementation yet. The current Next adapter reads the built-in dev-server MCP metadata surface and exposes bounded route/action inspection.
