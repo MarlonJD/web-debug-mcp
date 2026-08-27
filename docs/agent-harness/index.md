@@ -11,5 +11,6 @@ This project uses a small adaptive harness. It makes the local MCP workflow, evi
 | [`verification-matrix.md`](verification-matrix.md) | Selects checks by changed surface |
 | [`operating-loop.md`](operating-loop.md) | Defines reproduce, inspect, change, and verify responsibilities |
 | [`entropy-cleanup-checklist.md`](entropy-cleanup-checklist.md) | Keeps tools, docs, and evidence boundaries from drifting |
+| [`certification.md`](certification.md) | Defines the v2 source/attestation lifecycle and authority boundaries |
 
-The full HMAC-backed harness certification profile is not asserted by this repository yet. The bundled verifier still reports `CERT001` until a caller supplies the external owner-only HMAC key and the direct-child attestation overlay with fresh v2 evidence records. An approved external CDP host and provider-backed production authority are also unavailable in this environment; neither is inferred from local smoke output.
+The repository adopts the full HMAC-backed harness certification procedure, but certification is issued only for a fresh source/direct-child attestation pair. The local key is kept outside the repository and the overlay is generated only after the native evidence sweep. An approved external CDP host and provider-backed production authority remain separate and are not inferred from local smoke output.
