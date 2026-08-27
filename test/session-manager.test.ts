@@ -22,7 +22,7 @@ class FakeBrowserAdapter implements BrowserAdapter {
   };
 
   async start(options: BrowserStartOptions): Promise<BrowserTarget> {
-    this.target = { ...this.target, url: options.url };
+    this.target = { ...this.target, url: options.url, viewport: options.viewport ?? this.target.viewport };
     return this.target;
   }
 
@@ -103,5 +103,17 @@ describe("session manager", () => {
 
     const closed = await manager.close(session.id);
     expect(closed.status).toBe("closed");
+  });
+
+  it("passes an explicit viewport to the browser adapter", async () => {
+    const manager = new SessionManager(() => new FakeBrowserAdapter());
+    const session = await manager.start({
+      projectRoot: "fixtures/vanilla",
+      url: "http://127.0.0.1:4173/",
+      viewport: { width: 390, height: 844 },
+    });
+
+    expect(session.target?.viewport).toEqual({ width: 390, height: 844 });
+    await manager.close(session.id);
   });
 });

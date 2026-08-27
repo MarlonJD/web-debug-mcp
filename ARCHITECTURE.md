@@ -2,7 +2,7 @@
 
 ## System context
 
-`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The agent asks for a project capability report, starts an explicitly selected Chromium or Safari session, performs small same-origin actions, and receives evidence that joins browser state with debugger/framework signals where the selected browser exposes them.
+`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The repository also packages that server as an optional Codex/ChatGPT plugin under `plugins/web-debug/`; the plugin adds installation metadata and workflow guidance without introducing a second MCP implementation. The agent asks for a project capability report, starts an explicitly selected Chromium or Safari session, performs small same-origin actions, and receives evidence that joins browser state with debugger/framework signals where the selected browser exposes them.
 
 The server is a development tool. It runs over MCP stdio, launches or attaches to local Chromium, and stores screenshots under a temporary per-session artifact directory. It does not host an HTTP service for remote clients and does not modify application source during a debug session.
 
@@ -24,29 +24,36 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/adapters/next.ts` | Next.js development MCP/SSE runtime metadata reader | Platform Engineering; update with the `/_next/mcp` contract |
 | `src/adapters/vite.ts` | Vite module graph/HMR metadata reader | Platform Engineering; update with the local endpoint contract |
 | `src/adapters/vite-plugin.ts` | Vite dev-server middleware and hot-update bridge | Platform Engineering; update with Vite plugin API behavior |
+| `plugins/web-debug/.codex-plugin/plugin.json` | Codex/ChatGPT plugin identity and install metadata | Platform Engineering; update with plugin packaging changes |
+| `plugins/web-debug/.mcp.json` | Bundled stdio MCP server launch configuration | Platform Engineering; update with MCP distribution changes |
+| `plugins/web-debug/skills/web-debug-workflow/SKILL.md` | Agent workflow and safety guidance for the bundled tools | Platform Engineering; update with workflow or policy changes |
+| `.agents/plugins/marketplace.json` | Repository marketplace entry for the Web Debug plugin | Platform Engineering; update when plugin availability or ordering changes |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |
 | `fixtures/react-vite/` | React component/state fixture served by Vite | Test ownership; update when framework evidence changes |
 | `fixtures/next/` | Next.js App Router, client, and route-handler fixture | Test ownership; update when Next runtime evidence changes |
+| `fixtures/complex-vite/` | Multi-state React/Vite dashboard with deterministic async and responsive repair markers | Demo/test ownership; update when repair scenarios or expected layout invariants change |
 | `scripts/harness-check.mjs` | Project-native structural and command contract check | Platform Engineering; update when repository invariants change |
 | `scripts/live-react-vite-smoke.mjs` | Live React/Vite breakpoint and verification smoke | Platform Engineering; update when the fixture flow changes |
 | `scripts/live-next-smoke.mjs` | Live Next runtime MCP and browser smoke | Platform Engineering; update when the fixture flow changes |
 | `scripts/live-safari-smoke.mjs` | Live Safari WebDriver action and evidence smoke | Platform Engineering; update when Safari transport or fixture behavior changes |
+| `scripts/demo-compare.mjs` | Before/after baseline and MCP timing/evidence comparison across local fixtures | Platform Engineering; update when demo scenarios or metrics change |
+| `scripts/serve-complex-vite.mjs` | Serve the isolated complex repair fixture through Vite | Demo/test ownership; update when the temporary fixture runtime changes |
 | `docs/` | Durable architecture, security, reliability, planning, and harness knowledge | Platform Engineering; update with boundary changes |
 
 ## Components and boundaries
 
-`src/index.ts` is the only public MCP boundary. It validates inputs with Zod, delegates to `SessionManager`, and serializes structured results or bounded errors. It does not access Playwright directly.
+`src/index.ts` is the only public MCP boundary. It validates inputs with Zod, delegates to `SessionManager`, and serializes structured results or bounded errors. It does not access Playwright directly. The Web Debug plugin points at this same server through its root `.mcp.json`; it does not duplicate tools or browser policy.
 
 `SessionManager` owns one in-memory record per session and limits active sessions to eight. It creates temporary artifact directories, invokes the browser adapter, records a capped replay timeline after actions/captures, updates lifecycle status, and composes evidence. It is the policy boundary for session lookup, replay seek, and close behavior.
 
-`ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. Remote CDP endpoints are rejected unless `allowRemote` is true, and attached targets are marked non-isolated with remote metadata. `SafariAdapter` owns W3C WebDriver requests to local `safaridriver` or an explicit endpoint; it supports actions, DOM, screenshots, explicit JavaScript evaluation, WebDriver BiDi console/network subscriptions, and a disclosed Performance Resource Timing fallback. Safari targets are always marked non-isolated because the visible Safari profile is not controlled as a fresh isolated profile; its JavaScript debugger remains unavailable. Chromium records metadata for console and network events, never response bodies, and both adapters expose only the operations defined by `BrowserAdapter`.
+`ChromiumAdapter` owns Playwright and CDP details. It can launch a browser only when an executable path is explicit, or attach only when a CDP endpoint is explicit. Remote CDP endpoints are rejected unless `allowRemote` is true, and attached targets are marked non-isolated with remote metadata. Isolated Chromium launch sessions accept a bounded explicit viewport so responsive evidence can be reproduced at a named size. `SafariAdapter` owns W3C WebDriver requests to local `safaridriver` or an explicit endpoint; it supports actions, DOM, screenshots, explicit JavaScript evaluation, WebDriver BiDi console/network subscriptions, and a disclosed Performance Resource Timing fallback. Safari targets are always marked non-isolated because the visible Safari profile is not controlled as a fresh isolated profile; its JavaScript debugger remains unavailable. Chromium records metadata for console and network events, never response bodies, and both adapters expose only the operations defined by `BrowserAdapter`.
 
 React intelligence is available through a development bridge at `window.__WEB_DEBUG_REACT__`. `ChromiumAdapter` injects the bridge into the isolated browser context before application scripts run, and `ReactAdapter` reads bounded component nodes, props, hook values, source locations, render counts, commit summaries, profiler durations, a flat flamegraph view, and inferred render causes only when React commits are observed. `ViteAdapter` reads the fixture’s local read-only module graph/HMR endpoint and bounded transform diffs/provenance/source-map summaries, while `vite-plugin.ts` owns the Vite server middleware, transform snapshots, and hot-update summary. `NextAdapter` speaks JSON-RPC over the Next development server’s `/_next/mcp` SSE endpoint, records project metadata, route discovery, compilation issues, request insights, normalized request traces, and log path, reads only a bounded redacted tail when that log resolves inside the detected project root, and handles explicit route compilation, Server Action lookup, and request-linked action execution evidence through the existing facade. These are bounded development signals rather than full React DevTools, source-map debugger, or distributed server-trace parity; nullable or unavailable fields remain warnings, not discovery failures.
 
 ## Data and control flow
 
 1. `web_project_detect` reads only known marker files and `package.json` dependency sections.
-2. `web_session_start` detects the project, allocates a session ID and temporary artifact directory, then starts the Chromium adapter.
+2. `web_session_start` detects the project, allocates a session ID and temporary artifact directory, then starts the Chromium adapter with an optional bounded viewport.
 3. Browser actions are bounded and same-origin. Console, request, response, and page-error observers retain bounded metadata in memory.
 4. `web_breakpoint_set` and `web_debug_control` use the local Chromium CDP Debugger domain. `web_debug_evaluate` uses CDP Runtime or explicitly side-effect-enabled Safari WebDriver evaluation; side effects are rejected by default.
 5. `web_issue_capture` collects DOM, console, network, screenshot, paused-frame, and optional React bridge data, then applies the redaction policy again before returning the evidence bundle.
@@ -59,7 +66,7 @@ React intelligence is available through a development bridge at `window.__WEB_DE
 ## Runtime topology
 
 ```text
-Codex MCP client
+Codex/ChatGPT plugin or another MCP client
       │ stdio
       ▼
 web-debug-mcp process
@@ -71,7 +78,7 @@ web-debug-mcp process
                                       └── local web app
 ```
 
-The deterministic fixtures use `scripts/serve-fixture.mjs`, `scripts/serve-react-vite.mjs`, and `scripts/serve-next.mjs` on loopback ports. The React/Vite fixture’s `vite.config.ts` installs the local module-graph middleware. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. Temporary screenshots remain outside the project and survive session close so the caller can inspect evidence; the operating system owns eventual temporary-directory cleanup.
+The deterministic fixtures use `scripts/serve-fixture.mjs`, `scripts/serve-react-vite.mjs`, and `scripts/serve-next.mjs` on loopback ports. The React/Vite fixture’s `vite.config.ts` installs the local module-graph middleware. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. `scripts/demo-compare.mjs` runs fresh headless Chromium contexts through a raw Playwright baseline and the `SessionManager` workflow, then reports timing and evidence-coverage differences without changing fixture source. Temporary screenshots remain outside the project and survive session close so the caller can inspect evidence; the operating system owns eventual temporary-directory cleanup.
 
 Production, hosted MCP, and cloud deployment environments are intentionally out of scope for this increment. Remote browser attachment exists behind explicit opt-in, but an approved external target is still required for live evidence.
 

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "web-debug-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:MarlonJD/web-debug-mcp#main"
+      ],
+      "startup_timeout_sec": 20,
+      "tool_timeout_sec": 60
+    }
+  }
+}

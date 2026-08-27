@@ -4,6 +4,11 @@ export type BrowserEngine = "chromium" | "safari";
 
 export type SessionStatus = "starting" | "ready" | "paused" | "failed" | "closed";
 
+export interface ViewportSize {
+  width: number;
+  height: number;
+}
+
 export interface ProjectCapabilities {
   browser: boolean;
   javascriptDebugger: boolean;
@@ -31,7 +36,7 @@ export interface BrowserTarget {
   remote: boolean;
   url: string;
   title: string;
-  viewport: { width: number; height: number } | null;
+  viewport: ViewportSize | null;
   isolated: boolean;
 }
 
@@ -323,7 +328,7 @@ export interface ViteSnapshot {
 export interface BrowserSnapshot {
   url: string;
   title: string;
-  viewport: { width: number; height: number } | null;
+  viewport: ViewportSize | null;
   dom: DomSnapshot;
   console: ConsoleEntry[];
   network: NetworkEntry[];

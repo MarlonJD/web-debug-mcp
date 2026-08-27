@@ -35,6 +35,7 @@ describe("MCP server contract", () => {
     expect(replayTool?.annotations).toMatchObject({ readOnlyHint: false, idempotentHint: false });
     const sessionTool = listed.tools.find((tool) => tool.name === "web_session_start");
     expect(sessionTool?.description).toContain("Chromium or Safari");
+    expect(sessionTool?.inputSchema.properties).toHaveProperty("viewport");
 
     const result = await client.callTool({
       name: "web_project_detect",

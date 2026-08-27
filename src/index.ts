@@ -10,6 +10,10 @@ import { WebDebugError, errorMessage } from "./core/errors.js";
 import { SessionManager } from "./core/session-manager.js";
 
 const DEFAULT_PROJECT_ROOT = process.cwd();
+const viewportSchema = z.object({
+  width: z.number().int().min(320).max(3_840),
+  height: z.number().int().min(240).max(2_160),
+});
 
 const browserActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("navigate"), url: z.string().url() }),
@@ -79,6 +83,7 @@ export function createServer(manager = new SessionManager()): McpServer {
         executablePath: z.string().min(1).optional(),
         headless: z.boolean().default(true),
         allowRemote: z.boolean().default(false),
+        viewport: viewportSchema.optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },

@@ -1,0 +1,41 @@
+{
+  "name": "web-debug",
+  "version": "0.1.0",
+  "description": "Evidence-first local web debugging for Codex and ChatGPT.",
+  "author": {
+    "name": "Marlon J.D.",
+    "url": "https://github.com/MarlonJD"
+  },
+  "homepage": "https://github.com/MarlonJD/web-debug-mcp#readme",
+  "repository": "https://github.com/MarlonJD/web-debug-mcp",
+  "license": "GPL-3.0-or-later",
+  "keywords": [
+    "web-debugging",
+    "mcp",
+    "chromium",
+    "react",
+    "vite",
+    "nextjs",
+    "safari"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Web Debug",
+    "shortDescription": "Reproduce local web bugs with bounded evidence.",
+    "longDescription": "Inspect a running local web app through browser, React, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence.",
+    "developerName": "Marlon J.D.",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "websiteURL": "https://github.com/MarlonJD/web-debug-mcp",
+    "defaultPrompt": [
+      "Reproduce this local web bug and capture evidence.",
+      "Inspect this React, Vite, or Next.js issue.",
+      "Verify this frontend fix against the recorded flow."
+    ],
+    "brandColor": "#2563EB"
+  },
+  "mcpServers": "./.mcp.json"
+}

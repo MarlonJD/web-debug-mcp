@@ -38,6 +38,11 @@ const requiredFiles = [
   "docs/exec-plans/active/web-debug-mcp-mvp.md",
   "docs/exec-plans/plan-template.md",
   "docs/exec-plans/tech-debt-tracker.md",
+  "docs/demos/comparison.md",
+  ".agents/plugins/marketplace.json",
+  "plugins/web-debug/.codex-plugin/plugin.json",
+  "plugins/web-debug/.mcp.json",
+  "plugins/web-debug/skills/web-debug-workflow/SKILL.md",
   "src/index.ts",
   "bin/web-debug-mcp.mjs",
   "src/core/session-manager.ts",
@@ -57,11 +62,20 @@ const requiredFiles = [
   "fixtures/next/app/client-status.jsx",
   "fixtures/next/app/actions.js",
   "fixtures/next/app/api/health/route.js",
+  "fixtures/complex-vite/package.json",
+  "fixtures/complex-vite/vite.config.ts",
+  "fixtures/complex-vite/index.html",
+  "fixtures/complex-vite/src/main.jsx",
+  "fixtures/complex-vite/src/App.jsx",
+  "fixtures/complex-vite/src/quote-api.js",
+  "fixtures/complex-vite/src/styles.css",
   "scripts/live-smoke.mjs",
   "scripts/live-react-vite-smoke.mjs",
   "scripts/serve-react-vite.mjs",
   "scripts/live-next-smoke.mjs",
   "scripts/live-safari-smoke.mjs",
+  "scripts/demo-compare.mjs",
+  "scripts/serve-complex-vite.mjs",
   "scripts/serve-next.mjs",
   "src/adapters/next.ts",
   "src/adapters/safari.ts",
@@ -72,10 +86,11 @@ const requiredFiles = [
   "test/next-adapter.test.ts",
   "test/chromium-policy.test.ts",
   "test/vite-adapter.test.ts",
+  "test/complex-fixture-contract.test.ts",
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "demo:compare"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
@@ -86,6 +101,27 @@ check(packageJson.bin?.["web-debug-mcp"] === "./bin/web-debug-mcp.mjs", "package
 check(Array.isArray(packageJson.files) && packageJson.files.includes("dist") && packageJson.files.includes("LICENSE"), "package.json must include the built dist directory and license");
 check(packageJson.scripts?.prepare === "npm run build", "package.json must build Git dependencies during prepare");
 check(packageJson.scripts?.prepack === "npm run build", "package.json must build npm packages before packing");
+
+const pluginManifestText = read("plugins/web-debug/.codex-plugin/plugin.json");
+const pluginManifest = pluginManifestText ? JSON.parse(pluginManifestText) : {};
+const pluginMcpText = read("plugins/web-debug/.mcp.json");
+const pluginMcp = pluginMcpText ? JSON.parse(pluginMcpText) : {};
+const pluginMarketplaceText = read(".agents/plugins/marketplace.json");
+const pluginMarketplace = pluginMarketplaceText ? JSON.parse(pluginMarketplaceText) : {};
+const pluginSkill = read("plugins/web-debug/skills/web-debug-workflow/SKILL.md");
+const bundledMcp = pluginMcp.mcpServers?.["web-debug-mcp"];
+const marketplaceEntry = pluginMarketplace.plugins?.find((entry) => entry?.name === "web-debug");
+check(pluginManifest.name === "web-debug", "Codex plugin manifest name must remain web-debug");
+check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to its bundled MCP configuration");
+check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
+check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
+check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
+check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("github:MarlonJD/web-debug-mcp#main"), "Codex plugin must resolve the current GitHub MCP package");
+check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 60, "Codex plugin MCP timeouts must remain bounded");
+check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
+check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
+check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
+check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 
 const sourceRoot = join(root, "src");
 function inspectSource(path) {
@@ -133,8 +169,14 @@ check(nextSource.includes("serverActionExecutions"), "Next adapter must preserve
 check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve normalized server request traces");
 check(read("README.md").includes("codex mcp add"), "README must document Codex MCP installation");
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
-check(read("README.md").includes("not a Codex or Claude Code skill"), "README must distinguish the MCP server from a skill");
+check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
+check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
+check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("GPL-3.0-or-later"), "README must declare the project license");
+const demoDocs = read("docs/demos/comparison.md");
+check(demoDocs.includes("complex-logic-fix"), "comparison demo docs must describe the complex logic repair");
+check(demoDocs.includes("complex-async-fix"), "comparison demo docs must describe the async repair");
+check(demoDocs.includes("visual-layout-fix"), "comparison demo docs must describe the visual repair");
 
 const config = JSON.parse(read("docs/agent-harness/config.json"));
 check(config.schema_version === 1, "harness config schema_version must be 1");

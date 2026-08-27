@@ -23,6 +23,7 @@ import type {
   ReplaySeekResult,
   ReplayTimeline,
   ScenarioCheck,
+  ViewportSize,
   VerificationResult,
 } from "../domain/types.js";
 import { detectProject } from "./capabilities.js";
@@ -39,6 +40,7 @@ export interface StartSessionInput {
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
+  viewport?: ViewportSize;
 }
 
 export interface RecordScenarioInput {
@@ -123,6 +125,7 @@ export class SessionManager {
         executablePath: input.executablePath,
         headless: input.headless,
         allowRemote: input.allowRemote,
+        viewport: input.viewport,
       });
       summary.status = "ready";
       summary.target = target;

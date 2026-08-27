@@ -123,7 +123,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         executablePath,
         headless: options.headless ?? true,
       });
-      this.context = await this.browser.newContext({ viewport: { width: 1440, height: 900 } });
+      this.context = await this.browser.newContext({ viewport: options.viewport ?? { width: 1440, height: 900 } });
       this.page = await this.context.newPage();
     }
 

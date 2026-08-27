@@ -1,0 +1,20 @@
+{
+  "name": "web-debug",
+  "interface": {
+    "displayName": "Web Debug"
+  },
+  "plugins": [
+    {
+      "name": "web-debug",
+      "source": {
+        "source": "local",
+        "path": "./plugins/web-debug"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

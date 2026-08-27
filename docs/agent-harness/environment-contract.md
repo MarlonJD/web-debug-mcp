@@ -4,6 +4,8 @@
 
 Run `npm install --no-audit --no-fund` from the repository root. Node.js 20 or newer is required. The MCP server is a stdio process; do not write human diagnostics to stdout.
 
+The optional Codex/ChatGPT plugin is installed from the repository marketplace. It points to the same local stdio MCP server through `plugins/web-debug/.mcp.json`; enabling the plugin does not create a hosted endpoint or a second browser controller. Until the package is published to npm, the first server start uses `npx` to resolve the GitHub package, so Node.js 20+, npm, and network access are required at first launch.
+
 ## Local runtime
 
 The fixture servers bind only to `127.0.0.1`: vanilla uses `npm run serve:fixture`, React/Vite uses `npm run serve:react-vite` on port `4174`, and Next uses `npm run serve:next` on port `4175`. Live sessions require an explicit loopback URL plus either:
@@ -23,6 +25,8 @@ Launch mode is the preferred deterministic path. Attach mode is supported for in
 4. Close the session when the workflow ends.
 
 The manager caps active sessions at eight. Browser waits are capped at 30 seconds. Console and network history are bounded in memory. Replay retains up to 50 frames; `restore: true` can reissue only safe retained actions and fails closed for sanitised inputs. Screenshots are written under a temporary `web-debug-mcp-*` directory and the returned path is the evidence handle.
+
+The comparison demo uses separate loopback ports `4183` through `4188`, launches a fresh headless Chromium context for each baseline and MCP run, copies repair fixtures under a temporary `web-debug-mcp-repair-*` directory, and writes its screenshots under a temporary `web-debug-mcp-demo-*` directory. It reports machine timings only; it does not claim a measured human diagnosis time. Explicit viewport requests are bounded to 320–3,840 pixels wide and 240–2,160 pixels high.
 
 Next development output under `fixtures/next/.next/` is generated state and is ignored by Git. Next’s generated agent-rule files are disabled in the fixture with `agentRules: false` so the source tree remains deterministic.
 

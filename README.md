@@ -6,7 +6,7 @@ An evidence-first, local MCP debugger for web applications.
 
 ## Install as an MCP server
 
-This project is a standalone MCP server, not a Codex or Claude Code skill. MCP gives the agent callable debugging tools; a skill is an instruction bundle that changes how an agent works. This repository intentionally ships the MCP server only. Its server instructions and tool descriptions tell the agent when to use it, so no extra skill is required.
+The core package is a standalone MCP server. The repository also includes an optional Web Debug plugin for Codex and ChatGPT: the MCP server provides callable debugging tools, while the bundled skill provides workflow guidance. Claude Code and other MCP clients can continue using the standalone server.
 
 The current install path uses GitHub because the package is not published to npm yet. It runs locally over stdio and does not require a hosted service.
 
@@ -37,6 +37,59 @@ tool_timeout_sec = 60
 
 Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the active server.
 
+## Use Web Debug as a Codex plugin
+
+This is the recommended single-install path for Codex. **Installing Web Debug installs both the workflow skill and the web-debug-mcp MCP server connection. It is not a skill-only package, and no separate MCP setup is required.**
+
+The plugin contains three pieces:
+
+- the web-debug plugin manifest;
+- the web-debug-workflow skill, which tells Codex when and how to use the tools;
+- a bundled .mcp.json connection that starts the existing web-debug-mcp server.
+
+The runtime flow is:
+
+~~~text
+install Web Debug plugin
+        ↓
+Codex loads the skill and bundled MCP connection
+        ↓
+Codex starts web-debug-mcp over local stdio on demand
+        ↓
+web_project_detect → reproduce → web_issue_capture → fix verification
+~~~
+
+### Install from the Codex CLI
+
+Add this repository’s marketplace, then install the web-debug plugin:
+
+~~~bash
+codex plugin marketplace add MarlonJD/web-debug-mcp --ref main
+codex plugin list --available --marketplace web-debug
+codex plugin add web-debug@web-debug
+~~~
+
+### Install from the Codex desktop app
+
+Run the marketplace command above once, open the Plugins Directory, refresh it if necessary, and install or enable Web Debug. Then start a new thread so the plugin’s skill and MCP tools are loaded.
+
+### Use the installed plugin
+
+1. Start your local web application.
+2. Ask Codex to reproduce or inspect the issue, for example: “Reproduce this local React bug and capture browser evidence.”
+3. The plugin guides Codex through project detection, an explicit local browser session, bounded actions, evidence capture, and—when requested—recorded-flow fix verification.
+4. For live Chromium launch, provide an explicit executable path, for example:
+
+   ~~~bash
+   WEB_DEBUG_CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" codex
+   ~~~
+
+5. Close the session with web_session_close when debugging is complete.
+
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. Until the npm package is published, the first MCP start uses npx to resolve github:MarlonJD/web-debug-mcp#main; Node.js 20+, npm, and network access are required.
+
+Do not install both the plugin and a separate codex mcp add web-debug-mcp entry unless you intentionally want duplicate MCP registrations. For Claude Code and other MCP clients, use the standalone MCP installation below.
+
 ### Claude Code
 
 Install it for all projects on the machine:
@@ -64,7 +117,7 @@ Start with `web_project_detect`, then use `web_session_start`, `web_browser_acti
 
 Do not use this server for native macOS/iOS build-debug work, production monitoring, arbitrary remote browser control, credentialed browser profiles, or application-state time travel. Those are outside this MCP's contract.
 
-Official setup references: [Codex MCP configuration](https://developers.openai.com/codex/mcp/) and [Claude Code MCP configuration](https://code.claude.com/docs/en/mcp).
+Official setup references: [Codex MCP configuration](https://developers.openai.com/codex/mcp/), [Codex plugin packaging](https://developers.openai.com/plugins/build/plugins), and [Claude Code MCP configuration](https://code.claude.com/docs/en/mcp).
 
 ## Why this project exists
 
@@ -218,6 +271,14 @@ npm run smoke:react-vite
 npm run smoke:next
 npm run smoke:safari
 ```
+
+To see the same debugging flows with and without the MCP evidence workflow:
+
+```bash
+WEB_DEBUG_CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run demo:compare
+```
+
+The comparison demo measures repeatable local machine timings and evidence coverage for vanilla browser validation, React/Vite render diagnosis, Next.js Server Action linkage, a complex React filter repair, an out-of-order async quote repair, and a responsive visual drawer repair. See [`docs/demos/comparison.md`](docs/demos/comparison.md) for the scenario definitions and interpretation rules.
 
 Run the MCP server after building:
 

@@ -53,6 +53,7 @@
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
     "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
+    "demo:compare": "npm run build --silent && node scripts/demo-compare.mjs",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",
     "serve:fixture": "node scripts/serve-fixture.mjs",

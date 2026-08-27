@@ -6,6 +6,7 @@ import type {
   BrowserEngine,
   DebuggerBreakpoint,
   DebuggerSnapshot,
+  ViewportSize,
 } from "../domain/types.js";
 
 export interface BrowserStartOptions {
@@ -15,6 +16,7 @@ export interface BrowserStartOptions {
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
+  viewport?: ViewportSize;
 }
 
 export interface SnapshotOptions {
