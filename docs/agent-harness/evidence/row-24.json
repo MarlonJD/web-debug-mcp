@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "319baf80b0099ad84886c686566ec6fec4de790a",
+  "repository_commit": "2338fe69f0ed77ca907ec26f544defff1593ac47",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,13 +9,13 @@
   "environment": "repository-local",
   "command": "Applicability review: A persistent per-worktree observability stack is not owned here.",
   "exit_code": null,
-  "observed_at": "2026-08-27T13:54:48Z",
+  "observed_at": "2026-08-27T14:13:04Z",
   "result": "not-applicable",
   "artifacts": [
-    "git:319baf80b0099ad84886c686566ec6fec4de790a",
+    "git:2338fe69f0ed77ca907ec26f544defff1593ac47",
     "docs/agent-harness/certification.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "8acc63a2f5d637e090044d800a0b2a37e17504318dd2bc987c837025720ee9d2"
+  "signature": "5a1c8a24816acff0ebb8f6c9fabaaaa01da9927f0d687078e2a06b38458ec367"
 }

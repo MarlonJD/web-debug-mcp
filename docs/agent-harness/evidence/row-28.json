@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "319baf80b0099ad84886c686566ec6fec4de790a",
+  "repository_commit": "2338fe69f0ed77ca907ec26f544defff1593ac47",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,13 +9,13 @@
   "environment": "repository-local",
   "command": "npm test",
   "exit_code": 0,
-  "observed_at": "2026-08-27T13:54:48Z",
+  "observed_at": "2026-08-27T14:13:04Z",
   "result": "passed",
   "artifacts": [
-    "git:319baf80b0099ad84886c686566ec6fec4de790a",
+    "git:2338fe69f0ed77ca907ec26f544defff1593ac47",
     "docs/agent-harness/certification.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "f3c7bac4135e32dc7009388e65164688858bf8c26d79427ab0a51c40afb9daf5"
+  "signature": "3ba8f3e45b4aec6e6676b4503b9f70a6ce8b08e01ad15a6b4f4d57bd109cfa79"
 }

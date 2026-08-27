@@ -59,3 +59,5 @@ These rows prevent OpenAI's implementation choices from being either copied blin
 Review this matrix after major architecture, CI, runtime, or agent-workflow changes. Do not mark the harness complete while an applicable row is missing evidence.
 
 Revalidated after packaging the standalone stdio MCP binary and documenting Codex and Claude Code installation.
+
+Revalidated after adding the GPL-3.0-or-later license to the source and package metadata.
