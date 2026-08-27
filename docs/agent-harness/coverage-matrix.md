@@ -2,6 +2,8 @@
 
 Use this matrix to prove that the repository implements every applicable harness-engineering capability. A document name alone is not evidence.
 
+The attested source and direct-child commits are recorded in certification.json and Git parent history; this matrix is valid only with the current direct-child attestation.
+
 ## Status contract
 
 - `verified`: the artifact and behavior were exercised with recorded evidence. For bundled harness-certification checks, link the status cell to exactly one fresh HMAC-consistent v2 evidence record bound to the source commit, repository identity, and stable harness evaluation target. This is not external authentication.
