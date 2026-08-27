@@ -90,7 +90,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 14:35Z) Add `demo:compare` with vanilla, React/Vite, and Next before/after flows, raw baseline measurements, MCP evidence coverage, Markdown/JSON output, and temporary screenshot artifacts.
 - [x] (2026-08-27 18:12Z) Add isolated complex React/Vite repair scenarios for stale derived state, out-of-order async quotes, and responsive drawer geometry; add bounded viewport propagation and repair/fix verification reporting.
 - [x] (2026-08-27 18:13Z) Validate complex logic, async, and visual repairs with live Chromium, desktop/mobile geometry, temporary before/after screenshots, deterministic fixture contracts, and no owned process left behind.
-- [x] (2026-08-27) Package the local MCP server as the `web-debug` Codex/ChatGPT plugin with a bundled workflow skill and repository marketplace entry.
+- [x] (2026-08-27) Package the local MCP server as the `web-debug` Codex/ChatGPT/Claude Code plugin with shared workflow skill and client-specific repository marketplace entries.
 
 ## Surprises & Discoveries
 
@@ -104,7 +104,7 @@ The comparison demo showed that a scripted MCP flow can add structured evidence 
 
 The complex repair demo initially exposed two harness issues during live iteration: temporary fixture copies could contain a Vite-generated `node_modules` directory before the dependency symlink was created, and the Next happy-path flow could click before client hydration. The runner now filters copied dependency directories, uses an isolated symlink to the repository dependencies, and records a bounded hydration wait in the Next scenario. The visual repair uses geometry invariants in addition to screenshots so a passing pixel capture cannot hide a viewport regression.
 
-The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills directory, and `.mcp.json` are installed together. The plugin is named `web-debug` for Codex discovery, while the underlying package and binary remain `web-debug-mcp` for cross-client MCP compatibility. The bundled configuration launches the existing local stdio server on demand; it does not introduce a hosted endpoint or a second tool catalog.
+The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills directory, and `.mcp.json` are installed together. The plugin is named `web-debug` for Codex and Claude Code discovery, while the underlying package and binary remain `web-debug-mcp` for cross-client MCP compatibility. The bundled configuration launches the existing local stdio server on demand; it does not introduce a hosted endpoint or a second tool catalog.
 
 ## Decision Log
 
@@ -133,12 +133,13 @@ The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills d
 - Decision: Add bounded explicit Chromium viewport input to `web_session_start`. Rationale: responsive visual debugging needs the same named viewport in the MCP path and raw baseline, while attached/non-isolated browser profiles must not be presented as deterministic visual evidence. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Compare Sol `xhigh` and Luna `max` as separate controlled QA arms, not as a repository runtime dependency. Rationale: the demo repository should remain model-agnostic; each arm must use the same fixture, prompt, ports, and oracle while model identity, reasoning setting, wall time, and verification outcomes remain external evaluation metadata. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Keep the repository and MCP package named `web-debug-mcp`, but distribute a `web-debug` Codex/ChatGPT plugin. Rationale: `web-debug-skill` would misdescribe the tool-bearing project, while `web-debug-plugin` would obscure standalone MCP compatibility; a short plugin ID gives users a clean install surface without renaming the server. Date/Author: 2026-08-27 / Platform Engineering.
+- Decision: Add a Claude Code manifest and repository marketplace alongside the Codex plugin files. Rationale: Claude Code discovers GitHub marketplaces through root `.claude-plugin/marketplace.json` and loads plugin MCP servers from root `.mcp.json`; sharing the same skill and server preserves one implementation while supporting both clients. Date/Author: 2026-08-27 / Platform Engineering.
 
 ## Outcomes & Retrospective
 
 The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host is still required for live remote-attach evidence.
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, repository-local harness certification, the `web-debug` Codex/ChatGPT plugin wrapper, and remote push are complete for the implemented local suite. The plan remains active only for an approved external remote target and optional provider-backed production attestation; exact framework parity and hosted deployment remain explicit non-claims.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, repository-local harness certification, the `web-debug` Codex/ChatGPT/Claude Code plugin wrapper, and remote push are complete for the implemented local suite. The plan remains active only for an approved external remote target and optional provider-backed production attestation; exact framework parity and hosted deployment remain explicit non-claims.
 
 The current deterministic suite passes 24 tests, typecheck, build, 127 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach; repository-local certification returns `CERT000`, while provider-backed production attestation remains unavailable.
 
@@ -210,8 +211,8 @@ Acceptance requires all of the following:
 - `ChromiumAdapter` rejects non-loopback URLs unless explicitly allowed and same-origin navigation is enforced.
 - The MCP server registers the documented high-level tools and keeps diagnostics off stdout.
 - `python3 /Users/marlonjd/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/web-debug` passes for the Codex/ChatGPT plugin package.
-- The plugin manifest exposes the `web-debug` identity, bundled skill, and bundled `.mcp.json`; the MCP configuration launches the existing `web-debug-mcp` stdio binary with bounded timeouts.
-- The repository marketplace points to `./plugins/web-debug`, and installing the plugin does not require a separate `codex mcp add` registration.
+- The Codex and Claude Code plugin manifests expose the `web-debug` identity; the shared `.mcp.json` launches the existing `web-debug-mcp` stdio binary with bounded timeouts.
+- The Codex and Claude Code repository marketplaces point to `./plugins/web-debug`; installing the plugin does not require a separate MCP registration.
 - `npm run smoke:react-vite` reports the React component tree and submitted state from a loopback Vite dev server.
 - `npm run smoke:react-vite` reports the Vite module graph/HMR summary from the local development plugin.
 - `npm run smoke:next` reports Next `/_next/mcp` metadata and the route-handler state from a loopback Next dev server.
@@ -305,3 +306,4 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-27 15:30Z) Change: Recorded the public README and GitHub metadata positioning update. Reason: Make the project’s purpose, differentiation, value, use cases, and limits discoverable before installation.
 - (2026-08-27) Change: Added the `web-debug` Codex/ChatGPT plugin wrapper, bundled `web-debug-workflow` skill, local stdio MCP configuration, repository marketplace entry, and install documentation. Reason: Provide the AWS Agent Toolkit-style single-install experience while preserving the standalone `web-debug-mcp` server for other MCP clients.
 - (2026-08-27) Change: Expanded the README with explicit plugin installation, bundled-MCP behavior, first-launch requirements, and post-install usage steps. Reason: Make the single-install experience understandable to users without requiring separate MCP configuration.
+- (2026-08-27) Change: Added the Claude Code plugin manifest and root marketplace catalog, plus Claude-specific README installation and namespaced-skill guidance. Reason: Make the same single-install plugin available to Claude Code while retaining the shared MCP server and skill.

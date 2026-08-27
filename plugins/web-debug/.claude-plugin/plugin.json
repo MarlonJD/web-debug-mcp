@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "web-debug",
+  "version": "0.1.0",
+  "description": "Evidence-first local web debugging for Claude Code.",
+  "author": {
+    "name": "Marlon J.D.",
+    "url": "https://github.com/MarlonJD"
+  },
+  "homepage": "https://github.com/MarlonJD/web-debug-mcp#readme",
+  "repository": "https://github.com/MarlonJD/web-debug-mcp",
+  "license": "GPL-3.0-or-later",
+  "keywords": [
+    "web-debugging",
+    "mcp",
+    "chromium",
+    "react",
+    "vite",
+    "nextjs",
+    "safari"
+  ],
+  "displayName": "Web Debug"
+}

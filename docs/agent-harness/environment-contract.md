@@ -4,7 +4,7 @@
 
 Run `npm install --no-audit --no-fund` from the repository root. Node.js 20 or newer is required. The MCP server is a stdio process; do not write human diagnostics to stdout.
 
-The optional Codex/ChatGPT plugin is installed from the repository marketplace. It points to the same local stdio MCP server through `plugins/web-debug/.mcp.json`; enabling the plugin does not create a hosted endpoint or a second browser controller. Until the package is published to npm, the first server start uses `npx` to resolve the GitHub package, so Node.js 20+, npm, and network access are required at first launch.
+The optional Codex/ChatGPT/Claude Code plugin is installed from the repository marketplace. Codex uses `.agents/plugins/marketplace.json`; Claude Code uses `.claude-plugin/marketplace.json`. Both point to the same local stdio MCP server through `plugins/web-debug/.mcp.json`; enabling the plugin does not create a hosted endpoint or a second browser controller. Until the package is published to npm, the first server start uses `npx` to resolve the GitHub package, so Node.js 20+, npm, and network access are required at first launch.
 
 ## Local runtime
 

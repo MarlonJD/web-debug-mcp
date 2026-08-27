@@ -37,9 +37,11 @@ tool_timeout_sec = 60
 
 Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the active server.
 
-## Use Web Debug as a Codex plugin
+## Use Web Debug as a plugin
 
-This is the recommended single-install path for Codex. **Installing Web Debug installs both the workflow skill and the web-debug-mcp MCP server connection. It is not a skill-only package, and no separate MCP setup is required.**
+This is the recommended single-install path for Codex and Claude Code. **Installing Web Debug installs both the workflow skill and the web-debug-mcp MCP server connection. It is not a skill-only package, and no separate MCP setup is required.**
+
+The same plugin package supports both Codex and Claude Code. Codex reads the Codex plugin manifest, Claude Code reads the Claude Code plugin manifest, and both use the same workflow skill and MCP configuration.
 
 The plugin contains three pieces:
 
@@ -88,9 +90,27 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. Until the npm package is published, the first MCP start uses npx to resolve github:MarlonJD/web-debug-mcp#main; Node.js 20+, npm, and network access are required.
 
-Do not install both the plugin and a separate codex mcp add web-debug-mcp entry unless you intentionally want duplicate MCP registrations. For Claude Code and other MCP clients, use the standalone MCP installation below.
+Do not install both the plugin and a separate Codex or Claude Code MCP registration for web-debug-mcp unless you intentionally want duplicate MCP registrations. For other MCP clients, use the standalone MCP installation below.
 
-### Claude Code
+### Install in Claude Code
+
+Add the repository marketplace from a Claude Code session, then install the plugin:
+
+~~~text
+/plugin marketplace add MarlonJD/web-debug-mcp
+/plugin install web-debug@web-debug
+/reload-plugins
+~~~
+
+Choose the desired installation scope when Claude Code opens the plugin details. If the install summary says the plugin is already active, no reload is needed. The plugin’s MCP server starts automatically when the plugin is enabled, and its tools appear in /mcp. The bundled workflow can also be invoked directly as /web-debug:web-debug-workflow.
+
+For local development or testing before publishing the repository, load the plugin directly:
+
+~~~bash
+claude --plugin-dir ./plugins/web-debug
+~~~
+
+### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 

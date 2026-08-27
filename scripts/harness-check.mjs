@@ -40,7 +40,9 @@ const requiredFiles = [
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
   ".agents/plugins/marketplace.json",
+  ".claude-plugin/marketplace.json",
   "plugins/web-debug/.codex-plugin/plugin.json",
+  "plugins/web-debug/.claude-plugin/plugin.json",
   "plugins/web-debug/.mcp.json",
   "plugins/web-debug/skills/web-debug-workflow/SKILL.md",
   "src/index.ts",
@@ -108,9 +110,14 @@ const pluginMcpText = read("plugins/web-debug/.mcp.json");
 const pluginMcp = pluginMcpText ? JSON.parse(pluginMcpText) : {};
 const pluginMarketplaceText = read(".agents/plugins/marketplace.json");
 const pluginMarketplace = pluginMarketplaceText ? JSON.parse(pluginMarketplaceText) : {};
+const claudeManifestText = read("plugins/web-debug/.claude-plugin/plugin.json");
+const claudeManifest = claudeManifestText ? JSON.parse(claudeManifestText) : {};
+const claudeMarketplaceText = read(".claude-plugin/marketplace.json");
+const claudeMarketplace = claudeMarketplaceText ? JSON.parse(claudeMarketplaceText) : {};
 const pluginSkill = read("plugins/web-debug/skills/web-debug-workflow/SKILL.md");
 const bundledMcp = pluginMcp.mcpServers?.["web-debug-mcp"];
 const marketplaceEntry = pluginMarketplace.plugins?.find((entry) => entry?.name === "web-debug");
+const claudeMarketplaceEntry = claudeMarketplace.plugins?.find((entry) => entry?.name === "web-debug");
 check(pluginManifest.name === "web-debug", "Codex plugin manifest name must remain web-debug");
 check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to its bundled MCP configuration");
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
@@ -121,6 +128,11 @@ check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec ===
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
 check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
 check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
+check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.1.0", "Claude Code plugin manifest must expose the web-debug identity and version");
+check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest must expose the Web Debug display name");
+check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
+check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
+check(claudeMarketplaceEntry?.version === "0.1.0" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 
 const sourceRoot = join(root, "src");
@@ -172,6 +184,10 @@ check(read("README.md").includes("claude mcp add"), "README must document Claude
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
+check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
+check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");
+check(read("README.md").includes("/plugin install web-debug@web-debug"), "README must document the Claude Code plugin install command");
+check(read("README.md").includes("claude --plugin-dir ./plugins/web-debug"), "README must document local Claude Code plugin testing");
 check(read("README.md").includes("GPL-3.0-or-later"), "README must declare the project license");
 const demoDocs = read("docs/demos/comparison.md");
 check(demoDocs.includes("complex-logic-fix"), "comparison demo docs must describe the complex logic repair");

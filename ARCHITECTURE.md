@@ -2,7 +2,7 @@
 
 ## System context
 
-`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The repository also packages that server as an optional Codex/ChatGPT plugin under `plugins/web-debug/`; the plugin adds installation metadata and workflow guidance without introducing a second MCP implementation. The agent asks for a project capability report, starts an explicitly selected Chromium or Safari session, performs small same-origin actions, and receives evidence that joins browser state with debugger/framework signals where the selected browser exposes them.
+`web-debug-mcp` is a local MCP server that gives an agent a bounded view of a running web application. The repository also packages that server as an optional Codex/ChatGPT/Claude Code plugin under `plugins/web-debug/`; the plugin adds installation metadata and workflow guidance without introducing a second MCP implementation. The agent asks for a project capability report, starts an explicitly selected Chromium or Safari session, performs small same-origin actions, and receives evidence that joins browser state with debugger/framework signals where the selected browser exposes them.
 
 The server is a development tool. It runs over MCP stdio, launches or attaches to local Chromium, and stores screenshots under a temporary per-session artifact directory. It does not host an HTTP service for remote clients and does not modify application source during a debug session.
 
@@ -25,9 +25,11 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/adapters/vite.ts` | Vite module graph/HMR metadata reader | Platform Engineering; update with the local endpoint contract |
 | `src/adapters/vite-plugin.ts` | Vite dev-server middleware and hot-update bridge | Platform Engineering; update with Vite plugin API behavior |
 | `plugins/web-debug/.codex-plugin/plugin.json` | Codex/ChatGPT plugin identity and install metadata | Platform Engineering; update with plugin packaging changes |
+| `plugins/web-debug/.claude-plugin/plugin.json` | Claude Code plugin identity and install metadata | Platform Engineering; update with Claude Code packaging changes |
 | `plugins/web-debug/.mcp.json` | Bundled stdio MCP server launch configuration | Platform Engineering; update with MCP distribution changes |
 | `plugins/web-debug/skills/web-debug-workflow/SKILL.md` | Agent workflow and safety guidance for the bundled tools | Platform Engineering; update with workflow or policy changes |
 | `.agents/plugins/marketplace.json` | Repository marketplace entry for the Web Debug plugin | Platform Engineering; update when plugin availability or ordering changes |
+| `.claude-plugin/marketplace.json` | Claude Code marketplace entry for the Web Debug plugin | Platform Engineering; update when Claude Code availability or ordering changes |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |
 | `fixtures/react-vite/` | React component/state fixture served by Vite | Test ownership; update when framework evidence changes |
 | `fixtures/next/` | Next.js App Router, client, and route-handler fixture | Test ownership; update when Next runtime evidence changes |
@@ -42,7 +44,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 
 ## Components and boundaries
 
-`src/index.ts` is the only public MCP boundary. It validates inputs with Zod, delegates to `SessionManager`, and serializes structured results or bounded errors. It does not access Playwright directly. The Web Debug plugin points at this same server through its root `.mcp.json`; it does not duplicate tools or browser policy.
+`src/index.ts` is the only public MCP boundary. It validates inputs with Zod, delegates to `SessionManager`, and serializes structured results or bounded errors. It does not access Playwright directly. The Web Debug plugin for Codex, ChatGPT, and Claude Code points at this same server through its root `.mcp.json`; it does not duplicate tools or browser policy.
 
 `SessionManager` owns one in-memory record per session and limits active sessions to eight. It creates temporary artifact directories, invokes the browser adapter, records a capped replay timeline after actions/captures, updates lifecycle status, and composes evidence. It is the policy boundary for session lookup, replay seek, and close behavior.
 
@@ -66,7 +68,7 @@ React intelligence is available through a development bridge at `window.__WEB_DE
 ## Runtime topology
 
 ```text
-Codex/ChatGPT plugin or another MCP client
+Codex/ChatGPT/Claude Code plugin or another MCP client
       │ stdio
       ▼
 web-debug-mcp process
