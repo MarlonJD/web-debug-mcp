@@ -39,6 +39,7 @@ const requiredFiles = [
   "docs/exec-plans/plan-template.md",
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
+  "docs/examples-evidence.md",
   ".agents/plugins/marketplace.json",
   ".claude-plugin/marketplace.json",
   "plugins/web-debug/.codex-plugin/plugin.json",

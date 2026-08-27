@@ -257,6 +257,10 @@ Use this project when you want the debugging agent to have evidence rather than 
 - avoid installing several MCP servers that each own part of the same frontend workflow;
 - keep local debugging bounded and reviewable for agent-driven development.
 
+## Examples and evidence
+
+The examples show the practical difference: a raw browser path can reproduce a symptom, while the MCP path joins browser state with React/Vite/Next runtime evidence, records the flow, and verifies the same interaction after a fix. The suite includes a stale React filter, an out-of-order async quote, and a responsive drawer visual bug at desktop and mobile sizes. See [Examples and evidence](docs/examples-evidence.md) for the before/after stories and representative evidence.
+
 ## Useful application areas
 
 - React UI bugs, stale state, unexpected renders, and component performance investigations;

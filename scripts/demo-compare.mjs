@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -127,6 +127,7 @@ const scenarioDefinitions = {
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/App.jsx", from: "  }, []);", to: "  }, [query, status]);" }],
+    variantMarkers: { buggy: "  }, []);", fixed: "  }, [query, status]);" },
     baselineInspect: async ({ projectRoot }) => ({
       sourceFile: "src/App.jsx",
       staleMemoDependencyMarker: (await readFile(join(projectRoot, "src/App.jsx"), "utf8")).includes("  }, []);"),
@@ -167,6 +168,7 @@ const scenarioDefinitions = {
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/App.jsx", from: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", to: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    if (requestNumber !== latestQuoteRequest.current) return;\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });" }],
+    variantMarkers: { buggy: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", fixed: "    if (requestNumber !== latestQuoteRequest.current) return;" },
     baselineInspect: async ({ projectRoot }) => ({
       sourceFile: "src/App.jsx",
       staleResponseMarker: (await readFile(join(projectRoot, "src/App.jsx"), "utf8")).includes("requestNumber !== latestQuoteRequest.current") === false,
@@ -205,6 +207,7 @@ const scenarioDefinitions = {
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/styles.css", from: ".drawer-layer { position: absolute; inset: 76px 0 0;", to: ".drawer-layer { position: fixed; inset: 0;" }],
+    variantMarkers: { buggy: ".drawer-layer { position: absolute; inset: 76px 0 0;", fixed: ".drawer-layer { position: fixed; inset: 0;" },
     baselineInspect: async ({ projectRoot }) => ({
       sourceFile: "src/styles.css",
       clippedLayerMarker: (await readFile(join(projectRoot, "src/styles.css"), "utf8")).includes(".drawer-layer { position: absolute; inset: 76px 0 0;"),
@@ -325,6 +328,7 @@ async function runRepairScenario(definition, runs, artifactDir) {
     await waitForUrl(url, child);
     for (let index = 0; index < runs; index += 1) {
       await writeRepairVariant(runtime, "buggy");
+      await waitForRepairVariant(definition, url, "buggy", child);
       const baseline = await runRepairBaseline(definition, url, runtime.root, artifactDir, index);
       const diagnosis = await runRepairMcpPhase(
         definition,
@@ -333,10 +337,13 @@ async function runRepairScenario(definition, runs, artifactDir) {
         definition.diagnosisActions,
         definition.diagnosisChecks,
         "before",
+        artifactDir,
+        index,
       );
 
       const patchStartedAt = performance.now();
       await writeRepairVariant(runtime, "fixed");
+      await waitForRepairVariant(definition, url, "fixed", child);
       const patchToReadyMs = elapsed(patchStartedAt);
       const fix = await runRepairMcpPhase(
         definition,
@@ -345,6 +352,8 @@ async function runRepairScenario(definition, runs, artifactDir) {
         definition.verificationActions,
         definition.verificationChecks,
         "after",
+        artifactDir,
+        index,
       );
       records.push({ baseline, mcp: { diagnosis, fix, patchToReadyMs } });
     }
@@ -432,6 +441,26 @@ async function writeRepairVariant(runtime, variant) {
   await Promise.all(Object.entries(files).map(([relativePath, contents]) => writeFile(join(runtime.root, relativePath), contents, "utf8")));
 }
 
+async function waitForRepairVariant(definition, url, variant, child) {
+  const marker = definition.variantMarkers[variant];
+  const resource = new URL(`/${definition.fixes[0].file}`, url).toString();
+  const deadline = Date.now() + 10_000;
+  let lastError = "variant marker not observed";
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`Repair fixture server exited with code ${child.exitCode}.`);
+    try {
+      const response = await fetch(resource);
+      const text = await response.text();
+      if (response.ok && text.includes(marker)) return;
+      lastError = response.ok ? `marker missing from ${resource}` : `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Repair variant ${variant} did not become ready: ${lastError}`);
+}
+
 async function runRepairBaseline(definition, url, projectRoot, artifactDir, runIndex) {
   const startedAt = performance.now();
   const viewports = definition.viewportSizes ?? [definition.viewport];
@@ -484,12 +513,18 @@ async function runRepairRawView(definition, url, viewport, artifactDir, runIndex
   }
 }
 
-async function runRepairMcpPhase(definition, url, projectRoot, actions, checks, phase) {
+async function runRepairMcpPhase(definition, url, projectRoot, actions, checks, phase, artifactDir, runIndex) {
   const startedAt = performance.now();
   const viewports = definition.viewportSizes ?? [definition.viewport];
   const views = [];
   for (const viewport of viewports) {
-    views.push(await runRepairMcpView(definition, url, projectRoot, viewport, actions, checks, phase));
+    const view = await runRepairMcpView(definition, url, projectRoot, viewport, actions, checks, phase);
+    if (view.screenshotPath) {
+      const centralizedPath = join(artifactDir, `${definition.id}-${phase}-${viewport.label ?? "desktop"}-${runIndex + 1}.png`);
+      await copyFile(view.screenshotPath, centralizedPath);
+      view.screenshotPath = centralizedPath;
+    }
+    views.push(view);
   }
   const passed = views.every((view) => view.passed && (definition.id !== "visual-layout-fix" || view.observation?.coversViewport === true));
   return {

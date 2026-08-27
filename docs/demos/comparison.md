@@ -73,7 +73,7 @@ The report separates browser/session startup from the useful flow. For each path
 
 A positive timing delta means the structured MCP workflow added overhead in that scripted run. That is expected for a trivial browser-only check. The product value is the correlation and repeatability: one bounded result can be inspected, redacted, replayed, and checked again after a code change.
 
-The output stores screenshots under a temporary directory and prints its path. Repair scenarios copy the complex fixture to a temporary runtime, apply the buggy/fixed variants there, and leave the repository source unchanged. Fixture servers and browser sessions are closed when the run completes.
+The output stores screenshots under a temporary directory and prints its path. Repair scenarios copy the complex fixture to a temporary runtime, apply the buggy/fixed variants there, and leave the repository source unchanged. Repair baseline and MCP before/after screenshots are centralized under that artifact directory; fixture servers and browser sessions are closed when the run completes.
 
 ## Example output shape
 
@@ -105,3 +105,5 @@ Human diagnosis time still needs a separate usability study with a fixed task sc
 ## Model comparison
 
 The repository does not call language models itself. To compare agent behavior, run the same repair prompt against isolated fixture copies and record the model name, reasoning setting, wall time, tool calls, patch result, root-cause result, and `web_fix_verify` result separately from the browser timings. The current requested arms are `gpt-5.6-sol` with `xhigh` and `gpt-5.6-luna` with `max`; do not mix their results with the technical baseline above.
+
+In the final one-run QA sweep for this repository, both arms passed the deterministic gates and all three repair contracts. Sol `xhigh` completed the valid command sweep in about 30.77 seconds; Luna `max` completed it in about 30.82 seconds after one transient port-collision retry. Their repair measurements were close and not directionally consistent: Sol was lower on the filter diagnosis and visual fix verification, while Luna was lower on the async diagnosis and visual diagnosis. This is an engineering QA comparison, not a statistically powered model benchmark; correctness, semantic repair status, and source-snapshot integrity matter more than these single-run milliseconds.
