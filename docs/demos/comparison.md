@@ -63,6 +63,8 @@ Repair scenarios use an isolated temporary copy of `fixtures/complex-vite`, so t
 - `fixVerified`: the same recorded flow passed after the exact temporary patch;
 - `visual`: desktop/mobile viewport invariants and before/after screenshots for the layout case.
 
+Repair runs fail with a non-zero exit status if any of those required outcomes is false. This keeps a semantic verification failure visible to CI and to model QA instead of treating a generated report as success.
+
 The async scenario uses deterministic delays (`220 ms` for request 1 and `35 ms` for request 2), so `Quote v1 applied` is the buggy result and `Quote v2 applied` is the fixed latest-request-wins result. The filter scenario expects `Showing 1 incident` after entering `Refund`; the buggy empty `useMemo` dependency list leaves all five rows visible.
 
 ## How to read the report

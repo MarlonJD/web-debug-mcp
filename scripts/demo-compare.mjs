@@ -274,6 +274,9 @@ async function runScenario(definition, runs, artifactDir) {
       baselineRuns.push(await runBaseline(definition, url, actionId, artifactDir, index));
       mcpRuns.push(await runMcp(definition, url, actionId));
     }
+    if (!baselineRuns.every((run) => run.passed) || !mcpRuns.every((run) => run.passed)) {
+      throw new Error(`${definition.id} diagnostic contract failed: expected all baseline and MCP checks to pass.`);
+    }
 
     return {
       id: definition.id,
@@ -379,7 +382,7 @@ async function runRepairScenario(definition, runs, artifactDir) {
           fixVerification: summarizeRuns(fixTimingRuns),
         },
       },
-      comparison: compareRepair(definition, baselineRuns, mcpRuns),
+      comparison: assertRepairComparison(definition, compareRepair(definition, baselineRuns, mcpRuns)),
     };
   } catch (error) {
     const output = serverOutput.text().slice(-1_000);
@@ -732,6 +735,17 @@ function compareRepair(definition, baselineRuns, mcpRuns) {
       : null,
     interpretation: "A positive diagnosis delta is the cost of structured evidence in this scripted run. The repair result is measured separately through root-cause evidence and fixed-flow verification.",
   };
+}
+
+function assertRepairComparison(definition, comparison) {
+  const failures = [];
+  if (!comparison.bugReproduced) failures.push("bug reproduction");
+  if (!comparison.rootCauseEvidence) failures.push("root-cause evidence");
+  if (!comparison.fixVerified) failures.push("fixed verification");
+  if (comparison.visual && !comparison.visual.desktopAfterCovered) failures.push("desktop visual verification");
+  if (comparison.visual && !comparison.visual.mobileAfterContained) failures.push("mobile visual verification");
+  if (failures.length > 0) throw new Error(`${definition.id} repair contract failed: ${failures.join(", ")}.`);
+  return comparison;
 }
 
 function replaceExact(source, from, to, file) {
