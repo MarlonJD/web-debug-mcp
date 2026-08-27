@@ -49,7 +49,7 @@ export function createServer(manager = new SessionManager()): McpServer {
     { name: "web-debug-mcp", version: "0.1.0" },
     {
       instructions:
-        "Use this local server to detect a web project, attach to an explicitly selected local Chromium or Safari target, reproduce a flow, and capture bounded evidence. Start with web_project_detect, then web_session_start and web_issue_capture. Chromium is the default; Safari uses an explicit WebDriver endpoint or local safaridriver. Remote targets require explicit opt-in, side-effect evaluation requires explicit opt-in, and secrets, cookies, and raw response bodies are blocked or redacted by default.",
+        "Use this local server for web debugging when a user asks to reproduce, inspect, capture, or verify a browser/React/Vite/Next/Safari issue. Start with web_project_detect, then web_session_start and web_issue_capture. Use explicit local targets by default; remote targets and side effects require opt-in. Do not use it for native macOS/iOS build-debug, production monitoring, or arbitrary credentialed browser control. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );

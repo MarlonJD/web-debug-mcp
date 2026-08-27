@@ -38,6 +38,7 @@ const requiredFiles = [
   "docs/exec-plans/plan-template.md",
   "docs/exec-plans/tech-debt-tracker.md",
   "src/index.ts",
+  "bin/web-debug-mcp.mjs",
   "src/core/session-manager.ts",
   "src/core/redaction.ts",
   "src/adapters/chromium.ts",
@@ -78,6 +79,11 @@ for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
+check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
+check(packageJson.bin?.["web-debug-mcp"] === "./bin/web-debug-mcp.mjs", "package.json must expose the web-debug-mcp executable");
+check(Array.isArray(packageJson.files) && packageJson.files.includes("dist"), "package.json must include the built dist directory");
+check(packageJson.scripts?.prepare === "npm run build", "package.json must build Git dependencies during prepare");
+check(packageJson.scripts?.prepack === "npm run build", "package.json must build npm packages before packing");
 
 const sourceRoot = join(root, "src");
 function inspectSource(path) {
@@ -123,6 +129,9 @@ check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must
 check(vitePluginSource.includes("summarizeSourceMap"), "Vite plugin must preserve source-map provenance summaries");
 check(nextSource.includes("serverActionExecutions"), "Next adapter must preserve Server Action execution evidence");
 check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve normalized server request traces");
+check(read("README.md").includes("codex mcp add"), "README must document Codex MCP installation");
+check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
+check(read("README.md").includes("not a Codex or Claude Code skill"), "README must distinguish the MCP server from a skill");
 
 const config = JSON.parse(read("docs/agent-harness/config.json"));
 check(config.schema_version === 1, "harness config schema_version must be 1");

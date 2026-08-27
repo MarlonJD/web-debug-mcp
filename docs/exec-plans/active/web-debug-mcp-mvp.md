@@ -85,6 +85,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
 - [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness. The current source and attestation IDs are authoritative in `docs/agent-harness/certification.json` and Git parent history.
 - [x] (2026-08-27 15:30Z) Rewrite the public README to explain the project purpose, MCP value, native macOS/iOS skill distinction, use cases, benefits, expectations, and explicit non-expectations; update the GitHub repository description and topics.
+- [x] (2026-08-27 13:49Z) Make the server installable as a standalone stdio MCP through GitHub `npx` for Codex and Claude Code; add the executable package contract, agent-use instructions, and README-first installation guidance.
 
 ## Surprises & Discoveries
 

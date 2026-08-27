@@ -1,18 +1,50 @@
 {
   "name": "web-debug-mcp",
   "version": "0.1.0",
-  "private": true,
-  "description": "Agent-native local web debugging through one bounded MCP surface.",
+  "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
+  "bin": {
+    "web-debug-mcp": "./bin/web-debug-mcp.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "package.json"
+  ],
   "exports": {
     ".": "./dist/index.js",
     "./vite": "./dist/adapters/vite-plugin.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MarlonJD/web-debug-mcp.git"
+  },
+  "homepage": "https://github.com/MarlonJD/web-debug-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/MarlonJD/web-debug-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "web-debugging",
+    "developer-tools",
+    "codex",
+    "claude-code",
+    "chromium",
+    "safari",
+    "react",
+    "vite",
+    "nextjs",
+    "cdp"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
     "dev": "tsx src/index.ts",
     "harness:check": "node scripts/harness-check.mjs",
     "smoke:live": "npm run build && node scripts/live-smoke.mjs",

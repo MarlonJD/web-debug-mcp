@@ -4,6 +4,68 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
+## Install as an MCP server
+
+This project is a standalone MCP server, not a Codex or Claude Code skill. MCP gives the agent callable debugging tools; a skill is an instruction bundle that changes how an agent works. This repository intentionally ships the MCP server only. Its server instructions and tool descriptions tell the agent when to use it, so no extra skill is required.
+
+The current install path uses GitHub because the package is not published to npm yet. It runs locally over stdio and does not require a hosted service.
+
+### Codex CLI, desktop app, and IDE extension
+
+From a terminal:
+
+```bash
+codex mcp add web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#main
+codex mcp list
+```
+
+The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
+
+```text
+-y github:MarlonJD/web-debug-mcp#main
+```
+
+For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
+
+```toml
+[mcp_servers.web_debug_mcp]
+command = "npx"
+args = ["-y", "github:MarlonJD/web-debug-mcp#main"]
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+```
+
+Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the active server.
+
+### Claude Code
+
+Install it for all projects on the machine:
+
+```bash
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#main
+claude mcp list
+```
+
+For the current project only, use `--scope project` instead of `--scope user`; Claude Code writes the shared configuration to `.mcp.json` and asks for project approval. Use `/mcp` inside Claude Code to inspect the connected server and its tools.
+
+When this package is published to npm, the command can be shortened to `npx -y web-debug-mcp`.
+
+### When the agent should use it
+
+Use it when a local web application is running and the task needs browser-grounded evidence, such as:
+
+- reproducing a DOM, console, network, screenshot, or JavaScript-debugger issue;
+- understanding React state, commits, render causes, or bounded flamegraph data;
+- investigating Vite module/HMR/transform behavior;
+- inspecting Next.js routes, logs, request traces, or Server Actions;
+- replaying and verifying a browser flow after a frontend fix.
+
+Start with `web_project_detect`, then use `web_session_start`, `web_browser_action`, and `web_issue_capture`. Use `web_next_inspect` for Next-specific inspection and `web_repro_record` plus `web_fix_verify` for regression verification.
+
+Do not use this server for native macOS/iOS build-debug work, production monitoring, arbitrary remote browser control, credentialed browser profiles, or application-state time travel. Those are outside this MCP's contract.
+
+Official setup references: [Codex MCP configuration](https://developers.openai.com/codex/mcp/) and [Claude Code MCP configuration](https://code.claude.com/docs/en/mcp).
+
 ## Why this project exists
 
 Web debugging is usually split across several disconnected surfaces:
