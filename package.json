@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
+  "license": "GPL-3.0-or-later",
   "bin": {
     "web-debug-mcp": "./bin/web-debug-mcp.mjs"
   },
@@ -10,7 +11,8 @@
     "bin",
     "dist",
     "README.md",
-    "package.json"
+    "package.json",
+    "LICENSE"
   ],
   "exports": {
     ".": "./dist/index.js",

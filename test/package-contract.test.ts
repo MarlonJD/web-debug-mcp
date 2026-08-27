@@ -7,6 +7,7 @@ describe("package distribution contract", () => {
   it("exposes a runnable stdio MCP binary for agent clients", () => {
     const packageJson = JSON.parse(readFileSync(resolve("package.json"), "utf8")) as {
       private?: boolean;
+      license?: string;
       bin?: Record<string, string>;
       files?: string[];
       scripts?: Record<string, string>;
@@ -14,9 +15,11 @@ describe("package distribution contract", () => {
     const binaryPath = packageJson.bin?.["web-debug-mcp"];
 
     expect(packageJson.private).not.toBe(true);
+    expect(packageJson.license).toBe("GPL-3.0-or-later");
+    expect(existsSync(resolve("LICENSE"))).toBe(true);
     expect(binaryPath).toBe("./bin/web-debug-mcp.mjs");
     expect(existsSync(resolve(binaryPath ?? ""))).toBe(true);
-    expect(packageJson.files).toEqual(expect.arrayContaining(["bin", "dist"]));
+    expect(packageJson.files).toEqual(expect.arrayContaining(["bin", "dist", "LICENSE"]));
     expect(packageJson.scripts?.prepare).toBe("npm run build");
     expect(packageJson.scripts?.prepack).toBe("npm run build");
   });

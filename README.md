@@ -295,3 +295,9 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 The current repository-local evidence sweep passes 24 deterministic tests, TypeScript type checking, build, 127 native harness checks, adaptive harness validation, and the Chromium, React/Vite, Next, and Safari live smokes. Repository-local harness certification currently returns `CERT000` for its bounded source/attestation window. Provider-backed production attestation and an approved external remote-browser run are separate authority gates.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
+
+## License
+
+`web-debug-mcp` is licensed under the GNU General Public License, version 3 or any later version. See [`LICENSE`](LICENSE).
+
+SPDX-License-Identifier: `GPL-3.0-or-later`

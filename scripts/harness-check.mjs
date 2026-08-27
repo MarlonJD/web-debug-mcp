@@ -22,6 +22,7 @@ const requiredFiles = [
   "AGENTS.md",
   "ARCHITECTURE.md",
   "README.md",
+  "LICENSE",
   "docs/PLANS.md",
   "docs/index.md",
   "docs/SECURITY.md",
@@ -80,8 +81,9 @@ for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
+check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
 check(packageJson.bin?.["web-debug-mcp"] === "./bin/web-debug-mcp.mjs", "package.json must expose the web-debug-mcp executable");
-check(Array.isArray(packageJson.files) && packageJson.files.includes("dist"), "package.json must include the built dist directory");
+check(Array.isArray(packageJson.files) && packageJson.files.includes("dist") && packageJson.files.includes("LICENSE"), "package.json must include the built dist directory and license");
 check(packageJson.scripts?.prepare === "npm run build", "package.json must build Git dependencies during prepare");
 check(packageJson.scripts?.prepack === "npm run build", "package.json must build npm packages before packing");
 
@@ -132,6 +134,7 @@ check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve n
 check(read("README.md").includes("codex mcp add"), "README must document Codex MCP installation");
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("not a Codex or Claude Code skill"), "README must distinguish the MCP server from a skill");
+check(read("README.md").includes("GPL-3.0-or-later"), "README must declare the project license");
 
 const config = JSON.parse(read("docs/agent-harness/config.json"));
 check(config.schema_version === 1, "harness config schema_version must be 1");
