@@ -1,4 +1,30 @@
 {
-  "status": "pre-attestation",
-  "note": "The complete v2 certification manifest is created only in the direct-child attestation overlay."
+  "schema_version": 2,
+  "claim": "harness-ready",
+  "profile": "adaptive",
+  "repository_commit": "d2c056b62a4721677ca24537478bf2e690d82d68",
+  "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
+  "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
+  "environment": "repository-local",
+  "issued_at": "2026-08-27T12:13:22Z",
+  "expires_at": "2026-08-28T12:13:22Z",
+  "coverage_sha256": "aae7c2318bfa314120a76f15dacfde4cf2f0706c6a29d3af3208f7f081472ba8",
+  "evidence_root": "docs/agent-harness/evidence",
+  "project_native_gate": {
+    "command": "npm run harness:check",
+    "evidence": "docs/agent-harness/evidence/project-native-gate.json"
+  },
+  "maintenance": {
+    "command": "npm run harness:check",
+    "triggers": [
+      "manual"
+    ],
+    "max_age_hours": 168,
+    "evidence": "docs/agent-harness/evidence/continuous-maintenance.json"
+  },
+  "production_authority": {
+    "owner": null,
+    "approval_evidence": null,
+    "rollback_evidence": null
+  }
 }

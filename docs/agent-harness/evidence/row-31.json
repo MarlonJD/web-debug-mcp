@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "repository_commit": "d2c056b62a4721677ca24537478bf2e690d82d68",
+  "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
+  "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
+  "capabilities": [
+    "Automated merge and agent-authored release tooling"
+  ],
+  "environment": "repository-local",
+  "command": "Applicability review: Automated merge, release, deployment, and production tooling is outside this local package.",
+  "exit_code": null,
+  "observed_at": "2026-08-27T12:13:22Z",
+  "result": "not-applicable",
+  "artifacts": [
+    "git:d2c056b62a4721677ca24537478bf2e690d82d68",
+    "docs/agent-harness/certification.md"
+  ],
+  "issuer": "local-platform-engineering",
+  "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
+  "signature": "be247632dab5869db0632468f34eed298a792b240da89f50bcb3d2dfe76f484c"
+}

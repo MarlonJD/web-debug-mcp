@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "repository_commit": "d2c056b62a4721677ca24537478bf2e690d82d68",
+  "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
+  "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
+  "capabilities": [
+    "Local and cloud agent review loops continue until reviewers are satisfied while human review is optional"
+  ],
+  "environment": "repository-local",
+  "command": "Applicability review: Cloud review and human-optional approval are not adopted by this local package.",
+  "exit_code": null,
+  "observed_at": "2026-08-27T12:13:22Z",
+  "result": "not-applicable",
+  "artifacts": [
+    "git:d2c056b62a4721677ca24537478bf2e690d82d68",
+    "docs/agent-harness/certification.md"
+  ],
+  "issuer": "local-platform-engineering",
+  "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
+  "signature": "148f56f9a4f7d7c29526b08e5d58daacb6477e2012df2717239e558e38d1f362"
+}

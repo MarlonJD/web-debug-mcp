@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "repository_commit": "d2c056b62a4721677ca24537478bf2e690d82d68",
+  "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
+  "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
+  "capabilities": [
+    "Scheduled Codex documentation gardening and quality-scoring agents open targeted repair pull requests"
+  ],
+  "environment": "repository-local",
+  "command": "Applicability review: Scheduled external documentation automation was not requested or configured.",
+  "exit_code": null,
+  "observed_at": "2026-08-27T12:13:22Z",
+  "result": "not-applicable",
+  "artifacts": [
+    "git:d2c056b62a4721677ca24537478bf2e690d82d68",
+    "docs/agent-harness/certification.md"
+  ],
+  "issuer": "local-platform-engineering",
+  "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
+  "signature": "3a3637a459738e546104a7800b05dbc3cf381dfa2c6344c4c78c3b77431bc3b7"
+}
