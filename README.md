@@ -1,56 +1,180 @@
 # web-debug-mcp
 
-`web-debug-mcp` is a local, agent-native web debugging server for Codex and other MCP clients. It exposes one small tool surface that coordinates a browser session, JavaScript debugger, bounded runtime evidence, and reproducible flow verification.
+An evidence-first, local MCP debugger for web applications.
 
-The current increment supports framework-neutral browser targets, Chromium/CDP, Safari WebDriver with WebDriver BiDi evidence, an automatically injected React development bridge, a Vite module-graph/HMR endpoint, and Next.js development-server metadata with bounded server-log, route-compilation, Server Action lookup, and observed request execution evidence. Browser-specific limits remain explicit. This keeps framework-specific context behind the same MCP facade instead of adding separate tool catalogs.
+`web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-## What is included
+## Why this project exists
 
-- Project capability detection without starting a process.
-- Local Chromium attach mode through an explicit CDP endpoint.
-- Explicit remote CDP attach is supported only with `allowRemote: true`; targets are marked non-isolated and never auto-discovered.
-- Local Chromium launch mode through an explicit executable path.
-- Safari WebDriver mode through local `safaridriver` or an explicit WebDriver endpoint, with BiDi console events and network events when the installed Safari exposes them.
-- Same-origin browser actions: navigate, click, fill, wait, and reload.
-- JavaScript breakpoints, pause control, bounded call frames, and read-only evaluation by default.
-- Console, network metadata, DOM summary, screenshot, and debugger evidence in one redacted bundle.
-- React component tree, hook values, source locations, render counts, bounded commit summaries, profiler durations, a flat flamegraph view, and inferred render causes when the development build exposes React commits.
-- Vite module/importer graph, HMR status, transformed-code diffs, and source-map summaries through the `webDebugVitePlugin()` development plugin.
-- Bounded, redacted Next.js development log tails when the log stays inside the detected project root.
-- Explicit Next.js route compilation and Server Action lookup through `web_next_inspect`, plus normalized server request traces and request-linked execution evidence when the browser sends a `Next-Action` request.
-- Bounded replay timeline in captures and frame lookup through `web_replay_seek`; `restore: true` replays only safe retained actions and rejects sanitised form inputs.
-- Reproducible action scenarios with simple post-fix checks.
-- A deterministic vanilla fixture and a project-native harness check.
-- A live React/Vite fixture, automatic React bridge, and module-graph/HMR smoke.
-- A live Next.js App Router fixture and `/_next/mcp` runtime smoke.
+Web debugging is usually split across several disconnected surfaces:
 
-## Requirements
+- browser DevTools for DOM, console, network, screenshots, and JavaScript pauses;
+- React or framework tooling for component state and render behavior;
+- Vite or Next development servers for transforms, routes, logs, traces, and Server Actions;
+- a human-written reproduction that is often difficult to repeat after a change.
 
-- Node.js 20 or newer. Safari BiDi requires Node 20.10+ with `--experimental-websocket` or Node 21+; older runtimes keep Safari WebDriver actions and the documented network fallback but report BiDi console limitations.
-- A Chromium-based browser when running a live session.
-- Either an explicit `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or an explicit `cdpEndpoint` supplied to `web_session_start`.
+An agent can edit code without having a reliable, structured account of what happened in the running app. `web-debug-mcp` closes that gap. It turns a reproduction into bounded evidence that an agent can inspect, compare, and use for fix verification.
 
-## Development commands
+The project deliberately keeps one public MCP catalog. React, Vite, Next, Chromium, and Safari are internal adapters behind the same session and evidence contract, so adding framework context does not create a collection of overlapping MCP servers.
+
+## What MCP adds here
+
+MCP is the transport and tool contract between an agent such as Codex and this debugging process. The server exposes typed, discoverable operations instead of asking the agent to parse terminal output or drive an unstructured DevTools UI.
+
+The public tools cover:
+
+- project capability detection;
+- explicit Chromium or Safari session start and status;
+- bounded browser actions: navigate, click, fill, wait, and reload;
+- issue capture with DOM, console, network, screenshot, debugger, framework, and replay evidence;
+- Chromium breakpoints, pause control, and guarded JavaScript evaluation;
+- Next route compilation and Server Action lookup;
+- replay frame inspection and safe-action restore;
+- reproducible flow recording and post-change verification;
+- session cleanup.
+
+The MCP boundary is intentionally small. Framework-specific protocol details stay inside adapters, while session ownership, same-origin navigation, bounds, redaction, and recovery stay centralized.
+
+## How it differs from native macOS and iOS build/debug skills
+
+`web-debug-mcp` complements Codex build/debug skills; it is not a replacement for them and it is not another Xcode automation layer.
+
+| Surface | Primary target | Main job | Typical evidence |
+| --- | --- | --- | --- |
+| `build-macos-apps` skills | macOS apps, Swift, Xcode, AppKit, SwiftUI | Build, run, package, and debug native macOS software | Xcode/SwiftPM builds, app launch state, macOS logs, window behavior, signing and packaging evidence |
+| `build-ios-apps` skills | iOS apps and Simulator | Build, launch, inspect, test, and profile native iOS software | Simulator UI, `adb`/Xcode-style logs, ETTrace, memgraphs, App Intents, SwiftUI behavior |
+| `web-debug-mcp` | Local web apps in Chromium or Safari | Reproduce browser behavior and join browser evidence with React, Vite, and Next runtime context | DOM, console, network metadata, CDP pauses, React commits/flamegraph summaries, Vite transforms/source maps, Next traces/Server Actions, screenshots, replay frames |
+
+The difference is both the target and the integration model:
+
+- Native build skills are Codex workflows for operating native development environments and their simulators or app runtimes.
+- `web-debug-mcp` is a repository-owned MCP server that any compatible MCP client can call over stdio.
+- Native skills help build and debug the app itself; this server observes a running web target and produces structured browser/runtime evidence.
+- A project may use both: a native skill for a macOS or iOS shell, and `web-debug-mcp` for a web frontend, embedded web surface, or local browser flow.
+
+## What it provides
+
+### Browser evidence
+
+- Chromium launch through an explicit executable path or attach through an explicit CDP endpoint.
+- Safari actions, DOM, screenshots, and explicit JavaScript evaluation through W3C WebDriver.
+- WebDriver BiDi console and network subscriptions where the installed Safari exposes them.
+- A disclosed, bounded Performance Resource Timing fallback for Safari versions that do not emit network events.
+- JavaScript breakpoints, pause reasons, call frames, scope values, and guarded evaluation in Chromium.
+- Same-origin navigation and bounded console/network metadata with redaction.
+
+### React profiler and render-cause evidence
+
+The injected development bridge observes React’s DevTools hook and returns:
+
+- component and hook state summaries;
+- prop and hook changes for the latest render;
+- inferred causes such as mount, props, state, props plus state, or parent;
+- bounded commit counts, changed-component counts, and durations;
+- a flat, depth-aware flamegraph view with actual, self, and tree duration summaries.
+
+This is useful for locating re-render hotspots and distinguishing a state update from a prop or parent-driven render without exposing raw Fiber objects.
+
+### Vite provenance
+
+The development-only `webDebugVitePlugin()` exposes a bounded local endpoint containing:
+
+- module and importer relationships;
+- HMR state and the changed module;
+- before/after transformed-code summaries;
+- a changed-block transform diff;
+- source-map presence, source names, mapping length, and file metadata.
+
+This connects a browser symptom to the code Vite actually served, while keeping full source bodies and production exposure out of the default contract.
+
+### Next.js server evidence
+
+The adapter speaks to Next’s local `/_next/mcp` endpoint and can return:
+
+- project metadata, routes, compilation issues, and bounded development logs;
+- request insights and normalized server request traces with bounded spans;
+- route compilation through `web_next_inspect`;
+- Server Action manifest resolution;
+- an observed browser `Next-Action` POST linked to its Server Action resolution and matching server trace.
+
+The suite observes and explains a Server Action request. It does not invoke arbitrary server actions on an agent’s behalf.
+
+### Replay and verification
+
+Every action and capture can produce a bounded replay frame. `web_replay_seek` can inspect a retained frame, or use `restore: true` to reissue only safe retained navigation, click, wait, and reload actions. Form values are sanitized before storage; frames containing sanitized inputs or redacted navigation URLs fail closed during restore.
+
+Recorded scenarios make the loop repeatable:
 
 ```text
+record flow → reproduce → capture evidence → change code → rerun flow → compare checks
+```
+
+## Why use it?
+
+Use this project when you want the debugging agent to have evidence rather than guesses:
+
+- shorten the reproduce–inspect–fix–verify loop;
+- keep browser state, framework state, and dev-server state in one response;
+- diagnose React re-render and HMR issues with source-oriented context;
+- connect a Next Server Action request to its route, manifest entry, and server spans;
+- preserve a redacted reproduction that can be inspected or safely replayed;
+- make cross-browser checks explicit instead of silently treating WebKit as Safari;
+- avoid installing several MCP servers that each own part of the same frontend workflow;
+- keep local debugging bounded and reviewable for agent-driven development.
+
+## Useful application areas
+
+- React UI bugs, stale state, unexpected renders, and component performance investigations;
+- Vite HMR failures, transform regressions, importer/module-graph problems, and source-map questions;
+- Next.js App Router, route compilation, RSC, request-insight, and Server Action debugging;
+- browser console or network regressions tied to a reproducible interaction;
+- Safari compatibility checks where DOM, console, network metadata, or screenshots are enough;
+- regression verification after a frontend fix;
+- local bug reports that need a durable evidence bundle for another engineer or agent;
+- agent workflows that need a single, structured web-debugging capability.
+
+## Quick start
+
+```bash
 npm install --no-audit --no-fund
 npm test
 npm run typecheck
 npm run build
 npm run harness:check
-npm run smoke:live
+```
+
+For a live Chromium smoke, provide an explicit browser executable:
+
+```bash
+WEB_DEBUG_CHROME_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run smoke:live
+```
+
+For the framework fixtures:
+
+```bash
 npm run smoke:react-vite
 npm run smoke:next
 npm run smoke:safari
 ```
 
-Run the fixture with `npm run serve:fixture`. The server binds to `127.0.0.1` and defaults to port `4173`; set `WEB_DEBUG_FIXTURE_PORT` to use another port.
+Run the MCP server after building:
 
-Run `npm run smoke:live` after setting `WEB_DEBUG_CHROME_EXECUTABLE_PATH` when the default macOS Chrome path is not available. It starts the vanilla fixture, sets a breakpoint in `app.js`, clicks the button, captures a pause-safe evidence path, and cleans up the owned browser and fixture processes.
+```bash
+node dist/index.js
+```
 
-Run `npm run smoke:react-vite` to start the Vite fixture, verify React component/state evidence, pause at `fixtures/react-vite/src/App.jsx`, and replay the submitted-payment flow.
+Then use the MCP client workflow:
 
-For a Vite application, add the development-only plugin to `vite.config.ts`:
+1. Call `web_project_detect`.
+2. Start an explicit local session with `web_session_start`.
+3. Reproduce the issue with `web_browser_action` and, for Chromium, debugger tools.
+4. Capture `web_issue_capture` at the failure point.
+5. Use `web_next_inspect` for a Next route or Server Action when applicable.
+6. Record and rerun a flow with `web_repro_record` and `web_fix_verify`.
+7. Inspect or safely restore a retained frame with `web_replay_seek`.
+8. Close the session with `web_session_close`.
+
+For Vite, install the development-only plugin in `vite.config.ts`:
 
 ```ts
 import { webDebugVitePlugin } from "web-debug-mcp/vite";
@@ -60,38 +184,52 @@ export default {
 };
 ```
 
-The plugin serves the local read-only module graph endpoint used during a debug session. It should not be enabled in a production server.
+Do not enable that plugin in a production server.
 
-Run `npm run smoke:next` to start the Next.js App Router fixture, query its built-in `/_next/mcp` endpoint, verify routes/project/compilation metadata and a bounded server-log tail, and exercise the client route handler flow.
+## What to expect
 
-Run `npm run smoke:safari` to exercise the vanilla fixture through Safari WebDriver. Enable Safari Settings → Developer → Allow remote automation first; Safari runs visibly, captures BiDi console evidence, and reports whether network evidence came from BiDi or the bounded Performance Resource Timing fallback. Safari’s JavaScript debugger remains unavailable through this adapter.
+- A local process communicating over MCP stdio.
+- Explicit browser target selection; no arbitrary browser or target discovery.
+- Structured evidence with bounded arrays and text, redaction markers, and capability warnings.
+- Nullable framework fields when a development runtime does not expose a signal.
+- Chromium debugger depth and Safari WebDriver/BiDi coverage that differ by browser capability.
+- Temporary screenshot artifacts outside the project directory.
+- Safe replay that reissues a limited action set, not a magical snapshot restore.
+- A repository-local `harness-ready` certification that proves one source/attestation window and local evidence integrity, not production deployment or provider authentication.
 
-Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MCP server. Use that official server when its browser-native DOM, network, console, and screenshot tools are the desired surface; this repository does not add a duplicate public Safari MCP catalog. The WebDriver adapter remains useful as the suite’s single-facade compatibility path for older Safari versions and for shared session/evidence orchestration.
+## What not to expect
 
-Run the MCP server with `npm run dev` during development or `node dist/index.js` after `npm run build`. MCP protocol messages use stdout; diagnostics must stay on stderr.
+This project is not:
 
-## MCP workflow
+- a full replacement for Chrome DevTools, Safari Web Inspector, React DevTools, or an IDE;
+- an automatic code-fixing agent;
+- a complete React DevTools profiler/flamegraph implementation or perfect render-cause oracle;
+- a full source-map debugger or a distributed tracing backend;
+- an arbitrary Next server executor or a way to run credentialed Server Actions;
+- a Safari JavaScript debugger with Chromium CDP parity;
+- a production monitoring, incident-management, or hosted MCP service;
+- an unattended remote-browser controller;
+- a secret, cookie, browser-storage, or raw-response-body collector;
+- proof that a local smoke passed in production.
 
-1. Call `web_project_detect` with the project root.
-2. Call `web_session_start` with a loopback URL and an explicit browser connection or executable.
-3. Use `web_browser_action` and `web_breakpoint_set` to reproduce the issue.
-4. Call `web_issue_capture` for one bounded evidence bundle.
-5. For Next.js, call `web_next_inspect` to compile a route or resolve a Server Action ID.
-6. Store a flow with `web_repro_record` and run it later with `web_fix_verify`.
-7. Use `web_replay_seek` to inspect one retained captured frame; pass `restore: true` only when the frame contains safe, non-sensitive actions.
-8. Call `web_session_close` when the session is no longer needed.
-
-The server does not write into the project during a normal session. Screenshots are stored in a temporary per-session artifact directory and returned as paths.
+Remote CDP or WebDriver attachment requires explicit opt-in and an approved target. It is marked non-isolated. No external remote target or provider-backed production attestation is included in the current repository evidence.
 
 ## Safety defaults
 
 - Browser URLs are loopback-only unless `allowRemote` is explicitly enabled.
-- Browser navigation stays on the session origin.
-- External CDP attachment is marked as non-isolated.
-- Console, network, debugger locals, and evaluated values are redacted and bounded.
+- Browser navigation remains on the session origin.
+- External attachments are marked non-isolated.
+- Console text, URLs, debugger locals, evaluated values, framework data, and replay frames are bounded and redacted.
 - Raw response bodies, cookies, authorization values, and browser storage are not collected by the core adapter.
-- Evaluation rejects side effects unless `allowSideEffects` is explicitly true.
+- Evaluation rejects side effects unless `allowSideEffects: true` is explicitly supplied.
+- The Vite plugin is development-only and local by design.
 
-## Current boundary
+## Safari 27 note
 
-This repository is a local developer tool, not a hosted service. It has no production deployment, CI workflow, unauthenticated/auto-discovered remote browser control, or full React DevTools profiler/flamegraph parity. React durations and render-cause details are bounded and inferred from the DevTools hook; Vite provenance and source maps are summaries rather than a full source-map debugger; Next execution evidence is limited to request-linked Server Action metadata, request insights, and bounded logs; Safari debugger parity is unavailable and Safari 26 may require the Performance Resource Timing network fallback; replay restoration is limited to safe retained actions and is not application-state time travel. Explicit remote CDP attachment, Safari WebDriver actions/DOM/screenshots, explicit capability warnings, bounded replay restore, and repository-local `harness-ready` certification are available. An approved external remote host and provider-backed production attestation remain unavailable and are not implied by `CERT000`.
+Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MCP server. Use that browser-native server when its DOM, network, console, and screenshot tools are the desired surface. This repository intentionally does not add a second public Safari MCP catalog; its WebDriver adapter remains the compatibility and single-facade path for older Safari versions and shared evidence orchestration.
+
+## Verification status
+
+The current repository-local evidence sweep passes 24 deterministic tests, TypeScript type checking, build, 127 native harness checks, adaptive harness validation, and the Chromium, React/Vite, Next, and Safari live smokes. Repository-local harness certification currently returns `CERT000` for its bounded source/attestation window. Provider-backed production attestation and an approved external remote-browser run are separate authority gates.
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.

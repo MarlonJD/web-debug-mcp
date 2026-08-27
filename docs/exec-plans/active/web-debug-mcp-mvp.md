@@ -84,6 +84,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
 - [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
 - [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness. The current source and attestation IDs are authoritative in `docs/agent-harness/certification.json` and Git parent history.
+- [x] (2026-08-27 15:30Z) Rewrite the public README to explain the project purpose, MCP value, native macOS/iOS skill distinction, use cases, benefits, expectations, and explicit non-expectations; update the GitHub repository description and topics.
 
 ## Surprises & Discoveries
 
@@ -273,3 +274,4 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-27 02:10Z) Change: Recorded Next request-trace linkage commit `f0e28f0` and live verification. Reason: Make server request tracing directly inspectable and connect observed `Next-Action` requests to their server spans without duplicating an MCP catalog.
 - (2026-08-27 02:16Z) Change: Recorded Safari BiDi fallback test commit `1f587cc`. Reason: Verify explicit degradation when the Node runtime lacks WebSocket support.
 - (2026-08-27 02:17Z) Change: Recorded native Next trace contract commit `a866284`. Reason: Keep the project gate aligned with the normalized server trace evidence.
+- (2026-08-27 15:30Z) Change: Recorded the public README and GitHub metadata positioning update. Reason: Make the project’s purpose, differentiation, value, use cases, and limits discoverable before installation.
