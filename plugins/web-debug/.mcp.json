@@ -7,7 +7,7 @@
         "github:MarlonJD/web-debug-mcp#main"
       ],
       "startup_timeout_sec": 20,
-      "tool_timeout_sec": 60
+      "tool_timeout_sec": 150
     }
   }
 }

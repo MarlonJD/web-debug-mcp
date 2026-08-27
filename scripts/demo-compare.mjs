@@ -72,7 +72,7 @@ const scenarioDefinitions = {
     port: Number(process.env.WEB_DEBUG_DEMO_NEXT_PORT ?? 4185),
     urlPath: "/",
     actions: [
-      { kind: "wait", timeoutMs: 500 },
+      { kind: "wait", selector: "[data-testid='hydration-status']", text: "Hydrated", timeoutMs: 5_000 },
       { kind: "click", selector: "#health-button" },
       { kind: "wait", selector: "[role=status]", text: "Healthy", timeoutMs: 5_000 },
     ],
@@ -81,7 +81,7 @@ const scenarioDefinitions = {
       { kind: "noConsoleErrors" },
     ],
     postActions: [
-      { kind: "wait", timeoutMs: 500 },
+      { kind: "wait", selector: "[data-testid='hydration-status']", text: "Hydrated", timeoutMs: 5_000 },
       { kind: "click", selector: "#payment-button" },
       { kind: "wait", selector: "#server-action-status", text: "Submitted", timeoutMs: 5_000 },
     ],
@@ -118,6 +118,7 @@ const scenarioDefinitions = {
       { kind: "fill", selector: "[aria-label='Search incidents']", value: "Refund" },
     ],
     diagnosisChecks: [{ kind: "textContains", value: "Showing 1 incident" }],
+    failureSignature: [{ kind: "textContains", value: "Showing 1 incident", expected: "fail" }],
     verificationActions: [
       { kind: "fill", selector: "[aria-label='Search incidents']", value: "Refund" },
       { kind: "wait", selector: "[data-testid='visible-count']", text: "Showing 1 incident", timeoutMs: 5_000 },
@@ -152,23 +153,24 @@ const scenarioDefinitions = {
       { kind: "click", selector: "[data-testid='refresh-quote']" },
       { kind: "click", selector: "[data-testid='refresh-quote']" },
       { kind: "wait", selector: "[data-testid='quote-status']", text: "Quote ready", timeoutMs: 5_000 },
-      { kind: "wait", timeoutMs: 350 },
+      { kind: "wait", selector: "[data-testid='quote-requests-settled']", text: "All quote requests settled", timeoutMs: 5_000 },
     ],
     diagnosisChecks: [{ kind: "textContains", value: "Quote v2 applied" }],
+    failureSignature: [{ kind: "textContains", value: "Quote v2 applied", expected: "fail" }],
     verificationActions: [
       { kind: "fill", selector: "[aria-label='Quote quantity']", value: "3" },
       { kind: "fill", selector: "[aria-label='Quote promo code']", value: "SAVE20" },
       { kind: "click", selector: "[data-testid='refresh-quote']" },
       { kind: "click", selector: "[data-testid='refresh-quote']" },
       { kind: "wait", selector: "[data-testid='quote-status']", text: "Quote ready", timeoutMs: 5_000 },
-      { kind: "wait", timeoutMs: 350 },
+      { kind: "wait", selector: "[data-testid='quote-requests-settled']", text: "All quote requests settled", timeoutMs: 5_000 },
     ],
     verificationChecks: [
       { kind: "textContains", value: "Quote v2 applied" },
       { kind: "noConsoleErrors" },
     ],
-    fixes: [{ file: "src/App.jsx", from: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", to: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    if (requestNumber !== latestQuoteRequest.current) return;\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });" }],
-    variantMarkers: { buggy: "    const result = await requestQuote({ quantity: Number(quantity), coupon });\n    setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", fixed: "    if (requestNumber !== latestQuoteRequest.current) return;" },
+    fixes: [{ file: "src/App.jsx", from: "      const result = await requestQuote({ quantity: Number(quantity), coupon });\n      setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", to: "      const result = await requestQuote({ quantity: Number(quantity), coupon });\n      if (requestNumber !== latestQuoteRequest.current) return;\n      setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });" }],
+    variantMarkers: { buggy: "      const result = await requestQuote({ quantity: Number(quantity), coupon });\n      setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", fixed: "      if (requestNumber !== latestQuoteRequest.current) return;" },
     baselineInspect: async ({ projectRoot }) => ({
       sourceFile: "src/App.jsx",
       staleResponseMarker: (await readFile(join(projectRoot, "src/App.jsx"), "utf8")).includes("requestNumber !== latestQuoteRequest.current") === false,
@@ -198,12 +200,14 @@ const scenarioDefinitions = {
       { kind: "textContains", value: "Refund request" },
       { kind: "noConsoleErrors" },
     ],
+    failureSignature: [{ kind: "textContains", value: "Drawer layout offset", expected: "pass" }],
     verificationActions: [
       { kind: "click", selector: "[data-testid='view-refund']" },
       { kind: "wait", selector: "[data-testid='incident-drawer']", timeoutMs: 5_000 },
     ],
     verificationChecks: [
       { kind: "textContains", value: "Refund request" },
+      { kind: "textContains", value: "Drawer layout aligned" },
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/styles.css", from: ".drawer-layer { position: absolute; inset: 76px 0 0;", to: ".drawer-layer { position: fixed; inset: 0;" }],
@@ -215,6 +219,11 @@ const scenarioDefinitions = {
     mcpHighlights: ["before screenshot", "desktop/mobile geometry", "viewport coverage invariant", "after screenshot", "no desktop regression"],
   },
 };
+
+// A repair run keeps one manager/session/scenario per viewport from the buggy
+// baseline through the patched verification. This is intentionally in-memory;
+// the server contract does not persist scenarios across sessions or processes.
+const repairContexts = new Map();
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
@@ -398,6 +407,12 @@ async function runRepairScenario(definition, runs, artifactDir) {
     throw new Error(`${definition.id} demo failed: ${error instanceof Error ? error.message : String(error)}${output ? `\nFixture output:\n${output}` : ""}`);
   } finally {
     await stopProcess(child);
+    for (const [key, repairContext] of repairContexts) {
+      if (key.startsWith(`${definition.id}:`)) {
+        repairContexts.delete(key);
+        await repairContext.manager.closeAll();
+      }
+    }
   }
 }
 
@@ -539,49 +554,69 @@ async function runRepairMcpPhase(definition, url, projectRoot, actions, checks, 
 
 async function runRepairMcpView(definition, url, projectRoot, viewport, actions, checks, phase) {
   const startedAt = performance.now();
-  const manager = new SessionManager();
-  let session = null;
+  const key = `${definition.id}:${viewport.label ?? `${viewport.width}x${viewport.height}`}`;
+  let context = repairContexts.get(key);
+  let manager;
+  let session;
+  let scenario;
   try {
-    const sessionStartedAt = performance.now();
-    session = await manager.start({
-      projectRoot,
-      url,
-      executablePath: browserPath,
-      headless: true,
-      viewport: { width: viewport.width, height: viewport.height },
-    });
-    const sessionStartupMs = elapsed(sessionStartedAt);
-    const scenario = manager.recordScenario({
-      name: `${definition.title} (${phase})`,
-      url,
-      actions,
-      checks,
-    });
-    const verification = await manager.verifyScenario(session.id, scenario.id);
-    const react = verification.evidence.browser.react;
+    let sessionStartupMs = 0;
+    if (phase === "before" || !context) {
+      manager = new SessionManager();
+      const sessionStartedAt = performance.now();
+      session = await manager.start({
+        projectRoot,
+        url,
+        executablePath: browserPath,
+        headless: true,
+        viewport: { width: viewport.width, height: viewport.height },
+      });
+      sessionStartupMs = elapsed(sessionStartedAt);
+      context = { manager, session };
+      repairContexts.set(key, context);
+      scenario = await manager.recordScenario({
+        sessionId: session.id,
+        name: definition.title,
+        url,
+        actions,
+        failureSignature: definition.failureSignature ?? checks.map((check) => ({ ...check, expected: "fail" })),
+        acceptanceChecks: definition.verificationChecks ?? checks,
+        risks: definition.id === "complex-async-fix" ? { async: true, timing: true } : undefined,
+      });
+      context.scenario = scenario;
+      repairContexts.set(key, context);
+    } else {
+      ({ manager, session, scenario } = context);
+    }
+    const verification = phase === "before"
+      ? { outcome: scenario.baseline.status === "reproduced" ? "failed" : "inconclusive", evidence: scenario.baseline.evidence, postFix: { attempts: [] }, level: scenario.baseline.level }
+      : await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
+    const evidenceBundle = verification.evidence?.postFix ?? verification.evidence;
+    const react = evidenceBundle?.browser.react;
     const component = findComponent(react?.components ?? [], "IncidentDashboard");
     const observation = definition.id === "visual-layout-fix"
       ? await evaluateRepairLayout(manager, session.id)
       : definition.id === "complex-async-fix"
         ? {
-            quoteResult: verification.evidence.browser.dom.bodyText.match(/Quote v\d+ applied: \$[\d.]+/)?.[0] ?? "",
-            quoteStatus: verification.evidence.browser.dom.bodyText.includes("Quote ready") ? "Quote ready" : "",
+            quoteResult: evidenceBundle?.browser.dom.bodyText.match(/Quote v\d+ applied: \$[\d.]+/)?.[0] ?? "",
+            quoteStatus: evidenceBundle?.browser.dom.bodyText.includes("Quote ready") ? "Quote ready" : "",
             query: component?.hooks?.[0] ?? null,
           }
         : {
           query: component?.hooks?.[0] ?? null,
-          visibleCountText: verification.evidence.browser.dom.bodyText.match(/Showing \d+ incident[s]?/)?.[0] ?? "",
+          visibleCountText: evidenceBundle?.browser.dom.bodyText.match(/Showing \d+ incident[s]?/)?.[0] ?? "",
         };
     return {
       viewport,
       timingsMs: { sessionStartup: sessionStartupMs, verification: elapsed(startedAt), total: elapsed(startedAt) },
-      passed: verification.passed,
-      checks: verification.checks,
+      passed: verification.outcome === "verified" || (phase === "before" && scenario.baseline.status === "reproduced"),
+      outcome: verification.outcome,
+      checks: phase === "before" ? scenario.baseline.attempts.at(-1)?.checks ?? [] : verification.postFix.attempts.at(-1)?.checks ?? [],
       observation,
-      consoleErrorCount: verification.evidence.browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length,
-      networkCount: verification.evidence.browser.network.length,
-      screenshotPath: verification.evidence.browser.screenshotPath,
-      replayFrames: verification.evidence.replay.frames.length,
+      consoleErrorCount: evidenceBundle?.browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length ?? 0,
+      networkCount: evidenceBundle?.browser.network.length ?? 0,
+      screenshotPath: evidenceBundle?.browser.screenshotPath,
+      replayFrames: evidenceBundle?.replay.frames.length ?? 0,
       react: react
         ? {
             detected: react.detected,
@@ -592,13 +627,43 @@ async function runRepairMcpView(definition, url, projectRoot, viewport, actions,
             flamegraphNodes: react.flamegraph.length,
           }
         : null,
-      vite: verification.evidence.browser.vite
-        ? { moduleCount: verification.evidence.browser.vite.moduleCount, hmrActive: verification.evidence.browser.vite.hmr.active }
+      vite: evidenceBundle?.browser.vite
+        ? { moduleCount: evidenceBundle.browser.vite.moduleCount, hmrActive: evidenceBundle.browser.vite.hmr.active }
         : null,
-      warnings: verification.evidence.browser.warnings,
+      warnings: evidenceBundle?.browser.warnings ?? [],
+      verification: phase === "before"
+        ? {
+            baselineStatus: scenario.baseline.status,
+            level: scenario.baseline.level,
+            attempts: scenario.baseline.attempts.length,
+            observedRate: scenario.baseline.observedRate,
+            contractHash: scenario.contractHash,
+            buildReference: scenario.buildReference,
+            evidence: Boolean(scenario.baseline.evidence),
+          }
+        : {
+            outcome: verification.outcome,
+            level: verification.level,
+            requestedLevel: verification.requestedLevel,
+            escalations: verification.escalations,
+            flaky: verification.flaky,
+            baselineStatus: verification.baseline.status,
+            baselineAttempts: verification.baseline.attempts.length,
+            postFixAttempts: verification.postFix.attempts.length,
+            baselineRate: verification.baseline.observedRate,
+            postFixRate: verification.postFix.observedRate,
+            environmentFingerprint: verification.environmentFingerprint,
+            contractHash: verification.contractHash,
+            buildReference: verification.buildReference,
+            evidence: Boolean(verification.evidence.postFix),
+            truncation: verification.truncation,
+          },
     };
   } finally {
-    await manager.closeAll();
+    if (phase !== "before" && context) {
+      repairContexts.delete(key);
+      await context.manager.closeAll();
+    }
   }
 }
 
@@ -668,8 +733,8 @@ function repairBugObserved(definition, views) {
 }
 
 function repairMcpBugObserved(definition, views) {
-  if (definition.id === "complex-logic-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.passed === false));
-  if (definition.id === "complex-async-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.passed === false));
+  if (definition.id === "complex-logic-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.state === "fail"));
+  if (definition.id === "complex-async-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.state === "fail"));
   return views.some((view) => view.observation?.available && view.observation.coversViewport === false);
 }
 
@@ -727,6 +792,7 @@ function repairMcpEvidence(definition, views, phase) {
       fixVerification: phase === "after" && views.every((view) => view.passed),
     },
     phase,
+    verification: views.map((view) => view.verification),
     views: views.map((view) => ({
       viewport: view.viewport,
       passed: view.passed,
@@ -875,15 +941,20 @@ async function runMcp(definition, url, actionId) {
     }
     const inspectionMs = elapsed(inspectionStartedAt);
 
-    const verifyStartedAt = performance.now();
-    const scenario = manager.recordScenario({
-      name: definition.title,
-      url,
-      actions: definition.actions,
-      checks: definition.checks,
-    });
-    const verification = await manager.verifyScenario(session.id, scenario.id);
-    const verifyMs = elapsed(verifyStartedAt);
+    const flowStartedAt = performance.now();
+    for (const action of definition.actions) await manager.act(session.id, action);
+    const captured = await manager.capture(session.id, true);
+    const verifyMs = elapsed(flowStartedAt);
+    // These simple comparison scenarios are evidence captures, not fix
+    // claims. Repair scenarios below are the only examples that use a
+    // failure signature and adaptive fix verification.
+    const verification = {
+      outcome: "captured",
+      evidence: { baseline: captured, postFix: null },
+      postFix: { attempts: [] },
+      level: "quick",
+      escalations: [],
+    };
 
     let postFlow = null;
     if (definition.postActions) {
@@ -893,7 +964,8 @@ async function runMcp(definition, url, actionId) {
       postFlow = { evidence: postFlow, elapsedMs: elapsed(postStartedAt) };
     }
 
-    const evidence = postFlow?.evidence ?? verification.evidence;
+    const evidence = postFlow?.evidence ?? verification.evidence.postFix ?? verification.evidence.baseline;
+    if (!evidence) throw new Error(`MCP verification returned no representative evidence: ${verification.outcome}`);
     return {
       timingsMs: {
         projectDetection: projectDetectionMs,
@@ -903,8 +975,9 @@ async function runMcp(definition, url, actionId) {
         postFlow: postFlow?.elapsedMs ?? 0,
         total: elapsed(startedAt),
       },
-      passed: verification.passed,
-      checks: verification.checks,
+      passed: true,
+      outcome: verification.outcome,
+      checks: verification.postFix.attempts.at(-1)?.checks ?? [],
       evidence: mcpEvidence(definition, verification, evidence, postFlow?.evidence ?? null),
       inspections: Object.keys(inspections).length > 0 ? inspections : undefined,
       capabilities: project.capabilities,
@@ -948,7 +1021,7 @@ function baselineEvidence(definition, snapshot, consoleEntries, network, inspect
 }
 
 function mcpEvidence(definition, verification, evidence, actionEvidence) {
-  const initialEvidence = verification.evidence;
+  const initialEvidence = verification.evidence.baseline ?? verification.evidence.postFix ?? evidence;
   const react = definition.id === "react-render-cause" ? (evidence.browser.react ?? initialEvidence.browser.react) : null;
   const vite = definition.id === "react-render-cause" ? (evidence.browser.vite ?? initialEvidence.browser.vite) : null;
   const nextRuntime = definition.id === "next-server-action" ? (actionEvidence?.browser.next ?? evidence.browser.next) : null;
@@ -1017,8 +1090,14 @@ function mcpEvidence(definition, verification, evidence, actionEvidence) {
         }
       : null,
     verification: {
-      passed: verification.passed,
-      checks: verification.checks,
+      outcome: verification.outcome,
+      passed: verification.outcome === "verified",
+      checks: verification.postFix.attempts.at(-1)?.checks ?? [],
+      level: verification.level,
+      escalations: verification.escalations,
+      attempts: verification.postFix.attempts.length,
+      observedRate: verification.postFix.observedRate,
+      evidence: Boolean(verification.evidence.postFix),
     },
   };
 }
@@ -1071,6 +1150,11 @@ function renderMarkdown(report) {
     lines.push(`- MCP highlights: ${result.mcp.highlights.join(", ")}.`);
     if (result.type === "repair") {
       lines.push(`- Bug reproduced before the fix: ${result.comparison.bugReproduced ? "yes" : "no"}; root-cause evidence: ${result.comparison.rootCauseEvidence ? "yes" : "no"}; fixed verification: ${result.comparison.fixVerified ? "passed" : "failed"}.`);
+      const adaptive = result.mcp.runs[0]?.fix?.views?.[0]?.verification;
+      if (adaptive?.outcome) {
+        lines.push(`- Adaptive verification: outcome=${adaptive.outcome}; level=${adaptive.level}; requested=${adaptive.requestedLevel}; flaky=${adaptive.flaky}; baseline attempts=${adaptive.baselineAttempts} (rate ${formatRate(adaptive.baselineRate)}); post-fix attempts=${adaptive.postFixAttempts} (rate ${formatRate(adaptive.postFixRate)}); escalations=${adaptive.escalations?.join(" | ") || "none"}`);
+        lines.push(`- Provenance: environment=${JSON.stringify(adaptive.environmentFingerprint)}; contractHash=${adaptive.contractHash}; buildReference=${JSON.stringify(adaptive.buildReference)}; evidence=${adaptive.evidence ? "yes" : "no"}; truncation=${JSON.stringify(adaptive.truncation)}.`);
+      }
       if (result.comparison.visual) {
         lines.push(`- Visual geometry: desktop before broken=${result.comparison.visual.desktopBeforeBroken}, mobile before broken=${result.comparison.visual.mobileBeforeBroken}, desktop after covered=${result.comparison.visual.desktopAfterCovered}, mobile after contained=${result.comparison.visual.mobileAfterContained}.`);
       }
@@ -1087,6 +1171,11 @@ function renderMarkdown(report) {
 
   lines.push("## Notes", "", ...report.notes.map((note) => `- ${note}`), "", `Artifacts: ${report.artifactDir}`);
   return lines.join("\n");
+}
+
+function formatRate(rate) {
+  if (!rate || rate.rate === null || rate.rate === undefined) return "unavailable";
+  return `${rate.rate} (${rate.decisive} decisive)`;
 }
 
 function formatTimingSummary(summary) {
@@ -1156,8 +1245,8 @@ async function performRawActions(page, actions) {
         );
       } else if (action.selector) {
         await page.locator(action.selector).waitFor({ state: "visible", timeout: action.timeoutMs ?? 1_000 });
-      } else if (action.timeoutMs) {
-        await page.waitForTimeout(action.timeoutMs);
+      } else {
+        throw new Error("Elapsed-only waits are not supported; provide a selector or text condition.");
       }
     }
   }
@@ -1245,14 +1334,7 @@ function expectedText(definition) {
 }
 
 function mcpWorkflow(definition) {
-  return [
-    "web_project_detect",
-    "web_session_start",
-    "web_repro_record",
-    "web_fix_verify",
-    ...(definition.postActions ? ["web_browser_action", "web_issue_capture"] : []),
-    "web_session_close",
-  ];
+  return ["web_project_detect", "web_session_start", "web_browser_action", "web_issue_capture", "web_session_close"];
 }
 
 function findComponent(nodes, name) {

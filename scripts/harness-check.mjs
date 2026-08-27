@@ -125,15 +125,15 @@ check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundl
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
 check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("github:MarlonJD/web-debug-mcp#main"), "Codex plugin must resolve the current GitHub MCP package");
-check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 60, "Codex plugin MCP timeouts must remain bounded");
+check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
 check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
 check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
-check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.1.0", "Claude Code plugin manifest must expose the web-debug identity and version");
+check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.2.0", "Claude Code plugin manifest must expose the web-debug identity and version");
 check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest must expose the Web Debug display name");
 check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
-check(claudeMarketplaceEntry?.version === "0.1.0" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
+check(claudeMarketplaceEntry?.version === "0.2.0" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 
 const sourceRoot = join(root, "src");
@@ -154,6 +154,7 @@ const mcpSource = read("src/index.ts");
 const reactBridgeSource = read("src/adapters/react-bridge.ts");
 const safariSource = read("src/adapters/safari.ts");
 const sessionSource = read("src/core/session-manager.ts");
+const chromiumSource = read("src/adapters/chromium.ts");
 const vitePluginSource = read("src/adapters/vite-plugin.ts");
 const nextSource = read("src/adapters/next.ts");
 for (const toolName of [
@@ -177,6 +178,13 @@ check(reactBridgeSource.includes("flamegraph"), "React bridge must expose the bo
 check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
 check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");
+check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"), "Post-fix verification must require the complete polarity-aware failure signature to be absent");
+check(sessionSource.includes("owned adapter was made unusable before lease release"), "Cancelled adapter work must poison the session before releasing its lease");
+check(sessionSource.includes("resetReplayForAttempt") && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
+check(!sessionSource.includes("Object.defineProperty"), "Verification output must not use a compatibility alias hack");
+check(!sessionSource.includes("copyToSafeArtifactPath") && !sessionSource.includes("copyFileSync"), "Redaction must not copy screenshots outside the owning session artifact directory");
+check(mcpSource.includes("deadline: now + MCP_OPERATION_BUDGET_MS"), "MCP handlers must propagate an absolute bounded deadline");
+check(chromiumSource.includes("options.checksOnly") && chromiumSource.includes("optional enrichment timed out"), "Chromium checks-only and optional-enrichment budgets must be explicit");
 check(vitePluginSource.includes("summarizeSourceMap"), "Vite plugin must preserve source-map provenance summaries");
 check(nextSource.includes("serverActionExecutions"), "Next adapter must preserve Server Action execution evidence");
 check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve normalized server request traces");

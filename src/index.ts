@@ -1,30 +1,39 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { performance } from "node:perf_hooks";
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import type { BrowserAction, NextInspection, ScenarioCheck } from "./domain/types.js";
+import type {
+  BrowserAction,
+  FailureSignatureEntry,
+  NextInspection,
+  ScenarioCheck,
+  ScenarioRiskSignals,
+  OperationContext,
+  VerificationLevel,
+} from "./domain/types.js";
 import { WebDebugError, errorMessage } from "./core/errors.js";
 import { SessionManager } from "./core/session-manager.js";
+import { boundText, redactText, redactValue } from "./core/redaction.js";
 
 const DEFAULT_PROJECT_ROOT = process.cwd();
+const MCP_OPERATION_BUDGET_MS = 150_000;
 const viewportSchema = z.object({
   width: z.number().int().min(320).max(3_840),
   height: z.number().int().min(240).max(2_160),
 });
 
-const browserActionSchema = z.discriminatedUnion("kind", [
+const browserActionSchema = z.union([
   z.object({ kind: z.literal("navigate"), url: z.string().url() }),
   z.object({ kind: z.literal("click"), selector: z.string().min(1).max(500) }),
   z.object({ kind: z.literal("fill"), selector: z.string().min(1).max(500), value: z.string().max(10_000) }),
-  z.object({
-    kind: z.literal("wait"),
-    selector: z.string().min(1).max(500).optional(),
-    text: z.string().min(1).max(500).optional(),
-    timeoutMs: z.number().int().min(0).max(30_000).optional(),
-  }),
+  z.union([
+    z.object({ kind: z.literal("wait"), selector: z.string().min(1).max(500), text: z.string().min(1).max(500).optional(), timeoutMs: z.number().int().min(0).max(30_000).optional() }),
+    z.object({ kind: z.literal("wait"), selector: z.string().min(1).max(500).optional(), text: z.string().min(1).max(500), timeoutMs: z.number().int().min(0).max(30_000).optional() }),
+  ]),
   z.object({ kind: z.literal("reload") }),
 ]);
 
@@ -33,6 +42,28 @@ const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("textContains"), value: z.string().min(1).max(500) }),
   z.object({ kind: z.literal("noConsoleErrors") }),
 ]);
+
+const failureSignatureSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("urlContains"), value: z.string().min(1).max(500), expected: z.enum(["pass", "fail"]) }),
+  z.object({ kind: z.literal("textContains"), value: z.string().min(1).max(500), expected: z.enum(["pass", "fail"]) }),
+  z.object({ kind: z.literal("noConsoleErrors"), expected: z.enum(["pass", "fail"]) }),
+]);
+
+const risksSchema = z.object({
+  async: z.boolean().optional(),
+  timing: z.boolean().optional(),
+  concurrency: z.boolean().optional(),
+  browserStateLeakage: z.boolean().optional(),
+  serverStateLeakage: z.boolean().optional(),
+  priorFlakiness: z.boolean().optional(),
+}).strict();
+
+const buildReferenceSchema = z.object({
+  source: z.literal("caller"),
+  value: z.string().min(1).max(200),
+}).strict();
+
+const levelSchema = z.enum(["quick", "standard", "strict"]);
 
 const nextInspectionSchema = z.union([
   z.object({
@@ -50,10 +81,10 @@ const nextInspectionSchema = z.union([
 
 export function createServer(manager = new SessionManager()): McpServer {
   const server = new McpServer(
-    { name: "web-debug-mcp", version: "0.1.0" },
+    { name: "web-debug-mcp", version: "0.2.0" },
     {
       instructions:
-        "Use this local server for web debugging when a user asks to reproduce, inspect, capture, or verify a browser/React/Vite/Next/Safari issue. Start with web_project_detect, then web_session_start and web_issue_capture. Use explicit local targets by default; remote targets and side effects require opt-in. Do not use it for native macOS/iOS build-debug, production monitoring, or arbitrary credentialed browser control. Data is bounded/redacted; close sessions when done.",
+        "Use this local server for web debugging when a user asks to reproduce, inspect, capture, or verify a browser/React/Vite/Next/Safari issue. Start with web_project_detect, then web_session_start and web_issue_capture. For regression proof, web_repro_record executes a bounded pre-fix failure signature and web_fix_verify returns verified, failed, or inconclusive with adaptive attempt evidence. Use explicit local targets by default; remote targets and side effects require opt-in. Do not use it for native macOS/iOS build-debug, production monitoring, or arbitrary credentialed browser control. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -73,10 +104,11 @@ export function createServer(manager = new SessionManager()): McpServer {
     "web_session_start",
     {
       title: "Start web debug session",
-      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings.",
+      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings; attached Chromium can supply targetId to pin the exact page.",
       inputSchema: z.object({
         projectRoot: z.string().min(1).default(DEFAULT_PROJECT_ROOT),
         url: z.string().url(),
+        targetId: z.string().min(1).max(200).optional(),
         browser: z.enum(["chromium", "safari"]).default("chromium"),
         cdpEndpoint: z.string().url().optional(),
         webdriverEndpoint: z.string().url().optional(),
@@ -87,7 +119,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async (input) => respond(() => manager.start(input)),
+    async (input, extra) => respond(() => manager.start(input, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -109,7 +141,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, action }) => respond(() => manager.act(sessionId, action as BrowserAction)),
+    async ({ sessionId, action }, extra) => respond(() => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -120,7 +152,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), captureScreenshot: z.boolean().default(true) }),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ sessionId, captureScreenshot }) => respond(() => manager.capture(sessionId, captureScreenshot)),
+    async ({ sessionId, captureScreenshot }, extra) => respond(() => manager.capture(sessionId, captureScreenshot, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -131,7 +163,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), inspection: nextInspectionSchema }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
-    async ({ sessionId, inspection }) => respond(() => manager.inspectNext(sessionId, inspection as NextInspection)),
+    async ({ sessionId, inspection }, extra) => respond(() => manager.inspectNext(sessionId, inspection as NextInspection, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -142,7 +174,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000), restore: z.boolean().default(false) }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, frameIndex, restore }) => respond(() => manager.seekReplay(sessionId, frameIndex, restore)),
+    async ({ sessionId, frameIndex, restore }, extra) => respond(() => manager.seekReplay(sessionId, frameIndex, restore, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -158,7 +190,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, sourceUrl, line, column }) => respond(() => manager.setBreakpoint(sessionId, { sourceUrl, line, column })),
+    async ({ sessionId, sourceUrl, line, column }, extra) => respond(() => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -172,7 +204,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, action }) => respond(() => manager.control(sessionId, action)),
+    async ({ sessionId, action }, extra) => respond(() => manager.control(sessionId, action, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -187,40 +219,62 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, expression, allowSideEffects }) => respond(() => manager.evaluate(sessionId, expression, allowSideEffects)),
+    async ({ sessionId, expression, allowSideEffects }, extra) => respond(() => manager.evaluate(sessionId, expression, allowSideEffects, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_repro_record",
     {
       title: "Record reproducible web flow",
-      description: "Store a bounded browser action sequence and explicit checks for later fix verification.",
+      description: "Execute and store a bounded pre-fix reproduction with a named failure signature, acceptance checks, and optional adaptive-risk signals.",
       inputSchema: z.object({
+        sessionId: z.string().uuid(),
         name: z.string().min(1).max(200),
         url: z.string().url(),
         actions: z.array(browserActionSchema).max(100),
-        checks: z.array(scenarioCheckSchema).max(20),
-      }),
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+        failureSignature: z.array(failureSignatureSchema).min(1).max(20),
+        acceptanceChecks: z.array(scenarioCheckSchema).min(1).max(20),
+        regressionChecks: z.array(scenarioCheckSchema).max(20).optional(),
+        risks: risksSchema.optional(),
+        requestedLevel: levelSchema.optional(),
+        buildReference: buildReferenceSchema.optional(),
+        serverStateReset: z.object({
+          action: browserActionSchema.optional(),
+          readyCheck: scenarioCheckSchema.optional(),
+        }).strict().optional(),
+      }).strict(),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ name, url, actions, checks }) =>
+    async ({ sessionId, name, url, actions, failureSignature, acceptanceChecks, regressionChecks, risks, requestedLevel, buildReference, serverStateReset }, extra) =>
       respond(() => manager.recordScenario({
+        sessionId,
         name,
         url,
         actions: actions as BrowserAction[],
-        checks: checks as ScenarioCheck[],
-      })),
+        failureSignature: failureSignature as FailureSignatureEntry[],
+        acceptanceChecks: acceptanceChecks as ScenarioCheck[],
+        regressionChecks: regressionChecks as ScenarioCheck[] | undefined,
+        risks: risks as ScenarioRiskSignals | undefined,
+        requestedLevel: requestedLevel as VerificationLevel | undefined,
+        buildReference,
+        serverStateReset: serverStateReset as { action?: BrowserAction; readyCheck?: ScenarioCheck } | undefined,
+      }, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_fix_verify",
     {
       title: "Verify web fix against recorded flow",
-      description: "Replay a stored local flow, run its checks, and return evidence-backed pass/fail output.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), scenarioId: z.string().uuid() }),
+      description: "Verify a stored pre-fix reproduction with adaptive bounded attempts and return verified, failed, or inconclusive evidence.",
+      inputSchema: z.object({
+        sessionId: z.string().uuid(),
+        scenarioId: z.string().uuid(),
+        requestedLevel: levelSchema.optional(),
+        buildReference: buildReferenceSchema.optional(),
+      }).strict(),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, scenarioId }) => respond(() => manager.verifyScenario(sessionId, scenarioId)),
+    async ({ sessionId, scenarioId, requestedLevel, buildReference }, extra) => respond(() => manager.verifyScenario({ sessionId, scenarioId, requestedLevel: requestedLevel as VerificationLevel | undefined, buildReference }, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -237,15 +291,23 @@ export function createServer(manager = new SessionManager()): McpServer {
   return server;
 }
 
+function requestContext(signal?: AbortSignal): OperationContext {
+  const now = performance.now();
+  return { signal, clock: () => performance.now(), deadline: now + MCP_OPERATION_BUDGET_MS };
+}
+
 async function respond<T>(operation: () => T | Promise<T>) {
   try {
     const value = await operation();
+    // Core/adapters apply redaction and bounds at their ownership boundary;
+    // serializing here must not traverse the graph a second time and turn
+    // valid nested evidence into depth-truncation markers.
     return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
   } catch (error) {
-    const details = error instanceof WebDebugError ? { code: error.code, details: error.details } : undefined;
+    const details = error instanceof WebDebugError ? { code: error.code, details: redactValue(error.details) } : undefined;
     return {
       isError: true,
-      content: [{ type: "text" as const, text: JSON.stringify({ error: errorMessage(error), ...details }, null, 2) }],
+      content: [{ type: "text" as const, text: JSON.stringify({ error: boundText(redactText(errorMessage(error)), 500), ...details }, null, 2) }],
     };
   }
 }

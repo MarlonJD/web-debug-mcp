@@ -1,4 +1,4 @@
-const SENSITIVE_KEY = /authorization|cookie|set-cookie|token|secret|password|passwd|api-key|private-key|session|csrf/i;
+const SENSITIVE_KEY = /authorization|cookie|set-cookie|token|secret|password|passwd|api-key|private-key|csrf/i;
 const BEARER_TOKEN = /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi;
 const JWT = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 const KEY_VALUE_SECRET = /((?:authorization|cookie|token|secret|password|passwd|api[-_]?key|private[-_]?key|csrf)\s*[:=]\s*)([^,;\s&]+)/gi;
@@ -78,5 +78,5 @@ export function boundItems<T>(items: T[], maxItems = 50): { items: T[]; truncate
 
 function isSensitiveKey(key: string): boolean {
   const normalized = key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
-  return SENSITIVE_KEY.test(normalized);
+  return SENSITIVE_KEY.test(normalized) || normalized === "session" || normalized === "session-token";
 }

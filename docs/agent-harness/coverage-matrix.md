@@ -61,3 +61,11 @@ Review this matrix after major architecture, CI, runtime, or agent-workflow chan
 Revalidated after packaging the standalone stdio MCP binary and documenting Codex and Claude Code installation.
 
 Revalidated after adding the GPL-3.0-or-later license to the source and package metadata.
+
+Revalidated after adding session-bound adaptive reproduction/fix verification, tri-state freshness, exclusive leases, bounded representative evidence, and the 150-second plugin timeout.
+
+Revalidated after the correction pass: focused scenario/MCP/adapter/fixture coverage passed 31 tests, the full suite passed 45 tests, and `npm run harness:check` passed 204 checks. Live Chromium, React/Vite, Next, Safari, complex-async, and all-scenario comparison evidence passed; Safari's debugger and Performance Resource Timing fallback warnings remain explicit.
+
+Revalidated after the second focused correction pass: focused scenario/MCP/adapter/fixture coverage passed 35 tests, the full suite passed 49 tests, and `npm run harness:check` passed 208 checks. Checks-only snapshots remained browser-check-only, optional framework enrichment stayed warning-only under child deadlines, verification replay was reset and attempt-attributed, screenshot handles stayed session-owned without copying, and in-memory MCP cancellation observed server-side adapter cancellation before close. Live Chromium, React/Vite, Next, Safari, complex-async, and all-scenario comparison evidence passed; Safari's debugger/profile and Performance Resource Timing fallback warnings remain explicit.
+
+Revalidated after the final narrow network-evidence correction: focused scenario/MCP/adapter/fixture coverage passed 36 tests, the full suite passed 50 tests, and `npm run harness:check` passed 208 checks. Checks-only snapshots returned no network while authoritative representatives retained only the current attempt's bounded network sample, with observer reset before each retry. Live Chromium, React/Vite, Next, Safari, complex-async, and all-scenario comparison evidence passed; Safari's debugger/profile and Performance Resource Timing fallback warnings remain explicit.

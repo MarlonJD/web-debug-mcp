@@ -1,6 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.1.0+codex.20260827153827",
+  "version": "0.2.0+codex.20260827204916",
   "description": "Evidence-first local web debugging, complex repair verification, and responsive visual QA for Codex and ChatGPT.",
   "author": {
     "name": "Marlon J.D.",

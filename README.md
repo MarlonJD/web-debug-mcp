@@ -32,7 +32,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 command = "npx"
 args = ["-y", "github:MarlonJD/web-debug-mcp#main"]
 startup_timeout_sec = 20
-tool_timeout_sec = 60
+tool_timeout_sec = 150
 ```
 
 Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the active server.
@@ -160,7 +160,7 @@ The public tools cover:
 
 - project capability detection;
 - explicit Chromium or Safari session start and status;
-- bounded browser actions: navigate, click, fill, wait, and reload;
+- bounded browser actions: navigate, click, fill, observable selector/text waits, and reload;
 - issue capture with DOM, console, network, screenshot, debugger, framework, and replay evidence;
 - Chromium breakpoints, pause control, and guarded JavaScript evaluation;
 - Next route compilation and Server Action lookup;
@@ -234,15 +234,35 @@ The adapter speaks to Next’s local `/_next/mcp` endpoint and can return:
 
 The suite observes and explains a Server Action request. It does not invoke arbitrary server actions on an agent’s behalf.
 
-### Replay and verification
+### Replay and adaptive verification
 
-Every action and capture can produce a bounded replay frame. `web_replay_seek` can inspect a retained frame, or use `restore: true` to reissue only safe retained navigation, click, wait, and reload actions. Form values are sanitized before storage; frames containing sanitized inputs or redacted navigation URLs fail closed during restore.
+Every manual action and representative capture can produce one of up to eight bounded replay frames. Verification attempts retain one capture-only frame with an `attemptId`; `web_replay_seek` can inspect it but restore remains fail-closed. Ordinary manual frames can use `restore: true` to reissue only safe retained navigation, click, observable wait, and reload actions. Form values are sanitized before storage; frames containing sanitized inputs or redacted navigation URLs fail closed during restore.
+
+Recorded scenarios execute a bounded pre-fix baseline before they are stored. The contract separates a named `failureSignature` from `acceptanceChecks` and optional `regressionChecks`; `web_fix_verify` returns exactly `verified`, `failed`, or `inconclusive`, never an ambiguous boolean. Quick verification uses one attempt (15 seconds); declared asynchronous, timing, concurrency, browser-state, or server-state risk starts at standard (up to three attempts/60 seconds), and prior flakiness starts strict (up to five attempts/120 seconds). Retryable startup/readiness signals and conflicting baseline observations are recorded as escalation reasons. The MCP plugin allows 150 seconds so strict verification and bounded cleanup can finish.
+
+Scenarios are session-owned and in-memory. The private executable URL retains its exact query for replay, while the public scenario URL is query-free; public actions replace fill values with a redaction marker, contract hashes contain only the sanitized contract, and build references are explicitly untrusted caller labels. Each result reports environment/target provenance, rates over decisive observations, per-attempt summaries, reset/isolation truth, cancellation or deadline state, and one bounded representative evidence bundle per phase. A full representative recapture is authoritative: drift or unavailable evidence is `inconclusive`, never `verified`. A scenario is not reusable across sessions, and closing a session purges private actions and retained evidence.
 
 Recorded scenarios make the loop repeatable:
 
 ```text
 record flow → reproduce → capture evidence → change code → rerun flow → compare checks
 ```
+
+The MCP flow is session-bound and explicit:
+
+```json
+{
+  "sessionId": "<live-session-id>",
+  "name": "latest quote wins",
+  "url": "http://127.0.0.1:4188/",
+  "actions": [{"kind": "click", "selector": "[data-testid='refresh-quote']"}],
+  "failureSignature": [{"kind": "textContains", "value": "Quote v2 applied", "expected": "fail"}],
+  "acceptanceChecks": [{"kind": "textContains", "value": "Quote v2 applied"}, {"kind": "noConsoleErrors"}],
+  "risks": {"async": true}
+}
+```
+
+Wait actions must name a selector or text condition; elapsed-only sleeps are rejected.
 
 ## Why use it?
 
@@ -377,7 +397,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-The current repository-local evidence sweep passes 24 deterministic tests, TypeScript type checking, build, 127 native harness checks, adaptive harness validation, and the Chromium, React/Vite, Next, and Safari live smokes. Repository-local harness certification currently returns `CERT000` for its bounded source/attestation window. Provider-backed production attestation and an approved external remote-browser run are separate authority gates.
+The repository-local evidence sweep covers deterministic tests, TypeScript type checking, build, native harness checks, adaptive scenario bounds, and proportional Chromium, React/Vite, Next, Safari, replay, and repair smokes when those runtimes are available. Repository-local harness certification currently returns `CERT000` for its bounded source/attestation window. Provider-backed production attestation and an approved external remote-browser run are separate authority gates.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 

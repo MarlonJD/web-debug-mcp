@@ -1,8 +1,9 @@
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { open, realpath } from "node:fs/promises";
+import { performance } from "node:perf_hooks";
 
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
-import type { NetworkEntry, NextInspection, NextInspectionResult, NextRequestTrace, NextSnapshot } from "../domain/types.js";
+import type { NetworkEntry, NextInspection, NextInspectionResult, NextRequestTrace, NextSnapshot, OperationContext } from "../domain/types.js";
 
 interface RpcResponse {
   result?: unknown;
@@ -29,10 +30,10 @@ const MAX_LOG_LINES = 200;
 const MAX_LOG_CHARS = 32_000;
 
 export class NextAdapter {
-  async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = []): Promise<NextSnapshot | null> {
+  async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = [], context: OperationContext = {}): Promise<NextSnapshot | null> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
-    const listed = await client.request("tools/list", {});
+    const listed = await client.request("tools/list", {}, context);
     const tools = extractToolNames(listed.result);
     if (tools.length === 0) return null;
 
@@ -44,7 +45,7 @@ export class NextAdapter {
         values.set(toolName, null);
         continue;
       }
-      const result = await client.callTool(toolName);
+      const result = await client.callTool(toolName, {}, context);
       values.set(toolName, result.value);
       if (result.warning) warnings.push(result.warning);
     }
@@ -53,7 +54,7 @@ export class NextAdapter {
       ? await readLogTail(values.get("get_logs"), projectRoot, warnings)
       : null;
     const requestTraces = extractRequestTraces(values.get("get_request_insights"));
-    const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, requestTraces, warnings);
+    const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, requestTraces, warnings, context);
 
     return {
       detected: true,
@@ -73,10 +74,10 @@ export class NextAdapter {
     };
   }
 
-  async inspect(baseUrl: string, inspection: NextInspection): Promise<NextInspectionResult> {
+  async inspect(baseUrl: string, inspection: NextInspection, context: OperationContext = {}): Promise<NextInspectionResult> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
-    const listed = await client.request("tools/list", {});
+    const listed = await client.request("tools/list", {}, context);
     const tools = extractToolNames(listed.result);
     const warnings: string[] = [];
     const toolName = inspection.kind === "compileRoute" ? "compile_route" : "get_server_action_by_id";
@@ -97,7 +98,7 @@ export class NextAdapter {
       args = hasRouteSpecifier ? { routeSpecifier: inspection.routeSpecifier } : { path: inspection.path };
     }
 
-    const result = await client.callTool(toolName, args);
+    const result = await client.callTool(toolName, args, context);
     if (result.warning) warnings.push(result.warning);
     return {
       detected: true,
@@ -115,6 +116,7 @@ async function resolveExecutedServerActions(
   network: NetworkEntry[],
   requestTraces: NextRequestTrace[],
   warnings: string[],
+  context: OperationContext = {},
 ): Promise<NextSnapshot["serverActionExecutions"]> {
   const requests = network.filter((entry) => entry.nextActionId).slice(-10);
   if (requests.length === 0) return [];
@@ -130,7 +132,7 @@ async function resolveExecutedServerActions(
       executions.push({ actionId, request: actionRequest(request), resolution: null, trace: findActionTrace(requestTraces, request), warning });
       continue;
     }
-    const result = await client.callTool("get_server_action_by_id", { actionId });
+    const result = await client.callTool("get_server_action_by_id", { actionId }, context);
     if (result.warning) warnings.push(result.warning);
     executions.push({
       actionId,
@@ -277,9 +279,12 @@ class NextMcpClient {
 
   constructor(private readonly endpoint: string) {}
 
-  async request(method: string, params: Record<string, unknown>): Promise<RpcResponse> {
+  async request(method: string, params: Record<string, unknown>, context: OperationContext = {}): Promise<RpcResponse> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3_000);
+    const remainingMs = context.deadline === undefined ? 3_000 : Math.max(1, Math.min(3_000, context.deadline - performance.now()));
+    const timeout = setTimeout(() => controller.abort(), remainingMs);
+    const onAbort = () => controller.abort();
+    context.signal?.addEventListener("abort", onAbort, { once: true });
     try {
       const response = await fetch(this.endpoint, {
         method: "POST",
@@ -305,14 +310,16 @@ class NextMcpClient {
       return payload;
     } finally {
       clearTimeout(timeout);
+      context.signal?.removeEventListener("abort", onAbort);
     }
   }
 
-  async callTool(name: string, args: Record<string, unknown> = {}): Promise<ToolResult> {
+  async callTool(name: string, args: Record<string, unknown> = {}, context: OperationContext = {}): Promise<ToolResult> {
     try {
-      const response = await this.request("tools/call", { name, arguments: args });
+      const response = await this.request("tools/call", { name, arguments: args }, context);
       return parseToolResult(name, response.result);
     } catch (error) {
+      if (context.signal?.aborted) throw error;
       return {
         value: null,
         warning: `Next runtime tool ${name} unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`,

@@ -13,8 +13,14 @@ describe("complex demo fixture contract", () => {
     expect(app).toContain("  }, []);");
     expect(app).toContain("requestNumber = latestQuoteRequest.current + 1");
     expect(app).toContain("data-testid=\"incident-drawer-layer\"");
+    expect(app).toContain("data-testid=\"drawer-layout-state\"");
+    expect(app).toContain("Drawer layout aligned");
+    expect(app).toContain("Drawer layout offset");
     expect(app).toContain("data-testid=\"refresh-quote\"");
     expect(quoteApi).toContain("requestId % 2 === 1 ? 220 : 35");
+    expect(app).toContain("quote-requests-settled");
+    expect(app).toContain("All quote requests settled");
+    expect(runner).toContain("quote-requests-settled");
     expect(styles).toContain(".drawer-layer { position: absolute; inset: 76px 0 0;");
     expect(runner).toContain('"complex-logic-fix"');
     expect(runner).toContain('"complex-async-fix"');

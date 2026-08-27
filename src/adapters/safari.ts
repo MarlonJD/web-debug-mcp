@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 
 import type {
   ActionResult,
@@ -12,6 +13,7 @@ import type {
   DebuggerSnapshot,
   DomSnapshot,
   NetworkEntry,
+  OperationContext,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
@@ -69,10 +71,12 @@ export class SafariAdapter implements BrowserAdapter {
   private headlessRequested = true;
   private lastKnownTitle = "";
   private lastKnownDom: DomSnapshot = { bodyText: "", elements: [] };
+  private browserVersionValue: string | null = null;
 
   constructor(private readonly configuredEndpoint?: string) {}
 
-  async start(options: BrowserStartOptions): Promise<BrowserTarget> {
+  async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
+    assertContext(context);
     if (options.cdpEndpoint) {
       throw new WebDebugError("SAFARI_CDP_UNSUPPORTED", "Safari sessions use webdriverEndpoint, not cdpEndpoint.");
     }
@@ -88,9 +92,9 @@ export class SafariAdapter implements BrowserAdapter {
     this.remoteTarget = !isLoopback(new URL(endpoint).hostname);
     this.client = new WebDriverClient(endpoint);
 
-    if (!configured) await this.ensureDriver(endpoint);
+    if (!configured) await this.ensureDriver(endpoint, context);
     try {
-      const created = await this.client.createSession();
+      const created = await this.client.createSession(context);
       this.sessionId = created.id;
       if (created.webSocketUrl) {
         try {
@@ -101,11 +105,12 @@ export class SafariAdapter implements BrowserAdapter {
       } else {
         this.bidiWarning = "Safari WebDriver did not return a BiDi WebSocket URL; console events are unavailable; network evidence will use Performance Resource Timing when available.";
       }
-      await this.navigate(options.url);
+      await this.navigate(options.url, context);
       this.baseOrigin = new URL(options.url).origin;
-      this.lastKnownTitle = await this.readTitle();
-      this.lastKnownDom = await this.readDom();
-      return await this.target();
+      this.lastKnownTitle = await this.readTitle(context);
+      this.lastKnownDom = await this.readDom(context);
+      this.browserVersionValue = null;
+      return await this.target(context);
     } catch (error) {
       await this.close();
       throw error;
@@ -122,6 +127,7 @@ export class SafariAdapter implements BrowserAdapter {
     this.remoteTarget = false;
     this.bidiWarning = null;
     this.performanceNetworkFallbackUsed = false;
+    this.browserVersionValue = null;
     this.consoleEntries.length = 0;
     this.networkEntries.clear();
     if (this.driverProcess) {
@@ -130,33 +136,45 @@ export class SafariAdapter implements BrowserAdapter {
     }
   }
 
-  async act(action: BrowserAction): Promise<ActionResult> {
+  async resetObservers(_context: OperationContext = {}): Promise<void> {
+    this.consoleEntries.length = 0;
+    this.networkEntries.clear();
+    this.performanceNetworkFallbackUsed = false;
+  }
+
+  targetIdentity(): string | null { return this.sessionId; }
+  browserVersion(): string | null { return this.browserVersionValue; }
+
+  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+    assertContext(context);
     this.requireClient();
     switch (action.kind) {
       case "navigate":
         assertAllowedUrl(action.url, this.allowRemote);
         this.assertSameOrigin(action.url);
-        await this.navigate(action.url);
+        await this.navigate(action.url, context);
         break;
       case "click":
-        await this.click(action.selector);
+        await this.click(action.selector, context);
         break;
       case "fill":
-        await this.fill(action.selector, action.value);
+        await this.fill(action.selector, action.value, context);
         break;
       case "wait":
-        await this.wait(action.selector, action.text, boundedTimeout(action.timeoutMs));
+        if (!action.selector && !action.text) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a selector or text condition; elapsed-only waits are not supported.");
+        await this.wait(action.selector, action.text, boundedTimeout(action.timeoutMs), context);
         break;
       case "reload":
-        await this.command("/refresh", "POST");
+        await this.command("/refresh", "POST", undefined, context);
         break;
     }
-    const url = await this.currentUrl();
-    const title = await this.readTitle();
+    const url = await this.currentUrl(context);
+    const title = await this.readTitle(context);
     return { kind: action.kind, url: safeUrl(url), title };
   }
 
-  async snapshot(options: SnapshotOptions): Promise<BrowserSnapshot> {
+  async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
+    assertContext(context);
     const warnings = [
       "Safari WebDriver does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
     ];
@@ -165,42 +183,46 @@ export class SafariAdapter implements BrowserAdapter {
     warnings.push("Safari WebDriver uses a visible Safari browser profile; profile isolation is not guaranteed.");
 
     let url = "";
+    let urlAvailable = true;
     try {
-      url = await this.currentUrl();
+      url = await this.currentUrl(context);
     } catch (error) {
+      urlAvailable = false;
       warnings.push(`Safari URL snapshot unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
     }
 
     let dom = this.lastKnownDom;
+    let domAvailable = true;
     try {
-      dom = await this.readDom();
+      dom = await this.readDom(context);
       this.lastKnownDom = dom;
     } catch (error) {
+      domAvailable = false;
       warnings.push(`Safari DOM snapshot unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
     }
 
     let title = this.lastKnownTitle;
     try {
-      title = await this.readTitle();
+      title = await this.readTitle(context);
     } catch (error) {
       warnings.push(`Safari title snapshot unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
     }
 
     let screenshotPath: string | null = null;
-    if (options.captureScreenshot) {
+    if (options.captureScreenshot && !options.checksOnly) {
       try {
         await mkdir(options.artifactDir, { recursive: true });
         screenshotPath = join(options.artifactDir, `safari-screenshot-${Date.now()}.png`);
-        const data = await this.screenshot();
+        const data = await this.screenshot(context);
         await writeFile(screenshotPath, Buffer.from(data, "base64"));
       } catch (error) {
         warnings.push(`Safari screenshot unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
       }
     }
 
-    if (this.networkEntries.size === 0) {
+    if (!options.checksOnly && this.networkEntries.size === 0) {
       try {
-        const performanceEntries = await this.readPerformanceNetwork();
+        const performanceEntries = await this.readPerformanceNetwork(context);
         for (const entry of performanceEntries) this.networkEntries.set(entry.requestId, entry);
         if (performanceEntries.length > 0) this.performanceNetworkFallbackUsed = true;
       } catch (error) {
@@ -212,11 +234,11 @@ export class SafariAdapter implements BrowserAdapter {
     }
 
     const consoleBound = boundItems(this.consoleEntries, 100);
-    const networkBound = boundItems([...this.networkEntries.values()], 100);
+    const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
     if (consoleBound.truncated) warnings.push("Safari console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Safari network entries were truncated to 100 items.");
 
-    return {
+    const snapshot: BrowserSnapshot = {
       url: safeUrl(url),
       title,
       viewport: await this.viewport(),
@@ -229,24 +251,32 @@ export class SafariAdapter implements BrowserAdapter {
       next: null,
       vite: null,
       warnings,
+      observations: {
+        url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
+        dom: { state: domAvailable ? "pass" : "unavailable", freshness: domAvailable ? "fresh" : "stale", provenance: domAvailable ? "browser" : "cached" },
+        console: this.bidi ? { state: "pass", freshness: "fresh", provenance: "webdriver-bidi" } : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari WebDriver BiDi console collection is unavailable." },
+      },
     };
+    if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
+    return snapshot;
   }
 
-  async setBreakpoint(_input: { sourceUrl: string; line: number; column?: number }): Promise<DebuggerBreakpoint> {
+  async setBreakpoint(_input: { sourceUrl: string; line: number; column?: number }, _context: OperationContext = {}): Promise<DebuggerBreakpoint> {
     throw new WebDebugError(
       "DEBUGGER_UNAVAILABLE",
       "Safari WebDriver does not expose the JavaScript debugger breakpoint domain.",
     );
   }
 
-  async control(_action: "resume" | "stepOver" | "stepInto" | "stepOut"): Promise<DebuggerSnapshot> {
+  async control(_action: "resume" | "stepOver" | "stepInto" | "stepOut", _context: OperationContext = {}): Promise<DebuggerSnapshot> {
     throw new WebDebugError(
       "DEBUGGER_UNAVAILABLE",
       "Safari WebDriver does not expose Chromium-style pause and step controls.",
     );
   }
 
-  async evaluate(expression: string, allowSideEffects: boolean): Promise<EvaluationResult> {
+  async evaluate(expression: string, allowSideEffects: boolean, context: OperationContext = {}): Promise<EvaluationResult> {
+    assertContext(context);
     if (!expression.trim()) throw new WebDebugError("EXPRESSION_EMPTY", "Evaluation expression cannot be empty.");
     if (!allowSideEffects) {
       throw new WebDebugError(
@@ -254,7 +284,7 @@ export class SafariAdapter implements BrowserAdapter {
         "Safari WebDriver cannot prove that an expression is side-effect free; set allowSideEffects=true explicitly.",
       );
     }
-    const result = await this.executeAsync(expression);
+    const result = await this.executeAsync(expression, context);
     if (!isRecord(result) || result.ok !== true) {
       throw new WebDebugError("EVALUATION_FAILED", boundText(isRecord(result) && typeof result.error === "string" ? result.error : "Safari evaluation failed.", 500));
     }
@@ -323,7 +353,7 @@ export class SafariAdapter implements BrowserAdapter {
     if (first) this.networkEntries.delete(first);
   }
 
-  private async readPerformanceNetwork(): Promise<NetworkEntry[]> {
+  private async readPerformanceNetwork(context: OperationContext = {}): Promise<NetworkEntry[]> {
     const value = await this.executeSync<unknown>(
       `return performance.getEntriesByType("resource").slice(-200).map((entry, index) => ({
         requestId: "performance-" + index + "-" + entry.startTime,
@@ -333,6 +363,7 @@ export class SafariAdapter implements BrowserAdapter {
         status: typeof entry.responseStatus === "number" ? entry.responseStatus : null,
       }));`,
       [],
+      context,
     );
     if (!Array.isArray(value)) return [];
     return value.flatMap((entry) => {
@@ -349,10 +380,10 @@ export class SafariAdapter implements BrowserAdapter {
     });
   }
 
-  private async ensureDriver(endpoint: string): Promise<void> {
+  private async ensureDriver(endpoint: string, context: OperationContext = {}): Promise<void> {
     this.client = this.requireClient();
     try {
-      await this.client.status();
+      await this.client.status(context);
       return;
     } catch {
       const port = Number(process.env.WEB_DEBUG_SAFARI_PORT ?? (new URL(endpoint).port || "4444"));
@@ -361,46 +392,51 @@ export class SafariAdapter implements BrowserAdapter {
       this.driverProcess = spawn(driverPath, ["--port", String(port), "--bidi", String(bidiPort)], {
         stdio: ["ignore", "ignore", "ignore"],
       });
-      await this.waitForDriver(endpoint);
+      await this.waitForDriver(endpoint, context);
     }
   }
 
-  private async waitForDriver(endpoint: string): Promise<void> {
-    const deadline = Date.now() + 10_000;
+  private async waitForDriver(endpoint: string, context: OperationContext = {}): Promise<void> {
+    const deadline = Math.min(performance.now() + 10_000, context.deadline ?? Number.POSITIVE_INFINITY);
     let lastError = "not attempted";
-    while (Date.now() < deadline) {
+    while (performance.now() < deadline) {
       if (this.driverProcess?.exitCode !== null && this.driverProcess?.exitCode !== undefined) {
         throw new WebDebugError("SAFARI_WEBDRIVER_UNAVAILABLE", `safaridriver exited with code ${this.driverProcess.exitCode}.`);
       }
       try {
-        await new WebDriverClient(endpoint).status();
+        await new WebDriverClient(endpoint).status(context);
         return;
       } catch (error) {
         lastError = error instanceof Error ? error.message : String(error);
       }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      assertContext(context);
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, 100);
+        context.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); }, { once: true });
+      });
     }
     throw new WebDebugError("SAFARI_WEBDRIVER_UNAVAILABLE", `Safari WebDriver did not become ready: ${boundText(lastError, 500)}`);
   }
 
-  private async navigate(url: string): Promise<void> {
-    await this.command("/url", "POST", { url });
+  private async navigate(url: string, context: OperationContext = {}): Promise<void> {
+    await this.command("/url", "POST", { url }, context);
   }
 
-  private async click(selector: string): Promise<void> {
-    const element = await this.findElement(selector);
-    await this.command(`/element/${encodeURIComponent(element)}/click`, "POST");
+  private async click(selector: string, context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(selector, context);
+    await this.command(`/element/${encodeURIComponent(element)}/click`, "POST", undefined, context);
   }
 
-  private async fill(selector: string, value: string): Promise<void> {
-    const element = await this.findElement(selector);
-    await this.command(`/element/${encodeURIComponent(element)}/clear`, "POST");
-    await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] });
+  private async fill(selector: string, value: string, context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(selector, context);
+    await this.command(`/element/${encodeURIComponent(element)}/clear`, "POST", undefined, context);
+    await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] }, context);
   }
 
-  private async wait(selector: string | undefined, text: string | undefined, timeoutMs: number): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() <= deadline) {
+  private async wait(selector: string | undefined, text: string | undefined, timeoutMs: number, context: OperationContext = {}): Promise<void> {
+    const deadline = Math.min(performance.now() + timeoutMs, context.deadline ?? Number.POSITIVE_INFINITY);
+    while (performance.now() <= deadline) {
+      assertContext(context);
       const found = await this.executeSync<boolean>(
         `const { selector, text } = arguments[0];
           const element = document.querySelector(selector || "body");
@@ -409,21 +445,25 @@ export class SafariAdapter implements BrowserAdapter {
           return Boolean(element.getClientRects().length);
         `,
         [{ selector, text }],
+        context,
       );
       if (found) return;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, 50);
+        context.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); }, { once: true });
+      });
     }
     throw new WebDebugError("WAIT_TIMEOUT", `Safari wait condition exceeded ${timeoutMs}ms.`);
   }
 
-  private async findElement(selector: string): Promise<string> {
-    const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: selector });
+  private async findElement(selector: string, context: OperationContext = {}): Promise<string> {
+    const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: selector }, context);
     const elementId = value["element-6066-11e4-a52e-4f735466cecf"] ?? value.ELEMENT;
     if (typeof elementId !== "string") throw new WebDebugError("ELEMENT_NOT_FOUND", `Safari could not resolve selector: ${selector}`);
     return elementId;
   }
 
-  private async readDom(): Promise<DomSnapshot> {
+  private async readDom(context: OperationContext = {}): Promise<DomSnapshot> {
     const value = await this.executeSync<DomSnapshot>(
       `return {
         bodyText: (document.body?.innerText || "").slice(0, 4000),
@@ -435,23 +475,24 @@ export class SafariAdapter implements BrowserAdapter {
         })),
       };`,
       [],
+      context,
     );
     return isDomSnapshot(value) ? value : this.lastKnownDom;
   }
 
-  private async readTitle(): Promise<string> {
-    const title = await this.command<string>("/title", "GET");
+  private async readTitle(context: OperationContext = {}): Promise<string> {
+    const title = await this.command<string>("/title", "GET", undefined, context);
     this.lastKnownTitle = boundText(title, 300);
     return this.lastKnownTitle;
   }
 
-  private async currentUrl(): Promise<string> {
-    return this.command<string>("/url", "GET");
+  private async currentUrl(context: OperationContext = {}): Promise<string> {
+    return this.command<string>("/url", "GET", undefined, context);
   }
 
-  private async viewport(): Promise<{ width: number; height: number } | null> {
+  private async viewport(context: OperationContext = {}): Promise<{ width: number; height: number } | null> {
     try {
-      const rect = await this.command<WebDriverRect>("/window/rect", "GET");
+      const rect = await this.command<WebDriverRect>("/window/rect", "GET", undefined, context);
       if (Number.isFinite(rect.width) && Number.isFinite(rect.height)) return { width: rect.width!, height: rect.height! };
     } catch {
       // Safari versions without window rect support return no viewport metadata.
@@ -459,24 +500,24 @@ export class SafariAdapter implements BrowserAdapter {
     return null;
   }
 
-  private async screenshot(): Promise<string> {
-    return this.command<string>("/screenshot", "GET");
+  private async screenshot(context: OperationContext = {}): Promise<string> {
+    return this.command<string>("/screenshot", "GET", undefined, context);
   }
 
-  private async executeSync<T>(body: string, args: unknown[]): Promise<T> {
-    return this.command<T>("/execute/sync", "POST", { script: body, args });
+  private async executeSync<T>(body: string, args: unknown[], context: OperationContext = {}): Promise<T> {
+    return this.command<T>("/execute/sync", "POST", { script: body, args }, context);
   }
 
-  private async executeAsync(expression: string): Promise<unknown> {
+  private async executeAsync(expression: string, context: OperationContext = {}): Promise<unknown> {
     return this.command("/execute/async", "POST", {
       script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((value) => done({ ok: true, value }), (error) => done({ ok: false, error: String(error) }));`,
       args: [],
-    });
+    }, context);
   }
 
-  private async command<T>(path: string, method: "GET" | "POST" | "DELETE", body?: unknown): Promise<T> {
+  private async command<T>(path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<T> {
     const client = this.requireClient();
-    return client.command<T>(this.sessionId, path, method, body);
+    return client.command<T>(this.sessionId, path, method, body, context);
   }
 
   private requireClient(): WebDriverClient {
@@ -490,14 +531,26 @@ export class SafariAdapter implements BrowserAdapter {
     }
   }
 
-  private async target(): Promise<BrowserTarget> {
+  private async target(context: OperationContext = {}): Promise<BrowserTarget> {
     return {
       browser: "safari",
       remote: this.remoteTarget,
-      url: safeUrl(await this.currentUrl()),
-      title: await this.readTitle(),
-      viewport: await this.viewport(),
+      url: safeUrl(await this.currentUrl(context)),
+      title: await this.readTitle(context),
+      viewport: await this.viewport(context),
       isolated: false,
+      targetId: this.sessionId ?? undefined,
+      mode: "webdriver",
+      isolation: {
+        browserProcess: false,
+        context: false,
+        profile: false,
+        storage: false,
+        cache: false,
+        serviceWorkers: false,
+        navigation: false,
+        serverState: false,
+      },
     };
   }
 }
@@ -505,11 +558,11 @@ export class SafariAdapter implements BrowserAdapter {
 class WebDriverClient {
   constructor(private readonly endpoint: string) {}
 
-  async status(): Promise<void> {
-    await this.send("/status", "GET");
+  async status(context: OperationContext = {}): Promise<void> {
+    await this.send("/status", "GET", undefined, context);
   }
 
-  async createSession(): Promise<CreatedWebDriverSession> {
+  async createSession(context: OperationContext = {}): Promise<CreatedWebDriverSession> {
     const response = await this.send("/session", "POST", {
       capabilities: {
         alwaysMatch: {
@@ -519,7 +572,7 @@ class WebDriverClient {
           "safari:experimentalWebSocketUrl": true,
         },
       },
-    });
+    }, context);
     const value = isRecord(response.value) ? response.value : {};
     const capabilities = isRecord(value.capabilities) ? value.capabilities : {};
     const sessionId = typeof response.sessionId === "string"
@@ -541,16 +594,19 @@ class WebDriverClient {
     this.sessionId = null;
   }
 
-  async command<T>(sessionId: string | null, path: string, method: "GET" | "POST" | "DELETE", body?: unknown): Promise<T> {
+  async command<T>(sessionId: string | null, path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<T> {
     if (!sessionId) throw new WebDebugError("SESSION_NOT_READY", "The Safari WebDriver session is not ready.");
     this.sessionId = sessionId;
-    const response = await this.send(`/session/${encodeURIComponent(sessionId)}${path}`, method, body);
+    const response = await this.send(`/session/${encodeURIComponent(sessionId)}${path}`, method, body, context);
     return response.value as T;
   }
 
-  private async send(path: string, method: "GET" | "POST" | "DELETE", body?: unknown): Promise<WebDriverEnvelope> {
+  private async send(path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<WebDriverEnvelope> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), MAX_REQUEST_MS);
+    const timeoutMs = context.deadline === undefined ? MAX_REQUEST_MS : Math.max(1, Math.min(MAX_REQUEST_MS, context.deadline - performance.now()));
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const onAbort = () => controller.abort();
+    context.signal?.addEventListener("abort", onAbort, { once: true });
     try {
       const response = await fetch(`${this.endpoint}${path}`, {
         method,
@@ -574,6 +630,7 @@ class WebDriverClient {
       return parsed as WebDriverEnvelope;
     } finally {
       clearTimeout(timeout);
+      context.signal?.removeEventListener("abort", onAbort);
     }
   }
 
@@ -757,4 +814,9 @@ function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
     default:
       return "log";
   }
+}
+
+function assertContext(context: OperationContext): void {
+  if (context.signal?.aborted) throw new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.");
+  if (context.deadline !== undefined && context.deadline <= performance.now()) throw new WebDebugError("VERIFICATION_DEADLINE_EXCEEDED", "The bounded operation deadline was exhausted.");
 }

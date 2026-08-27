@@ -13,7 +13,7 @@ project detect → isolated browser session → reproduce → capture evidence
               → record the flow → fix → replay the same flow → verify
 ```
 
-The result is not “more logs.” It is a redacted, bounded evidence bundle with a retained replay timeline, framework context where available, and explicit pass/fail checks.
+The result is not “more logs.” It is a redacted, bounded evidence bundle with a retained replay timeline, framework context where available, and explicit tri-state checks. Recorded flows first prove a session-bound pre-fix failure signature, then `web_fix_verify` reports `verified`, `failed`, or `inconclusive` with adaptive level, rates, attempt summaries, and representative evidence.
 
 ## Examples
 

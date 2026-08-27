@@ -19,6 +19,8 @@ describe("Next fixture contract", () => {
     expect(client).toContain("/api/health");
     expect(client).toContain("useActionState");
     expect(client).toContain("action={paymentAction}");
+    expect(client).toContain("hydration-status");
+    expect(client).toContain("health-request-settled");
     expect(actions).toContain('"use server"');
     expect(actions).toContain("export async function submitPayment");
     expect(route).toContain("export function GET");

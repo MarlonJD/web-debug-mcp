@@ -1,11 +1,14 @@
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
-import type { ViteSnapshot } from "../domain/types.js";
+import type { OperationContext, ViteSnapshot } from "../domain/types.js";
+import { performance } from "node:perf_hooks";
 
 export class ViteAdapter {
-  async snapshot(baseUrl: string): Promise<ViteSnapshot | null> {
+  async snapshot(baseUrl: string, context: OperationContext = {}): Promise<ViteSnapshot | null> {
     const endpoint = new URL("/__web_debug/vite", baseUrl).toString();
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2_000);
+    const timeout = setTimeout(() => controller.abort(), context.deadline === undefined ? 2_000 : Math.max(1, Math.min(2_000, context.deadline - performance.now())));
+    const onAbort = () => controller.abort();
+    context.signal?.addEventListener("abort", onAbort, { once: true });
     try {
       const response = await fetch(endpoint, {
         headers: { accept: "application/json" },
@@ -22,6 +25,7 @@ export class ViteAdapter {
       throw error;
     } finally {
       clearTimeout(timeout);
+      context.signal?.removeEventListener("abort", onAbort);
     }
   }
 }

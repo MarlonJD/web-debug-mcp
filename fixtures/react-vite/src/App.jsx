@@ -35,6 +35,7 @@ export function CheckoutForm({ currency = "TRY" }) {
         Submit payment
       </button>
       <p role="status">{error ?? (submitted ? `Payment submitted: ${amount}` : "Ready")}</p>
+      <p data-testid="react-commit-ready">{submitted ? "Committed" : "Idle"}</p>
     </section>
   );
 }

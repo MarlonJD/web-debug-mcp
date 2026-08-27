@@ -31,23 +31,16 @@ try {
   const actionId = await waitForServerActionId(fixtureRoot, next);
   const routeInspection = await manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" });
   const actionInspection = await manager.inspectNext(session.id, { kind: "resolveServerAction", actionId });
-  const scenario = manager.recordScenario({
-    name: "check Next route health",
-    url,
-    actions: [
-      { kind: "click", selector: "#health-button" },
-      { kind: "wait", selector: "[role=status]", text: "Healthy", timeoutMs: 5_000 },
-    ],
-    checks: [
-      { kind: "textContains", value: "Healthy" },
-      { kind: "noConsoleErrors" },
-    ],
-  });
-  const verification = await manager.verifyScenario(session.id, scenario.id);
+  await manager.act(session.id, { kind: "wait", selector: "[data-testid='hydration-status']", text: "Hydrated", timeoutMs: 5_000 });
+  await manager.act(session.id, { kind: "click", selector: "#health-button" });
+  await manager.act(session.id, { kind: "wait", selector: "[role=status]", text: "Healthy", timeoutMs: 5_000 });
+  await manager.act(session.id, { kind: "wait", selector: "[data-testid='health-request-settled']", text: "Health request settled", timeoutMs: 5_000 });
+  const verificationEvidence = await manager.capture(session.id, true);
   await manager.act(session.id, { kind: "click", selector: "#payment-button" });
   await manager.act(session.id, { kind: "wait", selector: "#server-action-status", text: "Submitted", timeoutMs: 5_000 });
   const actionCapture = await manager.capture(session.id, false);
-  const nextEvidence = verification.evidence.browser.next;
+  if (!verificationEvidence) throw new Error("Next evidence capture returned no evidence.");
+  const nextEvidence = verificationEvidence.browser.next;
   const actionNextEvidence = actionCapture.browser.next;
   const routes = nextEvidence?.routes;
   const projectMetadata = nextEvidence?.projectMetadata;
@@ -59,7 +52,7 @@ try {
   const requestInsights = actionNextEvidence?.requestInsights;
   const requestTraces = actionNextEvidence?.requestTraces;
   const assertions = {
-    scenarioPassed: verification.passed,
+    flowCaptured: verificationEvidence.redaction.applied === true,
     nextDetected: nextEvidence?.detected === true,
     nextEndpoint: nextEvidence?.endpoint.endsWith("/_next/mcp") ?? false,
     routeHome: hasRoute(routes, "/"),
@@ -74,9 +67,9 @@ try {
     requestInsights: isRecord(requestInsights) && Array.isArray(requestInsights.requests) && requestInsights.requests.length > 0,
     requestTraces: Array.isArray(requestTraces) && requestTraces.length > 0 && requestTraces.some((trace) => Array.isArray(trace.spans) && trace.spans.length > 0 && typeof trace.durationMs === "number"),
     serverActionTraceLinked: isRecord(actionExecution?.trace) && Array.isArray(actionExecution.trace.spans) && actionExecution.trace.spans.some((span) => span.name === "POST" || span.attributes?.["http.method"] === "POST"),
-    serverRenderedText: verification.evidence.browser.dom.bodyText.includes("Next server component ready"),
-    clientRenderedText: verification.evidence.browser.dom.bodyText.includes("Healthy"),
-    consoleClean: verification.evidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
+    serverRenderedText: verificationEvidence.browser.dom.bodyText.includes("Next server component ready"),
+    clientRenderedText: verificationEvidence.browser.dom.bodyText.includes("Healthy"),
+    consoleClean: verificationEvidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
   };
   const passed = Object.values(assertions).every(Boolean);
   process.stdout.write(`${JSON.stringify({
@@ -90,8 +83,8 @@ try {
     requestTraces,
     actionNextEvidence,
     logTail,
-    bodyText: verification.evidence.browser.dom.bodyText,
-    console: verification.evidence.browser.console,
+    bodyText: verificationEvidence.browser.dom.bodyText,
+    console: verificationEvidence.browser.console,
   }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;
 } finally {

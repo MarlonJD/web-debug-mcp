@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import "./styles.css";
 import { requestQuote } from "./quote-api.js";
@@ -15,9 +15,11 @@ export function IncidentDashboard() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [drawerLayoutState, setDrawerLayoutState] = useState("Drawer layout pending");
   const [quantity, setQuantity] = useState("1");
   const [coupon, setCoupon] = useState("");
   const [quote, setQuote] = useState({ status: "Idle", requestId: null, total: null });
+  const [pendingQuotes, setPendingQuotes] = useState(0);
   const latestQuoteRequest = useRef(0);
 
   const visibleIncidents = useMemo(() => {
@@ -29,12 +31,27 @@ export function IncidentDashboard() {
     });
   }, []);
 
+  useLayoutEffect(() => {
+    if (!selectedIncident) {
+      setDrawerLayoutState("Drawer layout pending");
+      return;
+    }
+    const layer = document.querySelector("[data-testid='incident-drawer-layer']");
+    const position = layer ? window.getComputedStyle(layer).position : "";
+    setDrawerLayoutState(position === "fixed" ? "Drawer layout aligned" : "Drawer layout offset");
+  }, [selectedIncident]);
+
   async function refreshQuote() {
     const requestNumber = latestQuoteRequest.current + 1;
     latestQuoteRequest.current = requestNumber;
     setQuote({ status: "Loading", requestId: null, total: null });
-    const result = await requestQuote({ quantity: Number(quantity), coupon });
-    setQuote({ status: "Quote ready", requestId: result.requestId, total: result.total });
+    setPendingQuotes((count) => count + 1);
+    try {
+      const result = await requestQuote({ quantity: Number(quantity), coupon });
+      setQuote({ status: "Quote ready", requestId: result.requestId, total: result.total });
+    } finally {
+      setPendingQuotes((count) => Math.max(0, count - 1));
+    }
   }
 
   return (
@@ -91,6 +108,7 @@ export function IncidentDashboard() {
             </div>
             <p className="quote-status" data-testid="quote-status">{quote.status}</p>
             <p className="quote-result" data-testid="quote-result">{quote.requestId ? `Quote v${quote.requestId} applied: $${quote.total.toFixed(2)}` : "No quote applied"}</p>
+            <p data-testid="quote-requests-settled">{pendingQuotes === 0 && quote.status !== "Idle" ? "All quote requests settled" : "Waiting for quote requests"}</p>
           </section>
 
           <section className="incident-card">
@@ -131,6 +149,7 @@ export function IncidentDashboard() {
         <div className="drawer-layer" data-testid="incident-drawer-layer">
           <button className="drawer-backdrop" type="button" aria-label="Close incident details" onClick={() => setSelectedIncident(null)} />
           <aside className="drawer" data-testid="incident-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+            <p className="drawer-layout-state" data-testid="drawer-layout-state">{drawerLayoutState}</p>
             <div className="drawer-heading"><div><p className="eyebrow">Incident details</p><h2 id="drawer-title">{selectedIncident.title}</h2></div><button className="close-button" type="button" aria-label="Close" onClick={() => setSelectedIncident(null)}>×</button></div>
             <div className="drawer-status-row"><span className={`status-pill status-${selectedIncident.status.toLowerCase()}`}>{selectedIncident.status}</span><span className="muted">INC-{selectedIncident.id.toUpperCase()}</span></div>
             <div className="drawer-section"><span className="metric-label">Owner</span><span className="owner"><span className="mini-avatar">{selectedIncident.owner.split(" ").map((part) => part[0]).join("")}</span>{selectedIncident.owner}</span></div>

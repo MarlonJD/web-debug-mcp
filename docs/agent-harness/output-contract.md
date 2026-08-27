@@ -12,6 +12,9 @@
 - debugger pause reason, call frames, scopes, and redacted locals;
 - explicit redaction policy and truncation warnings.
 - a bounded `replay` timeline whose fill actions are sanitised and whose frames are inspectable or safely restorable through `web_replay_seek`.
+- verification attempt frames are capture-only, carry `attemptId`, and are reset per attempt; ordinary manual action frames retain their existing restore behavior.
+
+Adaptive verification returns a versioned scenario/result contract with separate `failureSignature`, `acceptanceChecks`, and `regressionChecks`. Outcomes are exactly `verified`, `failed`, or `inconclusive`; the result carries canonical `level`/`requestedLevel` fields, total phase budgets, `escalations`, baseline and post-fix attempt summaries, decisive rates, environment fingerprint, sanitized contract hash, untrusted build references, reset/isolation facts, deferred five-second cleanup status, and bounded representative evidence under `evidence`. Required URL/DOM/console checks expose `pass`, `fail`, or `unavailable` together with `fresh`/`stale`/`unknown` freshness and provenance. No result contains raw fill values, a root-level legacy `passed`/`checks` field, or more than 256 KiB of serialized JSON.
 
 ## Handoff labels
 

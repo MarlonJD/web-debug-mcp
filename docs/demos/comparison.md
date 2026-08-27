@@ -63,9 +63,11 @@ Repair scenarios use an isolated temporary copy of `fixtures/complex-vite`, so t
 - `fixVerified`: the same recorded flow passed after the exact temporary patch;
 - `visual`: desktop/mobile viewport invariants and before/after screenshots for the layout case.
 
+The MCP repair details also print the adaptive outcome/level, `escalations`, baseline and post-fix decisive rates, environment fingerprint, sanitized contract hash, untrusted build-reference values, canonical `evidence` availability, and deterministic truncation flags. A missing optional browser/framework signal stays a warning; it is never promoted to `verified`.
+
 Repair runs fail with a non-zero exit status if any of those required outcomes is false. This keeps a semantic verification failure visible to CI and to model QA instead of treating a generated report as success.
 
-The async scenario uses deterministic delays (`220 ms` for request 1 and `35 ms` for request 2), so `Quote v1 applied` is the buggy result and `Quote v2 applied` is the fixed latest-request-wins result. The filter scenario expects `Showing 1 incident` after entering `Refund`; the buggy empty `useMemo` dependency list leaves all five rows visible.
+The async scenario uses deterministic delays (`220 ms` for request 1 and `35 ms` for request 2), and waits for the explicit `All quote requests settled` marker, so `Quote v1 applied` is the buggy result and `Quote v2 applied` is the fixed latest-request-wins result. It declares async/timing risk, exercising the standard repeated-level baseline and post-fix state machine. The filter scenario expects `Showing 1 incident` after entering `Refund`; the buggy empty `useMemo` dependency list leaves all five rows visible. MCP repair views include the canonical adaptive level, baseline/post-fix attempt counts and rates, sanitized contract hash, untrusted build-reference state, and evidence flags.
 
 ## How to read the report
 
@@ -73,7 +75,7 @@ The report separates browser/session startup from the useful flow. For each path
 
 A positive timing delta means the structured MCP workflow added overhead in that scripted run. That is expected for a trivial browser-only check. The product value is the correlation and repeatability: one bounded result can be inspected, redacted, replayed, and checked again after a code change.
 
-The output stores screenshots under a temporary directory and prints its path. Repair scenarios copy the complex fixture to a temporary runtime, apply the buggy/fixed variants there, and leave the repository source unchanged. Repair baseline and MCP before/after screenshots are centralized under that artifact directory; fixture servers and browser sessions are closed when the run completes.
+The output stores screenshots under a temporary directory and prints its path when the serialized handle is safe. Repair scenarios copy the complex fixture to a temporary runtime, apply the buggy/fixed variants there, and leave the repository source unchanged. Repair baseline and MCP before/after screenshots are centralized under that artifact directory; if a fill value collides with a generated handle, the MCP handle is null with a warning and the session-owned file is not copied. Fixture servers and browser sessions are closed when the run completes.
 
 ## Example output shape
 

@@ -14,8 +14,8 @@ Use the bundled web-debug-mcp tools when a local web application needs browser-g
 3. Reproduce the issue with bounded web_browser_action calls. Use web_breakpoint_set, web_debug_control, and web_debug_evaluate only when the evidence needs JavaScript debugger state.
 4. Capture the failure with web_issue_capture. The result combines bounded browser, console, network, screenshot, debugger, framework, and replay evidence.
 5. For React or Vite issues, inspect the automatic React bridge and Vite module/HMR evidence in the capture. For Next.js issues, use web_next_inspect only for route compilation or Server Action lookup. For visual issues, combine the screenshot with read-only geometry from web_debug_evaluate; do not use pixel output alone as the acceptance gate.
-6. For a repeatable regression, store the flow with web_repro_record and rerun it with web_fix_verify after the code change.
-7. Use web_replay_seek for one retained frame or safe action restoration. Treat it as bounded action replay, not application-state time travel.
+6. For a repeatable regression, call web_repro_record with the session ID, an explicit complete failureSignature (each entry has expected `pass` or `fail`), acceptanceChecks, and optional risk signals. Recording executes one bounded pre-fix phase; only a `reproduced` baseline can be verified later. After the code change, call web_fix_verify and interpret only its `verified`, `failed`, or `inconclusive` outcome. The decisive post-fix attempt must agree with its authoritative full capture; drift or unavailable representative evidence is inconclusive.
+7. Use web_replay_seek for one retained frame or safe action restoration. Treat it as bounded action replay, not application-state time travel. Replay retains at most eight representative frames; verification attempts retain capture-only frames, ordinary manual action frames remain restorable, and fill values are never restorable.
 8. Close the session with web_session_close when the workflow ends.
 
 ## Complex examples
@@ -52,7 +52,9 @@ Report machine timings separately from human diagnosis time. The MCP may add a s
 - Keep targets on loopback by default. Do not set allowRemote without explicit user authorization.
 - Do not use credentialed browser profiles or infer production readiness from local evidence.
 - Side-effectful evaluation and replay restore mutate the browser. Request them only when the debugging task needs them.
-- Missing optional framework or browser signals are capability warnings, not proof that the issue is absent.
+- Missing optional framework or browser signals are capability warnings, not proof that the issue is absent. A required check with unavailable or stale URL/DOM/console evidence is `inconclusive`; Safari without BiDi console collection cannot satisfy `noConsoleErrors`.
+- Verification levels are `quick` (1 attempt/15 seconds), `standard` (3 attempts/60 seconds), and `strict` (5 attempts/120 seconds). Async/timing/concurrency/browser-state risk starts at standard; prior flakiness starts strict. Results report rates over decisive observations and one representative evidence bundle per phase.
+- Scenarios are in-memory and bound to their live session. Public scenarios and all errors omit raw fill values; build references are untrusted caller labels, not authenticated identities. Close the session to purge private scenario actions and evidence.
 - Treat redacted values, bounded arrays, and temporary screenshot paths as part of the evidence contract.
 - If Vite evidence is needed, ensure the app uses webDebugVitePlugin in development only; never enable that plugin in production.
 - Do not claim full React DevTools parity, distributed tracing, or full browser state/time-travel restoration from this workflow. The supported contract is bounded React/Vite/Next/browser evidence and safe action replay.

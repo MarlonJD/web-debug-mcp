@@ -26,23 +26,16 @@ try {
     headless: false,
   });
   await manager.evaluate(session.id, "console.info('Safari BiDi smoke event')", true);
-  const scenario = manager.recordScenario({
-    name: "submit Safari payment",
-    url,
-    actions: [
-      { kind: "click", selector: "#submit" },
-      { kind: "wait", selector: "#status", text: "Payment submitted", timeoutMs: 5_000 },
-    ],
-    checks: [
-      { kind: "textContains", value: "Payment submitted" },
-      { kind: "noConsoleErrors" },
-    ],
-  });
-  const verification = await manager.verifyScenario(session.id, scenario.id);
-  const evidence = verification.evidence.browser;
+  await manager.act(session.id, { kind: "click", selector: "#submit" });
+  await manager.act(session.id, { kind: "wait", selector: "#status", text: "Payment submitted", timeoutMs: 5_000 });
+  const verificationEvidence = await manager.capture(session.id, true);
+  if (!verificationEvidence) {
+    throw new Error("Safari WebDriver evidence capture returned no evidence.");
+  }
+  const evidence = verificationEvidence.browser;
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
-    scenarioPassed: verification.passed,
+    flowCaptured: verificationEvidence.redaction.applied === true,
     safariTarget: session.target?.browser === "safari",
     profileBoundary: session.target?.isolated === false && evidence.warnings.some((warning) => warning.includes("profile isolation")),
     domEvidence: evidence.dom.bodyText.includes("Payment submitted"),
@@ -53,8 +46,12 @@ try {
     debuggerUnavailableIsExplicit: evidence.debugger.paused === false && evidence.warnings.some((warning) => warning.includes("JavaScript debugger")),
   };
   const passed = Object.values(assertions).every(Boolean);
+  const status = passed ? "verified" : assertions.bidiConsoleEvidence ? "failed" : "blocked";
+  const reason = assertions.bidiConsoleEvidence ? undefined : "Safari WebDriver did not emit a BiDi console event; the console guardrail is unavailable even though WebDriver DOM/screenshot and Performance Resource Timing network evidence passed.";
   process.stdout.write(`${JSON.stringify({
     passed,
+    status,
+    ...(reason ? { reason } : {}),
     assertions,
     target: session.target,
     warnings: evidence.warnings,
@@ -65,7 +62,7 @@ try {
     bodyText: evidence.dom.bodyText,
     screenshotPath: evidence.screenshotPath,
   }, null, 2)}\n`);
-  if (!passed) process.exitCode = 1;
+  if (!passed) process.exitCode = status === "blocked" ? 2 : 1;
 } catch (error) {
   process.stdout.write(`${JSON.stringify({
     passed: false,

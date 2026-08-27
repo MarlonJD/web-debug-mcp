@@ -13,7 +13,7 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
-_None._
+| [Make reproduction and fix verification adaptive and flake-aware](completed/adaptive-flake-verification.md) | 2026-08-27 | Adaptive session-bound reproduction and fix verification with authoritative evidence, fresh-attempt policy, tri-state checks, bounded redaction/retention, and truthful Chromium/Safari limits | 13 files/50 tests passed; typecheck, build, harness (`208 checks`), live Chromium/React-Vite/Next/Safari, complex-async, and all-scenario comparisons passed; Safari debugger/profile and Performance Resource Timing fallback warnings remain explicit |
 <!-- harness:plans:completed:end -->
 
 ## Lifecycle rules

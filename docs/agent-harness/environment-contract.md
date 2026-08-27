@@ -24,7 +24,9 @@ Launch mode is the preferred deterministic path. Attach mode is supported for in
 3. Perform bounded actions and capture evidence.
 4. Close the session when the workflow ends.
 
-The manager caps active sessions at eight. Browser waits are capped at 30 seconds. Console and network history are bounded in memory. Replay retains up to 50 frames; `restore: true` can reissue only safe retained actions and fails closed for sanitised inputs. Screenshots are written under a temporary `web-debug-mcp-*` directory and the returned path is the evidence handle.
+The manager caps active sessions at eight and scenarios at ten per session. Browser waits are capped at 30 seconds. Checks-only attempts retain only URL/DOM/console observations in their returned snapshot and do not return network, screenshot, React, or other framework bundles; verification can retain the adapter-owned network buffer only until the same attempt's authoritative capture, and the next attempt resets it. Replay retains up to eight frames, resets between verification attempts while keeping monotonic indices, tags attempt frames with `attemptId`, and fails closed for capture-only or sanitised-input restore. Verification uses quick (15s/1 attempt), standard (60s/3 attempts), or strict (120s/5 attempts) total-from-phase-start budgets, with a separate five-second cleanup ceiling. Screenshots are written under a temporary `web-debug-mcp-*` directory; if redaction collides with a generated path, the serialized handle is null and no copy is created.
+
+`web_repro_record` runs the bounded pre-fix phase before committing a session-owned in-memory scenario. Its private executable URL may retain query values, but the returned scenario strips the query and never hashes it. `web_fix_verify` reuses only a matching live session, contract hash, stable environment projection, and attached target identity. Launch-owned Chromium is replaced for repeated attempts; attached Chromium and Safari reset only owned observers and disclose retained profile/storage/cache/service-worker state. Each result is limited to 256 KiB and keeps one representative full evidence bundle per phase plus lightweight attempt summaries. A full representative recapture is authoritative for a decisive pass; state drift or unavailable capture is inconclusive.
 
 The comparison demo uses separate loopback ports `4183` through `4188`, launches a fresh headless Chromium context for each baseline and MCP run, copies repair fixtures under a temporary `web-debug-mcp-repair-*` directory, and writes its screenshots under a temporary `web-debug-mcp-demo-*` directory. It reports machine timings only; it does not claim a measured human diagnosis time. Explicit viewport requests are bounded to 320–3,840 pixels wide and 240–2,160 pixels high.
 
@@ -32,7 +34,7 @@ Next development output under `fixtures/next/.next/` is generated state and is i
 
 ## Reset and cleanup
 
-Stop the fixture server with SIGINT or SIGTERM. Close MCP sessions with `web_session_close`; if the process is interrupted, its signal handler closes owned browser resources best effort. Do not delete broad temporary directories; remove only a session artifact directory after its evidence is no longer needed.
+Stop the fixture server with SIGINT or SIGTERM. Close MCP sessions with `web_session_close`; if the process is interrupted, its signal handler closes owned browser resources best effort and purges in-memory scenarios/evidence. Temporary screenshot handles may remain for inspection under the operating system's `web-debug-mcp-*` paths. Do not delete broad temporary directories; remove only a session artifact directory after its evidence is no longer needed.
 
 ## Unsupported environments
 

@@ -1,3 +1,5 @@
+import { boundText, redactText } from "./redaction.js";
+
 export class WebDebugError extends Error {
   constructor(
     public readonly code: string,
@@ -10,5 +12,5 @@ export class WebDebugError extends Error {
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return boundText(redactText(error instanceof Error ? error.message : String(error)), 500);
 }

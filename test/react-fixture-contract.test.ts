@@ -12,6 +12,7 @@ describe("React/Vite fixture contract", () => {
     expect(html).toContain('src/main.jsx');
     expect(app).toContain("export function CheckoutForm");
     expect(app).toContain("setSubmitted(true)");
+    expect(app).toContain("react-commit-ready");
     expect(bridge).toContain("REACT_DEBUG_BRIDGE_SCRIPT");
     expect(bridge).toContain("window.__WEB_DEBUG_REACT__");
     expect(bridge).toContain("commitCount");

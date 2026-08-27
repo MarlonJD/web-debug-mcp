@@ -37,22 +37,15 @@ try {
   await waitForUrl(url, vite);
 
   verificationSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
-  const scenario = manager.recordScenario({
-    name: "submit React payment",
-    url,
-    actions: [{ kind: "click", selector: "button" }],
-    checks: [
-      { kind: "textContains", value: "Payment submitted: 249.90" },
-      { kind: "noConsoleErrors" },
-    ],
-  });
-  const verification = await manager.verifyScenario(verificationSession.id, scenario.id);
-  const verifiedComponent = findComponent(verification.evidence.browser.react?.components ?? [], "CheckoutForm");
-  const viteEvidence = verification.evidence.browser.vite;
+  await manager.act(verificationSession.id, { kind: "click", selector: "button" });
+  const verificationEvidence = await manager.capture(verificationSession.id, true);
+  if (!verificationEvidence) throw new Error("React/Vite evidence capture returned no evidence.");
+  const verifiedComponent = findComponent(verificationEvidence.browser.react?.components ?? [], "CheckoutForm");
+  const viteEvidence = verificationEvidence.browser.vite;
   const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
   const appTransform = appModule?.transform;
-  const replaySeek = await manager.seekReplay(verificationSession.id, 1);
-  const replayRestore = await manager.seekReplay(verificationSession.id, 1, true);
+  const replaySeek = await manager.seekReplay(verificationSession.id, 0);
+  const replayRestore = await manager.seekReplay(verificationSession.id, 0, true);
   await manager.close(verificationSession.id);
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
@@ -62,7 +55,7 @@ try {
   const pausedFrame = paused.browser.debugger.callFrames.find((frame) => frame.url.includes("/src/App.jsx"));
   const pausedComponent = findComponent(paused.browser.react?.components ?? [], "CheckoutForm");
   await manager.control(breakpointSession.id, "resume");
-  await new Promise((resolve) => setTimeout(resolve, 150));
+  await manager.act(breakpointSession.id, { kind: "wait", selector: "[data-testid='react-commit-ready']", text: "Committed", timeoutMs: 5_000 });
   const after = await manager.capture(breakpointSession.id, false);
   const afterComponent = findComponent(after.browser.react?.components ?? [], "CheckoutForm");
   const lastCommit = after.browser.react?.commits.at(-1);
@@ -80,9 +73,9 @@ try {
   }
 
   const assertions = {
-    scenarioPassed: verification.passed,
+    flowCaptured: verificationEvidence.redaction.applied === true,
     reactDetected: Boolean(verifiedComponent),
-    submittedText: verification.evidence.browser.dom.bodyText.includes("Payment submitted: 249.90"),
+    submittedText: verificationEvidence.browser.dom.bodyText.includes("Payment submitted: 249.90"),
     submittedState: componentContainsValue(afterComponent, true),
     renderCause: afterComponent?.renderCause === "state" || afterComponent?.renderCause === "props+state",
     renderCauseDetails: (afterComponent?.hookChanges ?? []).includes(1) && (afterComponent?.propChanges ?? []).length === 0,
@@ -90,8 +83,8 @@ try {
     flamegraphView: (after.browser.react?.flamegraph.length ?? 0) >= 2 && after.browser.react?.flamegraph.some((node) => node.name === "CheckoutForm" && node.depth >= 1),
     commitProfiler: (after.browser.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
     profilerMode: after.browser.react?.profiler.mode === "devtools-hook",
-    replayTimeline: verification.evidence.replay.frames.length >= 3,
-    replaySeek: replaySeek.frame.index === 1 && replaySeek.frame.trigger === "action",
+    replayTimeline: verificationEvidence.replay.frames.length >= 2,
+    replaySeek: replaySeek.frame.index === 0 && replaySeek.frame.trigger === "action",
     replayRestore: replayRestore.restored === true,
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,

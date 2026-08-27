@@ -23,6 +23,7 @@ import type {
   DebuggerSnapshot,
   NetworkEntry,
   ReactSnapshot,
+  OperationContext,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
@@ -97,8 +98,11 @@ export class ChromiumAdapter implements BrowserAdapter {
   private lastKnownDom: BrowserSnapshot["dom"] = { bodyText: "", elements: [] };
   private lastKnownReact: ReactSnapshot | null = null;
   private pausedEvent: PausedEvent | null = null;
+  private targetId: string | null = null;
+  private version: string | null = null;
 
-  async start(options: BrowserStartOptions): Promise<BrowserTarget> {
+  async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
+    assertContext(context);
     this.allowRemote = options.allowRemote ?? false;
     assertAllowedUrl(options.url, this.allowRemote);
 
@@ -108,8 +112,38 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.browser = await chromium.connectOverCDP(options.cdpEndpoint);
       this.externalBrowser = true;
       const contexts = this.browser.contexts();
-      this.context = contexts[0] ?? (await this.browser.newContext());
-      this.page = this.context.pages()[0] ?? (await this.context.newPage());
+      this.context = contexts[0] ?? null;
+      if (!this.context) throw new WebDebugError("ATTACHED_CONTEXT_UNAVAILABLE", "The selected CDP browser has no existing context to attach.");
+      const pages = contexts.flatMap((candidate) => candidate.pages());
+      this.page = pages[0] ?? null;
+      if (options.targetId) {
+        this.page = null;
+        for (const candidate of pages) {
+          let probe: CDPSession | null = null;
+          try {
+            probe = await candidate.context().newCDPSession(candidate);
+            const info = await probe.send("Target.getTargetInfo") as { targetInfo?: { targetId?: string } };
+            if (info.targetInfo?.targetId === options.targetId) {
+              this.page = candidate;
+              this.context = candidate.context();
+              break;
+            }
+          } catch {
+            // A page that cannot expose Target.getTargetInfo is not a safe target match.
+          } finally {
+            await probe?.detach().catch(() => undefined);
+          }
+        }
+        if (!this.page) throw new WebDebugError("ATTACHED_TARGET_NOT_FOUND", "The requested CDP targetId was not found among existing pages.");
+      } else {
+        if (pages.length === 0) throw new WebDebugError("ATTACHED_PAGE_UNAVAILABLE", "The selected CDP browser has no existing page to attach.");
+        if (pages.length > 1) throw new WebDebugError("ATTACHED_TARGET_REQUIRED", "Multiple CDP pages are available; pass targetId to pin one exact target.");
+        const [onlyPage] = pages;
+        if (!onlyPage) throw new WebDebugError("ATTACHED_PAGE_UNAVAILABLE", "The selected CDP browser has no existing page to attach.");
+        this.page = onlyPage;
+        this.context = onlyPage.context();
+      }
+      if (!this.page) throw new WebDebugError("ATTACHED_PAGE_UNAVAILABLE", "The selected CDP browser has no existing page to attach.");
     } else {
       this.remoteTarget = false;
       const executablePath = options.executablePath ?? process.env.WEB_DEBUG_CHROME_EXECUTABLE_PATH;
@@ -145,16 +179,23 @@ export class ChromiumAdapter implements BrowserAdapter {
     await this.cdp.send("Runtime.enable");
     await this.cdp.send("Debugger.enable");
 
-    await this.page.goto(options.url, { waitUntil: "domcontentloaded" });
+    await withContext(this.page.goto(options.url, { waitUntil: "domcontentloaded" }), context);
     this.baseOrigin = new URL(this.page.url()).origin;
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
     this.lastKnownReact = await this.reactAdapter.snapshot(this.page).catch(() => null);
+    this.version = this.browser.version();
+    try {
+      const targetInfo = await this.cdp.send("Target.getTargetInfo") as { targetInfo?: { targetId?: string } };
+      this.targetId = targetInfo.targetInfo?.targetId ?? null;
+    } catch {
+      this.targetId = null;
+    }
 
     return this.target();
   }
 
-  async close(): Promise<void> {
+  async close(_context: OperationContext = {}): Promise<void> {
     try {
       await this.cdp?.detach();
     } catch {
@@ -168,9 +209,23 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.page = null;
     this.context = null;
     this.browser = null;
+    this.targetId = null;
+    this.version = null;
   }
 
-  async act(action: BrowserAction): Promise<ActionResult> {
+  async resetObservers(_context: OperationContext = {}): Promise<void> {
+    this.consoleEntries.length = 0;
+    this.networkEntries.clear();
+    this.requestCounter = 0;
+    this.lastKnownDom = { bodyText: "", elements: [] };
+    this.lastKnownReact = null;
+  }
+
+  targetIdentity(): string | null { return this.targetId; }
+  browserVersion(): string | null { return this.version; }
+
+  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+    assertContext(context);
     const page = this.requirePage();
     if (this.pausedEvent) {
       throw new WebDebugError("DEBUGGER_PAUSED", "Browser actions require a resumed JavaScript target.");
@@ -181,40 +236,46 @@ export class ChromiumAdapter implements BrowserAdapter {
         if (this.baseOrigin && new URL(action.url).origin !== this.baseOrigin) {
           throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the session origin.");
         }
-        await this.runUntilCompleteOrPaused(() => page.goto(action.url, { waitUntil: "domcontentloaded" }).then(() => undefined));
+        await this.runUntilCompleteOrPaused(() => page.goto(action.url, { waitUntil: "domcontentloaded" }).then(() => undefined), context);
         break;
       case "click":
-        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).click());
+        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).click(), context);
         break;
       case "fill":
-        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).fill(action.value));
+        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).fill(action.value), context);
         break;
       case "wait":
-        if (action.text) {
-          await page.waitForFunction(
-            ({ selector, text }) => (document.querySelector(selector)?.textContent ?? "").includes(text),
-            { selector: action.selector ?? "body", text: action.text },
-            { timeout: boundedTimeout(action.timeoutMs) },
-          );
-        } else if (action.selector) {
-          await page.locator(action.selector).waitFor({ state: "visible", timeout: boundedTimeout(action.timeoutMs) });
-        } else {
-          await page.waitForTimeout(boundedTimeout(action.timeoutMs));
+        try {
+          if (action.text) {
+            await page.waitForFunction(
+              ({ selector, text }) => (document.querySelector(selector)?.textContent ?? "").includes(text),
+              { selector: action.selector ?? "body", text: action.text },
+              { timeout: boundedTimeout(action.timeoutMs) },
+            );
+          } else if (action.selector) {
+            await page.locator(action.selector).waitFor({ state: "visible", timeout: boundedTimeout(action.timeoutMs) });
+          } else {
+            throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a selector or text condition; elapsed-only waits are not supported.");
+          }
+        } catch (error) {
+          if (error instanceof WebDebugError) throw error;
+          throw new WebDebugError("WAIT_TIMEOUT", `Observable wait condition was not met within ${boundedTimeout(action.timeoutMs)}ms.`);
         }
         break;
       case "reload":
-        await this.runUntilCompleteOrPaused(() => page.reload({ waitUntil: "domcontentloaded" }).then(() => undefined));
+        await this.runUntilCompleteOrPaused(() => page.reload({ waitUntil: "domcontentloaded" }).then(() => undefined), context);
         break;
     }
     const title = this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page);
     return { kind: action.kind, url: safeUrl(page.url()), title };
   }
 
-  async snapshot(options: SnapshotOptions): Promise<BrowserSnapshot> {
+  async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
+    assertContext(context);
     const page = this.requirePage();
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
-    let react = this.lastKnownReact;
+    let react = options.checksOnly ? null : this.lastKnownReact;
 
     if (this.pausedEvent) {
       warnings.push("JavaScript is paused; DOM text is the last known unpaused snapshot.");
@@ -226,32 +287,55 @@ export class ChromiumAdapter implements BrowserAdapter {
       } catch (error) {
         warnings.push(`DOM snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
-      try {
-        react = await this.reactAdapter.snapshot(page);
-        this.lastKnownReact = react;
-      } catch (error) {
-        warnings.push(`React snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
+      if (!options.checksOnly) {
+        const optionalBudget = optionalBudgetMs(context, 1_000);
+        if (optionalBudget === 0) {
+          warnings.push("React snapshot skipped because the shared deadline left no optional-enrichment budget.");
+        } else {
+          const outcome = await withTimeout(
+            Promise.resolve().then(() => this.reactAdapter.snapshot(page)).then((value) => ({ ok: true as const, value })).catch((error) => ({ ok: false as const, error })),
+            optionalBudget,
+          );
+          if (outcome === null) {
+            warnings.push("React snapshot unavailable: optional enrichment timed out.");
+          } else if (!outcome.ok) {
+            warnings.push(`React snapshot unavailable: ${outcome.error instanceof Error ? outcome.error.message : String(outcome.error)}`);
+          } else {
+            react = outcome.value;
+            this.lastKnownReact = react;
+          }
+        }
       }
     }
 
     let screenshotPath: string | null = null;
-    if (options.captureScreenshot) {
-      try {
-        await mkdir(options.artifactDir, { recursive: true });
-        screenshotPath = join(options.artifactDir, `screenshot-${Date.now()}.png`);
-        if (this.pausedEvent && this.cdp) {
-          const captured = await withTimeout(
-            this.cdp.send("Page.captureScreenshot", { format: "png" }) as Promise<{ data?: string }>,
-            1_000,
-          );
-          if (!captured?.data) throw new Error("CDP returned no screenshot data");
-          await writeFile(screenshotPath, Buffer.from(captured.data, "base64"));
-        } else {
-          await page.screenshot({ path: screenshotPath });
+    if (options.captureScreenshot && !options.checksOnly) {
+      const optionalBudget = optionalBudgetMs(context, 1_000);
+      if (optionalBudget === 0) {
+        warnings.push("Screenshot skipped because the shared deadline left no optional-enrichment budget.");
+      } else {
+        try {
+          const path = join(options.artifactDir, `screenshot-${Date.now()}.png`);
+          const captured = await withTimeout((async () => {
+            await mkdir(options.artifactDir, { recursive: true });
+            if (this.pausedEvent && this.cdp) {
+              const cdpCapture = await withTimeout(
+                this.cdp.send("Page.captureScreenshot", { format: "png" }) as Promise<{ data?: string }>,
+                optionalBudget,
+              );
+              if (!cdpCapture?.data) throw new Error("CDP returned no screenshot data");
+              await writeFile(path, Buffer.from(cdpCapture.data, "base64"));
+            } else {
+              await page.screenshot({ path });
+            }
+            return path;
+          })(), optionalBudget);
+          if (captured) screenshotPath = captured;
+          else warnings.push("Screenshot unavailable: optional enrichment timed out.");
+        } catch (error) {
+          warnings.push(`Screenshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
+          screenshotPath = null;
         }
-      } catch (error) {
-        warnings.push(`Screenshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
-        screenshotPath = null;
       }
     }
 
@@ -260,11 +344,11 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     const consoleBound = boundItems(this.consoleEntries, 100);
-    const networkBound = boundItems([...this.networkEntries.values()], 100);
+    const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
 
-    return {
+    const snapshot: BrowserSnapshot = {
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
       viewport: page.viewportSize(),
@@ -272,15 +356,28 @@ export class ChromiumAdapter implements BrowserAdapter {
       console: consoleBound.items,
       network: networkBound.items,
       screenshotPath,
-      debugger: await this.debuggerSnapshot(),
+      debugger: options.checksOnly ? {
+        paused: Boolean(this.pausedEvent),
+        reason: this.pausedEvent?.reason ?? null,
+        callFrames: [],
+        breakpoints: [...this.breakpoints],
+      } : await this.debuggerSnapshot(),
       react,
       next: null,
       vite: null,
       warnings,
+      observations: {
+        url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
+        dom: { state: "pass", freshness: this.pausedEvent ? "stale" : "fresh", provenance: this.pausedEvent ? "cached" : "browser" },
+        console: { state: "pass", freshness: "fresh", provenance: "browser" },
+      },
     };
+    if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
+    return snapshot;
   }
 
-  async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }): Promise<DebuggerBreakpoint> {
+  async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
+    assertContext(context);
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!Number.isInteger(input.line) || input.line < 1) {
       throw new WebDebugError("BREAKPOINT_LINE_INVALID", "Breakpoint line must be a positive integer.");
@@ -291,7 +388,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       lineNumber: input.line - 1,
       ...(input.column === undefined ? {} : { columnNumber: Math.max(0, input.column - 1) }),
     };
-    const response = (await this.cdp.send("Debugger.setBreakpointByUrl", params)) as { breakpointId?: string };
+    const response = await withContext(this.cdp.send("Debugger.setBreakpointByUrl", params) as Promise<{ breakpointId?: string }>, context);
     const breakpoint: DebuggerBreakpoint = {
       id: response.breakpointId ?? `pending-${this.breakpoints.length + 1}`,
       sourceUrl: input.sourceUrl,
@@ -302,20 +399,22 @@ export class ChromiumAdapter implements BrowserAdapter {
     return breakpoint;
   }
 
-  async control(action: "resume" | "stepOver" | "stepInto" | "stepOut"): Promise<DebuggerSnapshot> {
+  async control(action: "resume" | "stepOver" | "stepInto" | "stepOut", context: OperationContext = {}): Promise<DebuggerSnapshot> {
+    assertContext(context);
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!this.pausedEvent && action !== "resume") {
       throw new WebDebugError("DEBUGGER_NOT_PAUSED", "Step control requires a paused JavaScript target.");
     }
 
-    if (action === "resume") await this.cdp.send("Debugger.resume");
-    if (action === "stepOver") await this.cdp.send("Debugger.stepOver");
-    if (action === "stepInto") await this.cdp.send("Debugger.stepInto");
-    if (action === "stepOut") await this.cdp.send("Debugger.stepOut");
+    if (action === "resume") await withContext(this.cdp.send("Debugger.resume"), context);
+    if (action === "stepOver") await withContext(this.cdp.send("Debugger.stepOver"), context);
+    if (action === "stepInto") await withContext(this.cdp.send("Debugger.stepInto"), context);
+    if (action === "stepOut") await withContext(this.cdp.send("Debugger.stepOut"), context);
     return this.debuggerSnapshot();
   }
 
-  async evaluate(expression: string, allowSideEffects: boolean): Promise<EvaluationResult> {
+  async evaluate(expression: string, allowSideEffects: boolean, context: OperationContext = {}): Promise<EvaluationResult> {
+    assertContext(context);
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!expression.trim()) throw new WebDebugError("EXPRESSION_EMPTY", "Evaluation expression cannot be empty.");
 
@@ -328,7 +427,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }) as Promise<{
       result?: RemoteObject;
       exceptionDetails?: { text?: string; exception?: RemoteObject };
-    }>, 3_000);
+    }>, context.deadline === undefined ? 3_000 : Math.min(3_000, Math.max(1, context.deadline - performance.now())));
     if (!response) throw new WebDebugError("EVALUATION_TIMEOUT", "Expression evaluation exceeded the 3 second bound.");
     if (response.exceptionDetails) {
       throw new WebDebugError(
@@ -486,6 +585,18 @@ export class ChromiumAdapter implements BrowserAdapter {
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
       viewport: page.viewportSize(),
       isolated: !this.externalBrowser,
+      targetId: this.targetId ?? undefined,
+      mode: this.externalBrowser ? "attach" : "launch",
+      isolation: {
+        browserProcess: !this.externalBrowser,
+        context: !this.externalBrowser,
+        profile: !this.externalBrowser,
+        storage: !this.externalBrowser,
+        cache: !this.externalBrowser,
+        serviceWorkers: !this.externalBrowser,
+        navigation: !this.externalBrowser,
+        serverState: false,
+      },
     };
   }
 
@@ -517,17 +628,18 @@ export class ChromiumAdapter implements BrowserAdapter {
     return this.page;
   }
 
-  private async runUntilCompleteOrPaused(operation: () => Promise<void>): Promise<void> {
+  private async runUntilCompleteOrPaused(operation: () => Promise<void>, context: OperationContext = {}): Promise<void> {
+    assertContext(context);
     let resolvePause: (() => void) | undefined;
     const pausePromise = new Promise<"paused">((resolve) => {
       resolvePause = () => resolve("paused");
       this.pauseWaiters.add(resolvePause);
     });
     const operationPromise = operation();
-    const result = await Promise.race([
+    const result = await withContext(Promise.race([
       operationPromise.then(() => "complete" as const),
       pausePromise,
-    ]);
+    ]), context);
     if (resolvePause) this.pauseWaiters.delete(resolvePause);
     if (result === "paused") {
       operationPromise.catch(() => undefined);
@@ -535,6 +647,25 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
     await operationPromise;
   }
+}
+
+function assertContext(context: OperationContext): void {
+  if (context.signal?.aborted) throw new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.");
+  if (context.deadline !== undefined && context.deadline <= performance.now()) throw new WebDebugError("VERIFICATION_DEADLINE_EXCEEDED", "The bounded operation deadline was exhausted.");
+}
+
+async function withContext<T>(promise: Promise<T>, context: OperationContext): Promise<T> {
+  assertContext(context);
+  const remainingMs = context.deadline === undefined ? undefined : Math.max(0, context.deadline - performance.now());
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const cancellation = new Promise<never>((_, reject) => {
+    const onAbort = () => reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled."));
+    context.signal?.addEventListener("abort", onAbort, { once: true });
+    if (remainingMs !== undefined) timer = setTimeout(() => reject(new WebDebugError("VERIFICATION_DEADLINE_EXCEEDED", "The bounded operation deadline was exhausted.")), remainingMs);
+    promise.finally(() => { context.signal?.removeEventListener("abort", onAbort); if (timer) clearTimeout(timer); }).catch(() => undefined);
+  });
+  try { return await Promise.race([promise, cancellation]); }
+  catch (error) { promise.catch(() => undefined); throw error; }
 }
 
 function remoteObjectValue(object: RemoteObject | undefined): unknown {
@@ -554,6 +685,12 @@ function mapConsoleLevel(type: string): ConsoleEntry["level"] {
 
 function boundedTimeout(timeoutMs: number | undefined): number {
   return Math.min(Math.max(timeoutMs ?? 1_000, 0), 30_000);
+}
+
+function optionalBudgetMs(context: OperationContext, maximumMs: number): number {
+  if (context.deadline === undefined) return maximumMs;
+  const remaining = context.deadline - performance.now();
+  return remaining <= 50 ? 0 : Math.min(maximumMs, Math.max(1, remaining - 50));
 }
 
 function assertAllowedUrl(raw: string, allowRemote: boolean): void {
