@@ -4,6 +4,8 @@ Use this matrix to prove that the repository implements every applicable harness
 
 The attested source and direct-child commits are recorded in certification.json and Git parent history; this matrix is valid only with the current direct-child attestation.
 
+Revalidated after the public README and GitHub repository metadata positioning update.
+
 ## Status contract
 
 - `verified`: the artifact and behavior were exercised with recorded evidence. For bundled harness-certification checks, link the status cell to exactly one fresh HMAC-consistent v2 evidence record bound to the source commit, repository identity, and stable harness evaluation target. This is not external authentication.
