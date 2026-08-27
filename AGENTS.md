@@ -9,6 +9,8 @@ Use this file as the short route into the project contract. Keep detailed ration
 - Planning contract: [`docs/PLANS.md`](docs/PLANS.md)
 - Active work: [`docs/exec-plans/index.md`](docs/exec-plans/index.md)
 - Harness routes: [`docs/agent-harness/index.md`](docs/agent-harness/index.md)
+- Harness coverage matrix: [`docs/agent-harness/coverage-matrix.md`](docs/agent-harness/coverage-matrix.md)
+- Harness certification manifest: [`docs/agent-harness/certification.json`](docs/agent-harness/certification.json)
 - Security boundary: [`docs/SECURITY.md`](docs/SECURITY.md)
 
 ## Orientation

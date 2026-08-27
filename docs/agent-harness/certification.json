@@ -1,0 +1,4 @@
+{
+  "status": "pre-attestation",
+  "note": "The complete v2 certification manifest is created only in the direct-child attestation overlay."
+}
