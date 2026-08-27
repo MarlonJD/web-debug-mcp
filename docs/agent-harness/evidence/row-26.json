@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "0e650b482d6d2816ce7c6370061f0b06ac181e96",
+  "repository_commit": "319baf80b0099ad84886c686566ec6fec4de790a",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,13 +9,13 @@
   "environment": "repository-local",
   "command": "Applicability review: Victoria telemetry is not part of this local MCP package.",
   "exit_code": null,
-  "observed_at": "2026-08-27T12:37:51Z",
+  "observed_at": "2026-08-27T13:54:48Z",
   "result": "not-applicable",
   "artifacts": [
-    "git:0e650b482d6d2816ce7c6370061f0b06ac181e96",
+    "git:319baf80b0099ad84886c686566ec6fec4de790a",
     "docs/agent-harness/certification.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "77b69ee7b387b35eb242d3675861876ac370aa03d09c7446e01ccf587d4f642e"
+  "signature": "f1ff503a6be45e527bd6ac667b67d4b9c13195f2fe1adb57b6d32c01f696194a"
 }

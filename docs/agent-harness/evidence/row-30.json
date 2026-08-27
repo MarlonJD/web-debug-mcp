@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "0e650b482d6d2816ce7c6370061f0b06ac181e96",
+  "repository_commit": "319baf80b0099ad84886c686566ec6fec4de790a",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,13 +9,13 @@
   "environment": "repository-local",
   "command": "Applicability review: Scheduled external documentation automation was not requested or configured.",
   "exit_code": null,
-  "observed_at": "2026-08-27T12:37:51Z",
+  "observed_at": "2026-08-27T13:54:48Z",
   "result": "not-applicable",
   "artifacts": [
-    "git:0e650b482d6d2816ce7c6370061f0b06ac181e96",
+    "git:319baf80b0099ad84886c686566ec6fec4de790a",
     "docs/agent-harness/certification.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "04c948320ce00354d4960b0395ca516eaea216ca2ae7ee506bf558eb0133d0f6"
+  "signature": "1faf6e928e7cb4c13d3758c7e3b6061a8f025ac7d8b5e5d8ef599d26c574fa3c"
 }

@@ -57,3 +57,5 @@ These rows prevent OpenAI's implementation choices from being either copied blin
 | Automated merge and agent-authored release tooling | CI/review policy, release tooling, and [`operating-loop.md`](operating-loop.md) | Project-specific automation and gate rationale; do not infer deployment or production authority |N/A — Automated merge, release, deployment, and production tooling is outside this local package. [evidence](evidence/row-31.json)|
 
 Review this matrix after major architecture, CI, runtime, or agent-workflow changes. Do not mark the harness complete while an applicable row is missing evidence.
+
+Revalidated after packaging the standalone stdio MCP binary and documenting Codex and Claude Code installation.
