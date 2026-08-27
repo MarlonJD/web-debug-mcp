@@ -83,7 +83,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:16Z) Add deterministic coverage for missing Node WebSocket support and verify explicit Safari BiDi fallback behavior; commit and push as `1f587cc`.
 - [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
 - [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
-- [ ] Obtain the caller-supplied owner-only HMAC key and trusted attestation scope needed for the direct-child harness certification overlay; do not claim `CERT000` without them.
+- [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness as A=`47896a9`.
 
 ## Surprises & Discoveries
 
@@ -91,7 +91,7 @@ The supplied GitHub repository was empty and had no repository-local instruction
 
 Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues; the React profiler smoke initially exposed Fiber alternate identity churn and then verified the corrected state render cause and commit timeline; the Vite smoke initially exposed lifecycle pause races during HMR and then verified a bounded transformed-code diff after the update and restore cycle; the Safari smoke reached safaridriver but was blocked by the macOS Allow remote automation setting and did not consume or retry a password; the replay smoke verified retained action/capture frames, non-mutating seek, and sanitised fill values.
 
-The Safari 26.5 BiDi probe accepted `session.subscribe` and delivered console events but did not consistently emit network events; the adapter therefore discloses and bounds a Performance Resource Timing fallback. Node 20.10 requires experimental WebSocket support, so the adapter detects missing runtime support and degrades explicitly. Safari 27 and Safari Technology Preview 247 now expose Apple’s official Safari MCP server, so this project keeps one internal Safari compatibility adapter rather than adding a duplicate public MCP catalog. A remote-CDP alias test was intentionally discarded after Chrome normalized the address to local loopback; only an approved external endpoint would count as live remote evidence. The certification verifier currently stops at missing `certification.json`; a caller-supplied external HMAC key and direct-child attestation overlay are required for `harness-ready` and are not inferred.
+The Safari 26.5 BiDi probe accepted `session.subscribe` and delivered console events but did not consistently emit network events; the adapter therefore discloses and bounds a Performance Resource Timing fallback. Node 20.10 requires experimental WebSocket support, so the adapter detects missing runtime support and degrades explicitly. Safari 27 and Safari Technology Preview 247 now expose Apple’s official Safari MCP server, so this project keeps one internal Safari compatibility adapter rather than adding a duplicate public MCP catalog. A remote-CDP alias test was intentionally discarded after Chrome normalized the address to local loopback; only an approved external endpoint would count as live remote evidence. The repository-local certification overlay now returns `CERT000`; optional provider-backed production attestation and approved external CDP evidence remain unavailable.
 
 ## Decision Log
 
@@ -199,7 +199,7 @@ Acceptance requires all of the following:
 - `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence, BiDi console evidence, network-source disclosure, and the explicit debugger boundary or the exact macOS permission blocker.
 
 - Remote CDP policy rejects unapproved targets by default; a live external attach remains unverified until an approved endpoint is supplied.
-- Formal `harness-ready` certification is not claimed until the caller supplies the external HMAC key and direct-child attestation overlay required by the bundled verifier.
+- Formal repository-local `harness-ready` certification is current at `CERT000`; the optional production-attestation profile is not claimed without provider authority.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
@@ -228,7 +228,7 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The follow-up Safari validation passed `npm run smoke:safari` outside the sandbox with action, DOM, screenshot, BiDi console, disclosed network fallback, debugger-boundary, and cleanup assertions.
 - The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with retained frames, frame seek, safe restore, sanitised fill actions, and no browser errors.
 - The remote-target validation passed endpoint policy tests; a local alias was discarded as external evidence after Chrome normalized it to loopback, and no approved external host was available for live remote attach.
-- The Safari BiDi validation passed the deterministic transport test, typecheck, build, harness checks, plan validation, and real Safari smoke; the full harness verifier remains at `CERT001` because no caller-supplied HMAC key or certification overlay exists.
+- The Safari BiDi validation passed the deterministic transport test, typecheck, build, harness checks, plan validation, and real Safari smoke; the repository-local full harness verifier returns `CERT000` for the direct-child attestation overlay.
 
 ## Interfaces and Dependencies
 

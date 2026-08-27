@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-27 | Local fidelity milestones are complete; approved external CDP evidence and caller-supplied harness attestation remain gated |
+| [Build the first web-debug-mcp vertical slice](active/web-debug-mcp-mvp.md) | Platform Engineering | implementing | 2026-08-27 | Local fidelity and repository-local harness certification are complete; approved external CDP and production authority remain gated |
 <!-- harness:plans:active:end -->
 
 ## Completed

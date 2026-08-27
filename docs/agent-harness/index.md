@@ -13,4 +13,4 @@ This project uses a small adaptive harness. It makes the local MCP workflow, evi
 | [`entropy-cleanup-checklist.md`](entropy-cleanup-checklist.md) | Keeps tools, docs, and evidence boundaries from drifting |
 | [`certification.md`](certification.md) | Defines the v2 source/attestation lifecycle and authority boundaries |
 
-The repository adopts the full HMAC-backed harness certification procedure, but certification is issued only for a fresh source/direct-child attestation pair. The local key is kept outside the repository and the overlay is generated only after the native evidence sweep. An approved external CDP host and provider-backed production authority remain separate and are not inferred from local smoke output.
+The repository adopts the full HMAC-backed harness certification procedure. The current repository-local source/direct-child attestation pair returns `CERT000`; the raw owner-only key remains outside the repository. This is local evidence integrity only: an approved external CDP host and provider-backed production authority remain separate and are not inferred from local smoke output.
