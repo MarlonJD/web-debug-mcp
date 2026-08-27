@@ -1,7 +1,7 @@
 {
   "name": "web-debug",
-  "version": "0.1.0",
-  "description": "Evidence-first local web debugging for Codex and ChatGPT.",
+  "version": "0.1.0+codex.20260827153827",
+  "description": "Evidence-first local web debugging, complex repair verification, and responsive visual QA for Codex and ChatGPT.",
   "author": {
     "name": "Marlon J.D.",
     "url": "https://github.com/MarlonJD"
@@ -16,13 +16,16 @@
     "react",
     "vite",
     "nextjs",
-    "safari"
+    "safari",
+    "visual-debugging",
+    "regression-testing",
+    "replay"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Web Debug",
     "shortDescription": "Reproduce local web bugs with bounded evidence.",
-    "longDescription": "Inspect a running local web app through browser, React, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence.",
+    "longDescription": "Inspect and repair a running local web app through browser, React, Vite, Next.js, Safari, debugger, replay, responsive viewport, and fix-verification evidence.",
     "developerName": "Marlon J.D.",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,7 +36,9 @@
     "defaultPrompt": [
       "Reproduce this local web bug and capture evidence.",
       "Inspect this React, Vite, or Next.js issue.",
-      "Verify this frontend fix against the recorded flow."
+      "Verify this frontend fix against the recorded flow.",
+      "Debug this responsive visual issue at desktop and mobile sizes.",
+      "Compare this bug with and without Web Debug evidence."
     ],
     "brandColor": "#2563EB"
   },
