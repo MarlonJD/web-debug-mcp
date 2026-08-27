@@ -1,6 +1,6 @@
 # Agent Harness Map
 
-This project uses a small adaptive harness. It makes the local MCP workflow, evidence shape, safety limits, and verification commands discoverable without claiming hosted or production certification. The repository now records the remaining certification inputs explicitly rather than treating local checks as external authority.
+This project uses a small adaptive harness. It makes the local MCP workflow, evidence shape, safety limits, and verification commands discoverable without claiming hosted or production certification. Repository-local certification is recorded separately from hosted or provider-backed authority.
 
 | Authority | Purpose |
 | --- | --- |
