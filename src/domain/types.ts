@@ -2,7 +2,7 @@ export type Framework = "vanilla" | "react" | "vite" | "next";
 
 export type BrowserEngine = "chromium" | "safari";
 
-/** Public 0.3.0 limits. Keep these values in the domain so adapters and core
+/** Public 0.3.x limits. Keep these values in the domain so adapters and core
  * can share the same contract without duplicating magic numbers. */
 export const MAX_SCENARIO_ACTIONS = 100;
 export const MAX_LOCATOR_CHARS = 500;

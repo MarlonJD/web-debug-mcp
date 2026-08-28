@@ -17,10 +17,10 @@ describe("package distribution contract", () => {
     expect(packageJson.private).not.toBe(true);
     expect(packageJson.license).toBe("GPL-3.0-or-later");
     expect(existsSync(resolve("LICENSE"))).toBe(true);
-    expect(binaryPath).toBe("./bin/web-debug-mcp.mjs");
+    expect(binaryPath).toBe("bin/web-debug-mcp.mjs");
     expect(existsSync(resolve(binaryPath ?? ""))).toBe(true);
     expect(packageJson.files).toEqual(expect.arrayContaining(["bin", "dist", "LICENSE"]));
-    expect(packageJson.scripts?.prepare).toBe("npm run build");
+    expect(packageJson.scripts?.prepare).toBeUndefined();
     expect(packageJson.scripts?.prepack).toBe("npm run build");
   });
 });

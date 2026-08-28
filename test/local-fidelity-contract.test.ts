@@ -18,11 +18,11 @@ import { SessionManager } from "../src/core/session-manager.js";
 
 const execFile = promisify(execFileCallback);
 
-describe("0.3.0 local fidelity contracts", () => {
+describe("0.3.x local fidelity contracts", () => {
   it("rejects selector-only browser actions at the MCP schema boundary and keeps 13 tools", async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createServer();
-    const client = new Client({ name: "contract-test", version: "0.3.0" });
+    const client = new Client({ name: "contract-test", version: "0.3.1" });
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const listed = await client.listTools();
     expect(listed.tools).toHaveLength(13);

@@ -8,21 +8,21 @@ An evidence-first, local MCP debugger for web applications.
 
 The core package is a standalone MCP server. The repository also includes an optional Web Debug plugin for Codex and ChatGPT: the MCP server provides callable debugging tools, while the bundled skill provides workflow guidance. Claude Code and other MCP clients can continue using the standalone server.
 
-The current install path uses GitHub because the package is not published to npm yet. It runs locally over stdio and does not require a hosted service.
+The published npm package runs locally over stdio and does not require a hosted service.
 
 ### Codex CLI, desktop app, and IDE extension
 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#v0.3.0
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.3.1
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y github:MarlonJD/web-debug-mcp#v0.3.0
+-y web-debug-mcp@0.3.1
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -30,7 +30,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "github:MarlonJD/web-debug-mcp#v0.3.0"]
+args = ["-y", "web-debug-mcp@0.3.1"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 ```
@@ -90,7 +90,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. Until the npm package is published, the first MCP start uses npx to resolve the immutable github:MarlonJD/web-debug-mcp#v0.3.0 release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.3.1` npm release; Node.js 20+, npm, and network access are required.
 
 Do not install both the plugin and a separate Codex or Claude Code MCP registration for web-debug-mcp unless you intentionally want duplicate MCP registrations. For other MCP clients, use the standalone MCP installation below.
 
@@ -117,13 +117,13 @@ claude --plugin-dir ./plugins/web-debug
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#v0.3.0
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.3.1
 claude mcp list
 ```
 
 For the current project only, use `--scope project` instead of `--scope user`; Claude Code writes the shared configuration to `.mcp.json` and asks for project approval. Use `/mcp` inside Claude Code to inspect the connected server and its tools.
 
-When this package is published to npm, the command can be shortened to `npx -y web-debug-mcp`.
+To follow the latest npm release instead of the pinned command above, use `npx -y web-debug-mcp`.
 
 ### When the agent should use it
 

@@ -1,11 +1,11 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
   "license": "GPL-3.0-or-later",
   "bin": {
-    "web-debug-mcp": "./bin/web-debug-mcp.mjs"
+    "web-debug-mcp": "bin/web-debug-mcp.mjs"
   },
   "files": [
     "bin",
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MarlonJD/web-debug-mcp.git"
+    "url": "git+https://github.com/MarlonJD/web-debug-mcp.git"
   },
   "homepage": "https://github.com/MarlonJD/web-debug-mcp#readme",
   "bugs": {
@@ -45,7 +45,6 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepare": "npm run build",
     "prepack": "npm run build",
     "dev": "tsx src/index.ts",
     "harness:check": "node scripts/harness-check.mjs",

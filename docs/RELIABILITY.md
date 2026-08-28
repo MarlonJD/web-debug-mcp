@@ -37,7 +37,7 @@ The first increment favors bounded, recoverable local sessions over background p
 | Matrix candidate fails or is cancelled | Each of at most 20 sequential viewport units owns a fresh adapter and shared deadline | Close only that candidate in `finally`; preserve canonical adapter/target/replay and downgrade to unavailable/inconclusive | Matrix orchestration tests |
 | Registry is malformed, stale, busy, or identity-drifted | Owner/mode/symlink/cap checks, per-instance lock, heartbeat (`15s`), stale diagnostic (`45s`), and Linux/Darwin identity revalidation | Report and skip; signal neither a changed process nor an unregistered legacy process | Cleanup CLI/process tests |
 
-## Enforced 0.3.0 bounds
+## Enforced 0.3.x bounds
 
 Scenario actions `100`; locator values `500`; accessible names `300`; probe properties `6`; checkpoints `16`/`32` total probes/`8` per checkpoint; decisive observations `64`; viewports `4`; attempts `5`; matrix units `20`; AX nodes `128`; suggestions `32`; auth file `65,536` bytes/`32` cookies/`8` origins/`128` storage items; action waits `30,000 ms`; phase budgets `15/60/120s`; MCP requests `150s`; evidence bundles `98,304` bytes; results `262,144` bytes; replay frames `8`; registry entries/records `128/64`; records `16,384` bytes; cleanup report `65,536` bytes and `64` detail rows. Positive idle TTL overrides are `10,000..3,600,000 ms`; `0` disables automatic expiry.
 

@@ -5,6 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
+| [Publish the first npm package as 0.3.1](active/npm-publication-0.3.1.md) | Platform Engineering | implementing | 2026-08-28 | npm authenticated; package metadata correction and release validation in progress |
 <!-- harness:plans:active:end -->
 
 ## Completed
