@@ -37,7 +37,7 @@ Publish a runnable `web-debug-mcp` package to the public npm registry, then upda
 
 ## Validation and Acceptance
 
-Acceptance requires `npm test`, typecheck, build, harness, plugin validation, warning-free `npm pack`, fresh-prefix `npx`/binary MCP handshake, public npm metadata for exactly `0.3.1`, GitHub main/tag/release SHA agreement, Codex installed/enabled at the `0.3.1` plugin build, and a clean worktree. Never move `v0.3.0`.
+Acceptance requires `npm test`, typecheck, build, harness, plugin validation, warning-free `npm pack`, fresh-prefix `npx`/binary MCP handshake, public npm metadata for exactly `0.3.1`, release-source/tag/GitHub-release SHA agreement, Codex installed/enabled at the `0.3.1` plugin build, and a clean worktree. An evidence-only follow-up commit may advance `main`; never move `v0.3.0` or `v0.3.1`.
 
 ## Idempotence and Recovery
 
@@ -45,7 +45,7 @@ Preflight npm and GitHub identities before irreversible writes. If npm publicati
 
 ## Outcomes & Retrospective
 
-`web-debug-mcp@0.3.1` is public on npm with `latest=0.3.1`, executable `bin/web-debug-mcp.mjs`, shasum `67a8c85607b7c1cfc961bd586677f2cd3b9c488f`, and no install-time script. A real tarball and the public registry package both installed into fresh directories and completed a 13-tool MCP handshake. Commit, remote main, annotated tag `v0.3.1`, and GitHub release resolve to `e97bab0c2deea5c7ec98dc7d1eaf96727dbc9276`. Codex reports `web-debug@web-debug` installed/enabled at `0.3.1+codex.20260828103736`, whose bundled MCP runtime is pinned to `web-debug-mcp@0.3.1`.
+`web-debug-mcp@0.3.1` is public on npm with `latest=0.3.1`, executable `bin/web-debug-mcp.mjs`, shasum `67a8c85607b7c1cfc961bd586677f2cd3b9c488f`, and no install-time script. A real tarball and the public registry package both installed into fresh directories and completed a 13-tool MCP handshake. Release source commit, annotated tag `v0.3.1`, and GitHub release resolve to `e97bab0c2deea5c7ec98dc7d1eaf96727dbc9276`; the evidence-only documentation commit `d328451` then advanced `main` without changing release contents. Codex reports `web-debug@web-debug` installed/enabled at `0.3.1+codex.20260828103736`, whose bundled MCP runtime is pinned to `web-debug-mcp@0.3.1`.
 
 ## Revision History
 
