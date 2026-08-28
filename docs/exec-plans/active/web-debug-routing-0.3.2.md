@@ -24,9 +24,10 @@ Make the Web Debug plugin a focused browser-evidence complement to Build Web App
 
 - [x] Add explicit routing and handoff rules to `web-debug-workflow`.
 - [x] Update plugin prompts/descriptions, current documentation, harness assertions, and package/runtime version surfaces to `0.3.2`.
-- [ ] Run deterministic tests, typecheck, build, harness, skill/plugin validation, and package/stdio checks.
-- [ ] Commit and push the intended source revision on the existing `main` branch.
-- [ ] Create and push exact-SHA tag `v0.3.2`, publish npm `web-debug-mcp@0.3.2`, and publish the matching GitHub release.
+- [x] Run deterministic tests, typecheck, build, harness, skill/plugin validation, and package dry-run checks.
+- [x] Commit and push the intended source revision on the existing `main` branch.
+- [x] Create and push exact-SHA tag `v0.3.2` and publish the matching GitHub release.
+- [ ] Publish npm `web-debug-mcp@0.3.2` and complete a fresh-prefix package/stdio handshake; currently blocked by npm `auth-and-writes` browser/2FA authentication.
 - [ ] Refresh the `web-debug` Codex marketplace and install/verify the new enabled plugin build without a duplicate standalone MCP registration.
 - [ ] Record release and Codex evidence, close this plan, and leave a clean worktree.
 
@@ -46,9 +47,10 @@ Preflight npm, GitHub, tag, marketplace, and installed-plugin state before exter
 
 ## Outcomes & Retrospective
 
-Pending implementation and release verification.
+The routing implementation is committed and pushed as `d3dfb738e43c199e3fbd8acb3798fa8b7f5c4c77`; exact tag `v0.3.2` and its GitHub release point to that source revision. npm publication and Codex installation remain pending because npm requires an interactive browser/2FA authorization for write actions. No npm mutation occurred before the authorization blocker.
 
 ## Revision History
 
 - (2026-08-28 12:13Z) Created the active plan from the requested Web Debug/Build Web Apps routing change and `0.3.2` release.
 - (2026-08-28 12:17Z) Added explicit Web Debug/native-runner/Build Web Apps routing and updated all current plugin/runtime surfaces to `0.3.2`; deterministic gates, skill/plugin validators, and package dry-run passed.
+- (2026-08-28 12:21Z) Pushed implementation commit `d3dfb738`, exact tag `v0.3.2`, and GitHub release; npm publish stopped before registry mutation at the required interactive 2FA browser authorization.
