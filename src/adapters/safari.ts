@@ -6,6 +6,7 @@ import { performance } from "node:perf_hooks";
 import type {
   ActionResult,
   BrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
   ConsoleEntry,
@@ -14,7 +15,10 @@ import type {
   DomSnapshot,
   NetworkEntry,
   OperationContext,
+  LocatorProbeResult,
+  LocatorProperty,
 } from "../domain/types.js";
+import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import type {
@@ -77,6 +81,8 @@ export class SafariAdapter implements BrowserAdapter {
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
+    if (options.tls === "allow-insecure-loopback") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari WebDriver does not support the guarded loopback TLS bypass.");
+    if (options.authState || options.authFixture === "seeded-disposable") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari WebDriver does not support disposable auth-state seeding.");
     if (options.cdpEndpoint) {
       throw new WebDebugError("SAFARI_CDP_UNSUPPORTED", "Safari sessions use webdriverEndpoint, not cdpEndpoint.");
     }
@@ -155,14 +161,16 @@ export class SafariAdapter implements BrowserAdapter {
         await this.navigate(action.url, context);
         break;
       case "click":
-        await this.click(action.selector, context);
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.click(action.locator.value, context);
         break;
       case "fill":
-        await this.fill(action.selector, action.value, context);
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.fill(action.locator.value, action.value, context);
         break;
       case "wait":
-        if (!action.selector && !action.text) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a selector or text condition; elapsed-only waits are not supported.");
-        await this.wait(action.selector, action.text, boundedTimeout(action.timeoutMs), context);
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.waitForProbe(action, context);
         break;
       case "reload":
         await this.command("/refresh", "POST", undefined, context);
@@ -173,10 +181,61 @@ export class SafariAdapter implements BrowserAdapter {
     return { kind: action.kind, url: safeUrl(url), title };
   }
 
+  async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {
+    assertContext(context);
+    const unique = [...new Set(properties)];
+    if (unique.length === 0) throw new WebDebugError("PROBE_PROPERTIES_REQUIRED", "A locator probe must request at least one property.");
+    if (unique.length > MAX_PROPERTIES_PER_PROBE) throw new WebDebugError("PROBE_PROPERTIES_LIMIT", `A locator probe may request at most ${MAX_PROPERTIES_PER_PROBE} properties.`);
+    if (locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only; computed semantic locators are unavailable.");
+    if (!locator.value || locator.value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LOCATOR_INVALID", `Locator values are limited to ${MAX_LOCATOR_CHARS} characters.`);
+    const values = await this.executeSync<Record<string, unknown>>(
+      `const css = arguments[0];
+       const elements = Array.from(document.querySelectorAll(css));
+       const element = elements[0];
+       const style = element ? getComputedStyle(element) : null;
+       return {
+         count: elements.length,
+         visible: Boolean(element && style && style.visibility !== "hidden" && style.display !== "none" && element.getClientRects().length),
+         enabled: Boolean(element && !(element instanceof HTMLButtonElement || element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) || (element && element.disabled !== true)),
+         checked: Boolean(element && element.checked === true),
+         text: element ? (element.textContent || "").slice(0, ${MAX_LOCATOR_CHARS}) : null,
+       };`,
+      [locator.value],
+      context,
+    );
+    const result: LocatorProbeResult = { locator: { ...locator }, properties: unique, observedAt: new Date().toISOString(), provenance: "webdriver", warnings: [] };
+    for (const property of unique) {
+      const value = values?.[property];
+      if (property === "count") result.count = typeof value === "number" ? value : 0;
+      if (property === "visible") result.visible = value === true;
+      if (property === "enabled") result.enabled = value === true;
+      if (property === "checked") result.checked = value === true;
+      if (property === "text") result.text = typeof value === "string" ? boundText(value, MAX_LOCATOR_CHARS) : null;
+    }
+    return result;
+  }
+
+  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+    const timeout = boundedTimeout(action.timeoutMs);
+    const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
+    while (performance.now() <= deadline) {
+      assertContext(context);
+      const probe = await this.probe(action.locator, [action.property], context);
+      const actual = probe[action.property];
+      if (actual === action.expected || (typeof action.expected === "string" && typeof actual === "string" && actual.includes(action.expected))) return;
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, Math.min(50, Math.max(1, deadline - performance.now())));
+        context.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); }, { once: true });
+      });
+    }
+    throw new WebDebugError("WAIT_TIMEOUT", `Safari wait condition exceeded ${timeout}ms.`);
+  }
+
   async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
     assertContext(context);
     const warnings = [
       "Safari WebDriver does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
+      "Safari WebDriver computed accessibility diagnostics and semantic locator suggestions are unavailable; use exact CSS locators and live CSS probes.",
     ];
     if (this.bidiWarning) warnings.push(this.bidiWarning);
     if (this.headlessRequested) warnings.push("Safari WebDriver does not support headless mode; the session uses a visible Safari window.");
@@ -250,6 +309,7 @@ export class SafariAdapter implements BrowserAdapter {
       react: null,
       next: null,
       vite: null,
+      accessibility: null,
       warnings,
       observations: {
         url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
@@ -422,44 +482,21 @@ export class SafariAdapter implements BrowserAdapter {
     await this.command("/url", "POST", { url }, context);
   }
 
-  private async click(selector: string, context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(selector, context);
+  private async click(css: string, context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(css, context);
     await this.command(`/element/${encodeURIComponent(element)}/click`, "POST", undefined, context);
   }
 
-  private async fill(selector: string, value: string, context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(selector, context);
+  private async fill(css: string, value: string, context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(css, context);
     await this.command(`/element/${encodeURIComponent(element)}/clear`, "POST", undefined, context);
     await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] }, context);
   }
 
-  private async wait(selector: string | undefined, text: string | undefined, timeoutMs: number, context: OperationContext = {}): Promise<void> {
-    const deadline = Math.min(performance.now() + timeoutMs, context.deadline ?? Number.POSITIVE_INFINITY);
-    while (performance.now() <= deadline) {
-      assertContext(context);
-      const found = await this.executeSync<boolean>(
-        `const { selector, text } = arguments[0];
-          const element = document.querySelector(selector || "body");
-          if (!element) return false;
-          if (text) return (element.textContent || "").includes(text);
-          return Boolean(element.getClientRects().length);
-        `,
-        [{ selector, text }],
-        context,
-      );
-      if (found) return;
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(resolve, 50);
-        context.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); }, { once: true });
-      });
-    }
-    throw new WebDebugError("WAIT_TIMEOUT", `Safari wait condition exceeded ${timeoutMs}ms.`);
-  }
-
-  private async findElement(selector: string, context: OperationContext = {}): Promise<string> {
-    const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: selector }, context);
+  private async findElement(css: string, context: OperationContext = {}): Promise<string> {
+    const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: css }, context);
     const elementId = value["element-6066-11e4-a52e-4f735466cecf"] ?? value.ELEMENT;
-    if (typeof elementId !== "string") throw new WebDebugError("ELEMENT_NOT_FOUND", `Safari could not resolve selector: ${selector}`);
+    if (typeof elementId !== "string") throw new WebDebugError("ELEMENT_NOT_FOUND", "Safari could not resolve the CSS locator.");
     return elementId;
   }
 
@@ -567,7 +604,7 @@ class WebDriverClient {
       capabilities: {
         alwaysMatch: {
           browserName: "safari",
-          acceptInsecureCerts: true,
+          acceptInsecureCerts: false,
           webSocketUrl: true,
           "safari:experimentalWebSocketUrl": true,
         },
@@ -752,6 +789,7 @@ class SafariBidiClient {
 function boundedTimeout(timeoutMs: number | undefined): number {
   return Math.min(Math.max(timeoutMs ?? 1_000, 0), 30_000);
 }
+
 
 function assertAllowedUrl(raw: string, allowRemote: boolean): void {
   let url: URL;

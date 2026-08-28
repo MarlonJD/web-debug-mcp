@@ -1,6 +1,6 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
   "license": "GPL-3.0-or-later",
@@ -53,6 +53,7 @@
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
     "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
+    "smoke:local-fidelity": "npm run build && node scripts/live-local-fidelity-smoke.mjs",
     "demo:compare": "npm run build --silent && node scripts/demo-compare.mjs",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",

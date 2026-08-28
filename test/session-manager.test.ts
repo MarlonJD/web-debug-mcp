@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   ActionResult,
   BrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
   DebuggerBreakpoint,
@@ -11,6 +12,8 @@ import type {
   FailureSignatureEntry,
   OperationContext,
   ScenarioCheck,
+  LocatorProperty,
+  LocatorProbeResult,
 } from "../src/domain/types.js";
 import type { BrowserAdapter, BrowserStartOptions, SnapshotOptions } from "../src/adapters/browser.js";
 import { WebDebugError } from "../src/core/errors.js";
@@ -47,6 +50,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   private readonly actionGate: Promise<ActionResult> | null;
   private networkGeneration = 1;
   private networkBuffer: BrowserSnapshot["network"] = [];
+  private lastSnapshot: BrowserSnapshot | null = null;
 
   constructor(
     private readonly snapshots: SnapshotScript[],
@@ -124,11 +128,23 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
     const next = this.snapshots.shift();
     if (next instanceof Error) throw next;
     const scripted = typeof next === "function" ? next(options, this) : next ?? snapshotFor("Fixed");
-    if (!this.config.bufferNetwork) return scripted;
+    if (!this.config.bufferNetwork) { this.lastSnapshot = scripted; return scripted; }
     const network = options.checksOnly ? [] : this.networkBuffer;
     this.snapshotNetworks.push(network);
     if (options.checksOnly && !options.retainNetwork) this.networkBuffer = [];
-    return { ...scripted, network };
+    const result = { ...scripted, network }; this.lastSnapshot = result; return result;
+  }
+
+  async probe(locator: BrowserLocator, properties: LocatorProperty[]): Promise<LocatorProbeResult> {
+    if (this.lastSnapshot?.observations?.dom?.freshness === "stale") throw new WebDebugError("REQUIRED_OBSERVATION_UNAVAILABLE", "DOM probe is stale in the scripted target.");
+    const text = this.lastSnapshot?.dom.bodyText ?? "";
+    const result: LocatorProbeResult = { locator, properties: [...new Set(properties)], observedAt: new Date().toISOString(), provenance: "browser", warnings: [] };
+    if (result.properties.includes("count")) result.count = 1;
+    if (result.properties.includes("visible")) result.visible = true;
+    if (result.properties.includes("enabled")) result.enabled = true;
+    if (result.properties.includes("checked")) result.checked = false;
+    if (result.properties.includes("text")) result.text = text;
+    return result;
   }
 
   private networkEntry(): BrowserSnapshot["network"][number] {
@@ -227,8 +243,8 @@ function scenarioInput(sessionId: string, overrides: Partial<RecordScenarioInput
     name: "scripted scenario",
     url: "http://127.0.0.1:4173/",
     actions: [],
-    failureSignature: [{ kind: "textContains", value: "Bug", expected: "pass" }],
-    acceptanceChecks: [{ kind: "textContains", value: "Fixed" }],
+    failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "pass" }],
+    acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
     ...overrides,
   };
 }
@@ -348,24 +364,24 @@ describe("session manager adaptive contract", () => {
     const cases: Array<{ name: string; failureSignature: FailureSignatureEntry[]; baseline: BrowserSnapshot; post: BrowserSnapshot; acceptanceChecks: ScenarioCheck[]; outcome: string }> = [
       {
         name: "positive",
-        failureSignature: [{ kind: "textContains", value: "Bug", expected: "pass" }],
+        failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "pass" }],
         baseline: snapshotFor("Bug"),
         post: snapshotFor("Bug"),
-        acceptanceChecks: [{ kind: "textContains", value: "Bug" }],
+        acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains" }],
         outcome: "failed",
       },
       {
         name: "negative",
-        failureSignature: [{ kind: "textContains", value: "Bug", expected: "fail" }],
+        failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "fail" }],
         baseline: snapshotFor("Fixed"),
         post: snapshotFor("Fixed"),
-        acceptanceChecks: [{ kind: "textContains", value: "Fixed" }],
+        acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
         outcome: "failed",
       },
       {
         name: "mixed-negative",
         failureSignature: [
-          { kind: "textContains", value: "Bug", expected: "pass" },
+          { kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "pass" },
           { kind: "noConsoleErrors", expected: "fail" },
         ],
         baseline: snapshotFor("Bug", { console: [{ level: "error", text: "original failure" }] }),
@@ -445,7 +461,7 @@ describe("session manager adaptive contract", () => {
     const withResetSession = await start(withReset.manager);
     const withResetScenario = await record(withReset.manager, withResetSession.id, {
       risks: { serverStateLeakage: true },
-      serverStateReset: { action: { kind: "click", selector: "#reset" }, readyCheck: { kind: "textContains", value: "Reset" } },
+      serverStateReset: { action: { kind: "click", locator: { kind: "css", value: "#reset" } }, readyCheck: { kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Reset", match: "contains" } },
     });
     const withResetResult = await withReset.manager.verifyScenario({ sessionId: withResetSession.id, scenarioId: withResetScenario.id });
     expect(withResetResult.outcome).toBe("verified");
@@ -553,7 +569,7 @@ describe("session manager adaptive contract", () => {
       } }),
     ], { browser: "safari", mode: "webdriver", targetId: "safari-session" });
     const safariSession = await start(safari.manager, { browser: "safari" });
-    const safariScenario = await record(safari.manager, safariSession.id, { acceptanceChecks: [{ kind: "textContains", value: "Fixed" }, { kind: "noConsoleErrors" }] });
+    const safariScenario = await record(safari.manager, safariSession.id, { acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }, { kind: "noConsoleErrors" }] });
     const safariResult = await safari.manager.verifyScenario({ sessionId: safariSession.id, scenarioId: safariScenario.id });
     expect(safariScenario.baseline.status).toBe("reproduced");
     expect(safariResult.outcome).toBe("inconclusive");
@@ -641,7 +657,7 @@ describe("session manager adaptive contract", () => {
     const session = await start(manager);
     const scenario = await record(manager, session.id, {
       url: `http://127.0.0.1:4173/?token=${secret}`,
-      actions: [{ kind: "fill", selector: `#${secret}`, value: secret }],
+      actions: [{ kind: "fill", locator: { kind: "css", value: `#${secret}` }, value: secret }],
       buildReference: { source: "caller", value: secret },
     });
     const result = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id, buildReference: { source: "caller", value: secret } });
@@ -660,14 +676,14 @@ describe("session manager adaptive contract", () => {
 
     const errorManager = managerFor([], { mode: "attach", targetId: "tab-1", failAction: new WebDebugError("SCRIPTED_FAILURE", secret, { details: secret }) });
     const errorSession = await start(errorManager.manager);
-    const error = await errorManager.manager.act(errorSession.id, { kind: "fill", selector: "#secret", value: secret }).catch((value) => value as Error & { details?: unknown });
+    const error = await errorManager.manager.act(errorSession.id, { kind: "fill", locator: { kind: "css", value: "#secret" }, value: secret }).catch((value) => value as Error & { details?: unknown });
     expect(error.message).not.toContain(secret);
     expect(JSON.stringify(error)).not.toContain(secret);
     await errorManager.manager.close(errorSession.id);
   });
 
   it("caps scenarios, replay frames, observations, and serialized evidence, then purges on close", async () => {
-    const manyActions = Array.from({ length: 12 }, (_, index) => ({ kind: "click" as const, selector: `#button-${index}` }));
+    const manyActions = Array.from({ length: 12 }, (_, index) => ({ kind: "click" as const, locator: { kind: "css" as const, value: `#button-${index}` } }));
     const snapshots: SnapshotScript[] = [];
     for (let index = 0; index < 10; index += 1) snapshots.push(snapshotFor("Bug"), snapshotFor("Bug"));
     const { manager } = managerFor(snapshots, { mode: "attach", targetId: "tab-1" });
@@ -712,18 +728,18 @@ describe("session manager adaptive contract", () => {
     const busy = managerFor([], { mode: "attach", targetId: "tab-1", hangActions: true }, () => 0, 0);
     const busySession = await start(busy.manager);
     const controller = new AbortController();
-    const active = busy.manager.act(busySession.id, { kind: "click", selector: "#hang" }, { signal: controller.signal });
+    const active = busy.manager.act(busySession.id, { kind: "click", locator: { kind: "css", value: "#hang" } }, { signal: controller.signal });
     await expect(busy.manager.capture(busySession.id, false)).rejects.toMatchObject({ code: "SESSION_BUSY" });
     const activeExpectation = expect(active).rejects.toMatchObject({ code: "REQUEST_CANCELLED" });
     controller.abort();
     await activeExpectation;
-    await expect(busy.manager.act(busySession.id, { kind: "click", selector: "#later" })).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
+    await expect(busy.manager.act(busySession.id, { kind: "click", locator: { kind: "css", value: "#later" } })).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
     busy.adapters[0]?.releaseAction();
     await busy.manager.close(busySession.id);
 
     const closing = managerFor([], { mode: "attach", targetId: "tab-1", hangActions: true, hangClose: true }, () => 0, 0);
     const closingSession = await start(closing.manager);
-    const late = closing.manager.act(closingSession.id, { kind: "click", selector: "#late" });
+    const late = closing.manager.act(closingSession.id, { kind: "click", locator: { kind: "css", value: "#late" } });
     const lateExpectation = expect(late).rejects.toMatchObject({ code: "REQUEST_CANCELLED" });
     const closed = await closing.manager.close(closingSession.id);
     expect(closed.status).toBe("closed");

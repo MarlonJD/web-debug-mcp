@@ -37,7 +37,7 @@ try {
   await waitForUrl(url, vite);
 
   verificationSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
-  await manager.act(verificationSession.id, { kind: "click", selector: "button" });
+  await manager.act(verificationSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
   const verificationEvidence = await manager.capture(verificationSession.id, true);
   if (!verificationEvidence) throw new Error("React/Vite evidence capture returned no evidence.");
   const verifiedComponent = findComponent(verificationEvidence.browser.react?.components ?? [], "CheckoutForm");
@@ -50,12 +50,12 @@ try {
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
   const breakpoint = await manager.setBreakpoint(breakpointSession.id, { sourceUrl, line: 17 });
-  await manager.act(breakpointSession.id, { kind: "click", selector: "button" });
+  await manager.act(breakpointSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
   const paused = await manager.capture(breakpointSession.id, true);
   const pausedFrame = paused.browser.debugger.callFrames.find((frame) => frame.url.includes("/src/App.jsx"));
   const pausedComponent = findComponent(paused.browser.react?.components ?? [], "CheckoutForm");
   await manager.control(breakpointSession.id, "resume");
-  await manager.act(breakpointSession.id, { kind: "wait", selector: "[data-testid='react-commit-ready']", text: "Committed", timeoutMs: 5_000 });
+  await manager.act(breakpointSession.id, { kind: "wait", locator: { kind: "css", value: "[data-testid='react-commit-ready']" }, property: "text", expected: "Committed", timeoutMs: 5_000 });
   const after = await manager.capture(breakpointSession.id, false);
   const afterComponent = findComponent(after.browser.react?.components ?? [], "CheckoutForm");
   const lastCommit = after.browser.react?.commits.at(-1);

@@ -31,7 +31,7 @@ try {
   await fixtureReady;
   const target = await adapter.start({ url, executablePath: browserPath, headless: true });
   const breakpoint = await adapter.setBreakpoint({ sourceUrl, line: 12 });
-  await adapter.act({ kind: "click", selector: "#submit" });
+  await adapter.act({ kind: "click", locator: { kind: "css", value: "#submit" } });
   const snapshot = await adapter.snapshot({ artifactDir, captureScreenshot: true });
   const frame = snapshot.debugger.callFrames.find((candidate) => candidate.url === sourceUrl);
   const assertions = {

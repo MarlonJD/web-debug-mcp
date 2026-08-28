@@ -15,14 +15,14 @@ The current install path uses GitHub because the package is not published to npm
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#main
+codex mcp add web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#v0.3.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y github:MarlonJD/web-debug-mcp#main
+-y github:MarlonJD/web-debug-mcp#v0.3.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -30,7 +30,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "github:MarlonJD/web-debug-mcp#main"]
+args = ["-y", "github:MarlonJD/web-debug-mcp#v0.3.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 ```
@@ -61,6 +61,8 @@ Codex starts web-debug-mcp over local stdio on demand
 web_project_detect → reproduce → web_issue_capture → fix verification
 ~~~
 
+The stdio binary also exposes the package-only cleanup command `web-debug-mcp cleanup [--all-idle]`. It emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
+
 ### Install from the Codex CLI
 
 Add this repository’s marketplace, then install the web-debug plugin:
@@ -88,7 +90,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. Until the npm package is published, the first MCP start uses npx to resolve github:MarlonJD/web-debug-mcp#main; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. Until the npm package is published, the first MCP start uses npx to resolve the immutable github:MarlonJD/web-debug-mcp#v0.3.0 release; Node.js 20+, npm, and network access are required.
 
 Do not install both the plugin and a separate Codex or Claude Code MCP registration for web-debug-mcp unless you intentionally want duplicate MCP registrations. For other MCP clients, use the standalone MCP installation below.
 
@@ -115,7 +117,7 @@ claude --plugin-dir ./plugins/web-debug
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#main
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y github:MarlonJD/web-debug-mcp#v0.3.0
 claude mcp list
 ```
 
@@ -160,7 +162,7 @@ The public tools cover:
 
 - project capability detection;
 - explicit Chromium or Safari session start and status;
-- bounded browser actions: navigate, click, fill, observable selector/text waits, and reload;
+- bounded browser actions: navigate, click, fill, exact-locator probe waits, and reload;
 - issue capture with DOM, console, network, screenshot, debugger, framework, and replay evidence;
 - Chromium breakpoints, pause control, and guarded JavaScript evaluation;
 - Next route compilation and Server Action lookup;
@@ -192,6 +194,10 @@ The difference is both the target and the integration model:
 ### Browser evidence
 
 - Chromium launch through an explicit executable path or attach through an explicit CDP endpoint.
+- Exact CSS, role, text, label, and test-id locators with fresh live count/visibility/enabled/checked/text probes.
+- Isolated loopback-only TLS opt-in with an approved origin, project-contained disposable Playwright auth state, named checkpoints, and bounded desktop/mobile viewport matrices.
+- Computed Chromium accessibility diagnostics with live-validated `uniqueAtCapture` suggestions; Safari stays CSS-only and reports these advanced capabilities as unavailable.
+- Auth-seeded sessions suppress screenshots because screenshot pixels cannot be truthfully redacted.
 - Safari actions, DOM, screenshots, and explicit JavaScript evaluation through W3C WebDriver.
 - WebDriver BiDi console and network subscriptions where the installed Safari exposes them.
 - A disclosed, bounded Performance Resource Timing fallback for Safari versions that do not emit network events.
@@ -255,14 +261,14 @@ The MCP flow is session-bound and explicit:
   "sessionId": "<live-session-id>",
   "name": "latest quote wins",
   "url": "http://127.0.0.1:4188/",
-  "actions": [{"kind": "click", "selector": "[data-testid='refresh-quote']"}],
-  "failureSignature": [{"kind": "textContains", "value": "Quote v2 applied", "expected": "fail"}],
-  "acceptanceChecks": [{"kind": "textContains", "value": "Quote v2 applied"}, {"kind": "noConsoleErrors"}],
+  "actions": [{"kind": "click", "locator": {"kind": "css", "value": "[data-testid='refresh-quote']"}}],
+  "failureSignature": [{"kind": "locatorText", "locator": {"kind": "css", "value": "body"}, "text": "Quote v2 applied", "match": "contains", "expected": "fail"}],
+  "acceptanceChecks": [{"kind": "locatorText", "locator": {"kind": "css", "value": "body"}, "text": "Quote v2 applied", "match": "contains"}, {"kind": "noConsoleErrors"}],
   "risks": {"async": true}
 }
 ```
 
-Wait actions must name a selector or text condition; elapsed-only sleeps are rejected.
+Wait actions must name an exact locator, probe property, and expected value; elapsed-only sleeps are rejected.
 
 ## Why use it?
 
@@ -273,6 +279,7 @@ Use this project when you want the debugging agent to have evidence rather than 
 - diagnose React re-render and HMR issues with source-oriented context;
 - connect a Next Server Action request to its route, manifest entry, and server spans;
 - preserve a redacted reproduction that can be inspected or safely replayed;
+- use exact semantic locators, named checkpoints, and bounded viewport matrices for repeatable responsive flows;
 - make cross-browser checks explicit instead of silently treating WebKit as Safari;
 - avoid installing several MCP servers that each own part of the same frontend workflow;
 - keep local debugging bounded and reviewable for agent-driven development.

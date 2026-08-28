@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: web-debug-mcp-mvp
-status: active
+status: completed
 created: 2026-08-26
-updated: 2026-08-27
-completed:
+updated: 2026-08-28
+completed: 2026-08-28
 owner: Platform Engineering
 -->
 
@@ -82,7 +82,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:10Z) Commit and push the Next request-trace linkage milestone as `f0e28f0` on `origin/main`.
 - [x] (2026-08-27 02:16Z) Add deterministic coverage for missing Node WebSocket support and verify explicit Safari BiDi fallback behavior; commit and push as `1f587cc`.
 - [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
-- [ ] Obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable.
+- [ ] Candidate follow-up: obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable. Tracked in `docs/exec-plans/tech-debt-tracker.md`.
 - [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness. The current source and attestation IDs are authoritative in `docs/agent-harness/certification.json` and Git parent history.
 - [x] (2026-08-27 15:30Z) Rewrite the public README to explain the project purpose, MCP value, native macOS/iOS skill distinction, use cases, benefits, expectations, and explicit non-expectations; update the GitHub repository description and topics.
 - [x] (2026-08-27 13:49Z) Make the server installable as a standalone stdio MCP through GitHub `npx` for Codex and Claude Code; add the executable package contract, agent-use instructions, and README-first installation guidance.
@@ -140,9 +140,9 @@ The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills d
 
 ## Outcomes & Retrospective
 
-The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host is still required for live remote-attach evidence.
+The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host remains a candidate follow-up for live remote-attach evidence.
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, repository-local harness certification, the `web-debug` Codex/ChatGPT/Claude Code plugin wrapper, and remote push are complete for the implemented local suite. The plan remains active only for an approved external remote target and optional provider-backed production attestation; exact framework parity and hosted deployment remain explicit non-claims.
+The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, repository-local harness certification, the `web-debug` Codex/ChatGPT/Claude Code plugin wrapper, and remote push are complete for the implemented local suite. Approved external remote-target evidence and optional provider-backed production attestation are candidate-only follow-ups; exact framework parity and hosted deployment remain explicit non-claims.
 
 The current deterministic suite passes 24 tests, typecheck, build, 127 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach; repository-local certification returns `CERT000`, while provider-backed production attestation remains unavailable.
 
@@ -158,7 +158,7 @@ The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures
 
 The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy is complete; external-host live attach remains a separate evidence gate because no approved endpoint is available in this environment.
 
-The bounded requested milestones are implemented and pushed. React profiler/render-cause details, Vite transform provenance/source-map summaries, Next request/action evidence, Safari BiDi/fallback evidence, safe replay restore, and repository-local harness certification are now covered without adding duplicate MCP catalogs. The remaining items are authority/evidence gates: approved external-target live evidence and optional provider-backed production attestation.
+The bounded requested MVP milestones are locally complete. React profiler/render-cause details, Vite transform provenance/source-map summaries, Next request/action evidence, Safari BiDi/fallback evidence, safe replay restore, and repository-local harness certification are covered without adding duplicate MCP catalogs. Approved external-target live evidence and optional provider-backed production attestation remain candidate/debt boundaries, not blockers for this completed local plan.
 
 The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestones add automatic component/state evidence, bounded commit profiler/render-cause details, module graph/HMR state, transform provenance/diffs, and source-map summaries without adding public MCP servers. The Next milestones add direct SSE JSON-RPC metadata, bounded logs/request insights, route compilation, Server Action lookup, and request-linked execution evidence. The Safari milestones add W3C WebDriver actions/DOM/screenshots plus BiDi console/network subscription with a disclosed fallback. The replay milestones add captured-frame timeline/seek and safe action restore. Remote policy is fail-closed and external attach remains authority-gated; repository-local harness certification is current while provider-backed production attestation remains gated.
 
@@ -268,7 +268,7 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 
 Browser targets now identify the selected browser engine and whether the connection is remote; Safari uses WebDriver and Chromium uses CDP/launch according to explicit session input.
 
-The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses `McpServer.registerTool` with Zod 4 schemas. `playwright-core` 1.62.1 is used only through `BrowserAdapter`; it does not download a browser. `SessionManager` accepts a `BrowserAdapterFactory` so deterministic fake adapters can test lifecycle behavior without a browser. `EvidenceBundle` is version 1 and always carries a redaction marker.
+The public MCP server is built with `@modelcontextprotocol/sdk` 1.30.0 and uses `McpServer.registerTool` with Zod 4 schemas. `playwright-core` 1.62.1 is used only through `BrowserAdapter`; it does not download a browser. `SessionManager` accepts a `BrowserAdapterFactory` so deterministic fake adapters can test lifecycle behavior without a browser. The current `EvidenceBundle` is version 2 and always carries a redaction marker.
 
 The core public tools are `web_project_detect`, `web_session_start`, `web_session_status`, `web_browser_action`, `web_issue_capture`, `web_next_inspect`, `web_breakpoint_set`, `web_debug_control`, `web_debug_evaluate`, `web_repro_record`, `web_fix_verify`, and `web_session_close`.
 

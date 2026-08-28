@@ -1,6 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.2.0+codex.20260827204916",
+  "version": "0.3.0+codex.20260828010031",
   "description": "Evidence-first local web debugging, complex repair verification, and responsive visual QA for Codex and ChatGPT.",
   "author": {
     "name": "Marlon J.D.",
@@ -25,7 +25,7 @@
   "interface": {
     "displayName": "Web Debug",
     "shortDescription": "Reproduce local web bugs with bounded evidence.",
-    "longDescription": "Inspect and repair a running local web app through browser, React, Vite, Next.js, Safari, debugger, replay, responsive viewport, and fix-verification evidence.",
+    "longDescription": "Inspect and repair a running local web app through exact locator probes, guarded loopback TLS, disposable auth, computed accessibility, named checkpoints, bounded viewport matrices, React, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence. Auth-seeded screenshots are suppressed; Safari remains CSS-only for advanced capabilities.",
     "developerName": "Marlon J.D.",
     "category": "Developer Tools",
     "capabilities": [
@@ -38,7 +38,8 @@
       "Inspect this React, Vite, or Next.js issue.",
       "Verify this frontend fix against the recorded flow.",
       "Debug this responsive visual issue at desktop and mobile sizes.",
-      "Compare this bug with and without Web Debug evidence."
+      "Compare this bug with and without Web Debug evidence.",
+      "Diagnose this flow with semantic locators and named checkpoints."
     ],
     "brandColor": "#2563EB"
   },

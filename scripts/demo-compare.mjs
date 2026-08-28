@@ -25,11 +25,11 @@ const scenarioDefinitions = {
     port: Number(process.env.WEB_DEBUG_DEMO_VANILLA_PORT ?? 4183),
     urlPath: "/",
     actions: [
-      { kind: "fill", selector: "#amount", value: "not-a-number" },
-      { kind: "click", selector: "#submit" },
-      { kind: "wait", selector: "#status", text: "Invalid amount", timeoutMs: 5_000 },
+      { kind: "fill", locator: { kind: "css", value: "#amount" }, value: "not-a-number" },
+      { kind: "click", locator: { kind: "css", value: "#submit" } },
+      { kind: "wait", locator: { kind: "css", value: "#status" }, property: "text", expected: "Invalid amount", timeoutMs: 5_000 },
     ],
-    checks: [{ kind: "textContains", value: "Invalid amount" }],
+    checks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Invalid amount", match: "contains" }],
     baselineSurfaces: ["DOM", "console", "network", "source file"],
     baselineInspect: async ({ projectRoot }) => ({
       sourceFile: "fixtures/vanilla/app.js",
@@ -47,11 +47,11 @@ const scenarioDefinitions = {
     port: Number(process.env.WEB_DEBUG_DEMO_REACT_VITE_PORT ?? 4184),
     urlPath: "/",
     actions: [
-      { kind: "click", selector: "button" },
-      { kind: "wait", selector: "[role=status]", text: "Payment submitted: 249.90", timeoutMs: 5_000 },
+      { kind: "click", locator: { kind: "css", value: "button" } },
+      { kind: "wait", locator: { kind: "css", value: "[role=status]" }, property: "text", expected: "Payment submitted: 249.90", timeoutMs: 5_000 },
     ],
     checks: [
-      { kind: "textContains", value: "Payment submitted: 249.90" },
+      { kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Payment submitted: 249.90", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
     baselineSurfaces: ["DOM", "console", "network", "source file"],
@@ -72,18 +72,18 @@ const scenarioDefinitions = {
     port: Number(process.env.WEB_DEBUG_DEMO_NEXT_PORT ?? 4185),
     urlPath: "/",
     actions: [
-      { kind: "wait", selector: "[data-testid='hydration-status']", text: "Hydrated", timeoutMs: 5_000 },
-      { kind: "click", selector: "#health-button" },
-      { kind: "wait", selector: "[role=status]", text: "Healthy", timeoutMs: 5_000 },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='hydration-status']" }, property: "text", expected: "Hydrated", timeoutMs: 5_000 },
+      { kind: "click", locator: { kind: "css", value: "#health-button" } },
+      { kind: "wait", locator: { kind: "css", value: "[role=status]" }, property: "text", expected: "Healthy", timeoutMs: 5_000 },
     ],
     checks: [
-      { kind: "textContains", value: "Healthy" },
+      { kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Healthy", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
     postActions: [
-      { kind: "wait", selector: "[data-testid='hydration-status']", text: "Hydrated", timeoutMs: 5_000 },
-      { kind: "click", selector: "#payment-button" },
-      { kind: "wait", selector: "#server-action-status", text: "Submitted", timeoutMs: 5_000 },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='hydration-status']" }, property: "text", expected: "Hydrated", timeoutMs: 5_000 },
+      { kind: "click", locator: { kind: "css", value: "#payment-button" } },
+      { kind: "wait", locator: { kind: "css", value: "#server-action-status" }, property: "text", expected: "Submitted", timeoutMs: 5_000 },
     ],
     baselineSurfaces: ["DOM", "console", "network", "manifest file", "server log"],
     baselineInspect: async ({ projectRoot, actionId }) => {
@@ -115,16 +115,16 @@ const scenarioDefinitions = {
     urlPath: "/",
     viewport: { width: 1_440, height: 900 },
     diagnosisActions: [
-      { kind: "fill", selector: "[aria-label='Search incidents']", value: "Refund" },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Search incidents']" }, value: "Refund" },
     ],
-    diagnosisChecks: [{ kind: "textContains", value: "Showing 1 incident" }],
-    failureSignature: [{ kind: "textContains", value: "Showing 1 incident", expected: "fail" }],
+    diagnosisChecks: [{ kind: "locatorText", locator: { kind: "css", value: "[data-testid='visible-count']" }, text: "Showing 1 incident", match: "contains" }],
+    failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "[data-testid='visible-count']" }, text: "Showing 1 incident", match: "contains", expected: "fail" }],
     verificationActions: [
-      { kind: "fill", selector: "[aria-label='Search incidents']", value: "Refund" },
-      { kind: "wait", selector: "[data-testid='visible-count']", text: "Showing 1 incident", timeoutMs: 5_000 },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Search incidents']" }, value: "Refund" },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='visible-count']" }, property: "text", expected: "Showing 1 incident", timeoutMs: 5_000 },
     ],
     verificationChecks: [
-      { kind: "textContains", value: "Showing 1 incident" },
+      { kind: "locatorText", locator: { kind: "css", value: "[data-testid='visible-count']" }, text: "Showing 1 incident", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/App.jsx", from: "  }, []);", to: "  }, [query, status]);" }],
@@ -148,25 +148,25 @@ const scenarioDefinitions = {
     urlPath: "/",
     viewport: { width: 1_440, height: 900 },
     diagnosisActions: [
-      { kind: "fill", selector: "[aria-label='Quote quantity']", value: "3" },
-      { kind: "fill", selector: "[aria-label='Quote promo code']", value: "SAVE20" },
-      { kind: "click", selector: "[data-testid='refresh-quote']" },
-      { kind: "click", selector: "[data-testid='refresh-quote']" },
-      { kind: "wait", selector: "[data-testid='quote-status']", text: "Quote ready", timeoutMs: 5_000 },
-      { kind: "wait", selector: "[data-testid='quote-requests-settled']", text: "All quote requests settled", timeoutMs: 5_000 },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Quote quantity']" }, value: "3" },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Quote promo code']" }, value: "SAVE20" },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='refresh-quote']" } },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='refresh-quote']" } },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='quote-status']" }, property: "text", expected: "Quote ready", timeoutMs: 5_000 },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='quote-requests-settled']" }, property: "text", expected: "All quote requests settled", timeoutMs: 5_000 },
     ],
-    diagnosisChecks: [{ kind: "textContains", value: "Quote v2 applied" }],
-    failureSignature: [{ kind: "textContains", value: "Quote v2 applied", expected: "fail" }],
+    diagnosisChecks: [{ kind: "locatorText", locator: { kind: "css", value: "[data-testid='quote-result']" }, text: "Quote v2 applied", match: "contains" }],
+    failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "[data-testid='quote-result']" }, text: "Quote v2 applied", match: "contains", expected: "fail" }],
     verificationActions: [
-      { kind: "fill", selector: "[aria-label='Quote quantity']", value: "3" },
-      { kind: "fill", selector: "[aria-label='Quote promo code']", value: "SAVE20" },
-      { kind: "click", selector: "[data-testid='refresh-quote']" },
-      { kind: "click", selector: "[data-testid='refresh-quote']" },
-      { kind: "wait", selector: "[data-testid='quote-status']", text: "Quote ready", timeoutMs: 5_000 },
-      { kind: "wait", selector: "[data-testid='quote-requests-settled']", text: "All quote requests settled", timeoutMs: 5_000 },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Quote quantity']" }, value: "3" },
+      { kind: "fill", locator: { kind: "css", value: "[aria-label='Quote promo code']" }, value: "SAVE20" },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='refresh-quote']" } },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='refresh-quote']" } },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='quote-status']" }, property: "text", expected: "Quote ready", timeoutMs: 5_000 },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='quote-requests-settled']" }, property: "text", expected: "All quote requests settled", timeoutMs: 5_000 },
     ],
     verificationChecks: [
-      { kind: "textContains", value: "Quote v2 applied" },
+      { kind: "locatorText", locator: { kind: "css", value: "[data-testid='quote-result']" }, text: "Quote v2 applied", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/App.jsx", from: "      const result = await requestQuote({ quantity: Number(quantity), coupon });\n      setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });", to: "      const result = await requestQuote({ quantity: Number(quantity), coupon });\n      if (requestNumber !== latestQuoteRequest.current) return;\n      setQuote({ status: \"Quote ready\", requestId: result.requestId, total: result.total });" }],
@@ -193,21 +193,21 @@ const scenarioDefinitions = {
       { label: "mobile", width: 390, height: 844 },
     ],
     diagnosisActions: [
-      { kind: "click", selector: "[data-testid='view-refund']" },
-      { kind: "wait", selector: "[data-testid='incident-drawer']", timeoutMs: 5_000 },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='view-refund']" } },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='incident-drawer']" }, property: "visible", expected: true, timeoutMs: 5_000 },
     ],
     diagnosisChecks: [
-      { kind: "textContains", value: "Refund request" },
+      { kind: "locatorText", locator: { kind: "css", value: "[data-testid='incident-drawer']" }, text: "Refund request", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
-    failureSignature: [{ kind: "textContains", value: "Drawer layout offset", expected: "pass" }],
+    failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "[data-testid='drawer-layout-state']" }, text: "Drawer layout offset", match: "contains", expected: "pass" }],
     verificationActions: [
-      { kind: "click", selector: "[data-testid='view-refund']" },
-      { kind: "wait", selector: "[data-testid='incident-drawer']", timeoutMs: 5_000 },
+      { kind: "click", locator: { kind: "css", value: "[data-testid='view-refund']" } },
+      { kind: "wait", locator: { kind: "css", value: "[data-testid='incident-drawer']" }, property: "visible", expected: true, timeoutMs: 5_000 },
     ],
     verificationChecks: [
-      { kind: "textContains", value: "Refund request" },
-      { kind: "textContains", value: "Drawer layout aligned" },
+      { kind: "locatorText", locator: { kind: "css", value: "[data-testid='incident-drawer']" }, text: "Refund request", match: "contains" },
+      { kind: "locatorText", locator: { kind: "css", value: "[data-testid='drawer-layout-state']" }, text: "Drawer layout aligned", match: "contains" },
       { kind: "noConsoleErrors" },
     ],
     fixes: [{ file: "src/styles.css", from: ".drawer-layer { position: absolute; inset: 76px 0 0;", to: ".drawer-layer { position: fixed; inset: 0;" }],
@@ -591,20 +591,20 @@ async function runRepairMcpView(definition, url, projectRoot, viewport, actions,
     const verification = phase === "before"
       ? { outcome: scenario.baseline.status === "reproduced" ? "failed" : "inconclusive", evidence: scenario.baseline.evidence, postFix: { attempts: [] }, level: scenario.baseline.level }
       : await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
-    const evidenceBundle = verification.evidence?.postFix ?? verification.evidence;
-    const react = evidenceBundle?.browser.react;
+    const evidenceBundle = verification.evidence?.postFix ?? (verification.evidence?.browser ? verification.evidence : verification.evidence?.baseline ?? null);
+    const react = evidenceBundle?.browser?.react;
     const component = findComponent(react?.components ?? [], "IncidentDashboard");
     const observation = definition.id === "visual-layout-fix"
       ? await evaluateRepairLayout(manager, session.id)
       : definition.id === "complex-async-fix"
         ? {
-            quoteResult: evidenceBundle?.browser.dom.bodyText.match(/Quote v\d+ applied: \$[\d.]+/)?.[0] ?? "",
-            quoteStatus: evidenceBundle?.browser.dom.bodyText.includes("Quote ready") ? "Quote ready" : "",
+            quoteResult: evidenceBundle?.browser?.dom?.bodyText.match(/Quote v\d+ applied: \$[\d.]+/)?.[0] ?? "",
+            quoteStatus: evidenceBundle?.browser?.dom?.bodyText.includes("Quote ready") ? "Quote ready" : "",
             query: component?.hooks?.[0] ?? null,
           }
         : {
           query: component?.hooks?.[0] ?? null,
-          visibleCountText: evidenceBundle?.browser.dom.bodyText.match(/Showing \d+ incident[s]?/)?.[0] ?? "",
+          visibleCountText: evidenceBundle?.browser?.dom?.bodyText.match(/Showing \d+ incident[s]?/)?.[0] ?? "",
         };
     return {
       viewport,
@@ -613,10 +613,10 @@ async function runRepairMcpView(definition, url, projectRoot, viewport, actions,
       outcome: verification.outcome,
       checks: phase === "before" ? scenario.baseline.attempts.at(-1)?.checks ?? [] : verification.postFix.attempts.at(-1)?.checks ?? [],
       observation,
-      consoleErrorCount: evidenceBundle?.browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length ?? 0,
-      networkCount: evidenceBundle?.browser.network.length ?? 0,
-      screenshotPath: evidenceBundle?.browser.screenshotPath,
-      replayFrames: evidenceBundle?.replay.frames.length ?? 0,
+      consoleErrorCount: evidenceBundle?.browser?.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length ?? 0,
+      networkCount: evidenceBundle?.browser?.network.length ?? 0,
+      screenshotPath: evidenceBundle?.browser?.screenshotPath,
+      replayFrames: evidenceBundle?.replay?.frames.length ?? 0,
       react: react
         ? {
             detected: react.detected,
@@ -627,10 +627,10 @@ async function runRepairMcpView(definition, url, projectRoot, viewport, actions,
             flamegraphNodes: react.flamegraph.length,
           }
         : null,
-      vite: evidenceBundle?.browser.vite
+      vite: evidenceBundle?.browser?.vite
         ? { moduleCount: evidenceBundle.browser.vite.moduleCount, hmrActive: evidenceBundle.browser.vite.hmr.active }
         : null,
-      warnings: evidenceBundle?.browser.warnings ?? [],
+      warnings: evidenceBundle?.browser?.warnings ?? [],
       verification: phase === "before"
         ? {
             baselineStatus: scenario.baseline.status,
@@ -733,8 +733,8 @@ function repairBugObserved(definition, views) {
 }
 
 function repairMcpBugObserved(definition, views) {
-  if (definition.id === "complex-logic-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.state === "fail"));
-  if (definition.id === "complex-async-fix") return views.some((view) => view.checks.some((check) => check.kind === "textContains" && check.state === "fail"));
+  if (definition.id === "complex-logic-fix") return views.some((view) => view.checks.some((check) => check.kind === "locatorText" && check.state === "fail"));
+  if (definition.id === "complex-async-fix") return views.some((view) => view.checks.some((check) => check.kind === "locatorText" && check.state === "fail"));
   return views.some((view) => view.observation?.available && view.observation.coversViewport === false);
 }
 
@@ -1232,24 +1232,32 @@ async function readRawSnapshot(page) {
 
 async function performRawActions(page, actions) {
   for (const action of actions ?? []) {
-    if (action.kind === "click") await page.locator(action.selector).click();
-    if (action.kind === "fill") await page.locator(action.selector).fill(action.value);
+    if (action.kind === "click") await resolveRawLocator(page, action.locator).click();
+    if (action.kind === "fill") await resolveRawLocator(page, action.locator).fill(action.value);
     if (action.kind === "navigate") await page.goto(action.url, { waitUntil: "domcontentloaded" });
     if (action.kind === "reload") await page.reload({ waitUntil: "domcontentloaded" });
     if (action.kind === "wait") {
-      if (action.text) {
-        await page.waitForFunction(
-          ({ selector, text }) => (document.querySelector(selector ?? "body")?.textContent ?? "").includes(text),
-          { selector: action.selector, text: action.text },
-          { timeout: action.timeoutMs ?? 1_000 },
-        );
-      } else if (action.selector) {
-        await page.locator(action.selector).waitFor({ state: "visible", timeout: action.timeoutMs ?? 1_000 });
-      } else {
-        throw new Error("Elapsed-only waits are not supported; provide a selector or text condition.");
-      }
+      const locator = resolveRawLocator(page, action.locator);
+      const timeout = action.timeoutMs ?? 1_000;
+      await page.waitForFunction(({ locator, property, expected }) => {
+        const element = locator === "body" ? document.body : document.querySelector(locator);
+        if (!element) return false;
+        if (property === "text") return (element.textContent ?? "").includes(String(expected));
+        if (property === "visible") return Boolean(element.getClientRects().length);
+        if (property === "enabled") return !(element instanceof HTMLButtonElement || element instanceof HTMLInputElement) || !element.disabled;
+        if (property === "checked") return element.checked === expected;
+        return document.querySelectorAll(locator).length === expected;
+      }, { locator: action.locator?.kind === "css" ? action.locator.value : "body", property: action.property, expected: action.expected }, { timeout });
     }
   }
+}
+
+function resolveRawLocator(page, locator) {
+  if (!locator || locator.kind === "css") return page.locator(locator?.value ?? "body");
+  if (locator.kind === "role") return page.getByRole(locator.role, locator.name === undefined ? undefined : { name: locator.name, exact: true });
+  if (locator.kind === "text") return page.getByText(locator.text, { exact: true });
+  if (locator.kind === "label") return page.getByLabel(locator.text, { exact: true });
+  return page.getByTestId(locator.value);
 }
 
 async function waitForUrl(url, child) {

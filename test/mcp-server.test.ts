@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 
-import type { ActionResult, BrowserAction, BrowserSnapshot, BrowserTarget, DebuggerBreakpoint, DebuggerSnapshot, EvaluationResult, OperationContext } from "../src/domain/types.js";
+import type { ActionResult, BrowserAction, BrowserLocator, BrowserSnapshot, BrowserTarget, DebuggerBreakpoint, DebuggerSnapshot, EvaluationResult, OperationContext, LocatorProperty, LocatorProbeResult } from "../src/domain/types.js";
 import type { BrowserAdapter, BrowserStartOptions, SnapshotOptions } from "../src/adapters/browser.js";
 import { SessionManager } from "../src/core/session-manager.js";
 import { createServer } from "../src/index.js";
@@ -26,6 +26,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   };
   private snapshots = 0;
   private release: (() => void) | null = null;
+  private lastSnapshot: BrowserSnapshot | null = null;
 
   async start(options: BrowserStartOptions): Promise<BrowserTarget> {
     this.target.url = options.url;
@@ -53,7 +54,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   async snapshot(_options: SnapshotOptions): Promise<BrowserSnapshot> {
     this.snapshots += 1;
     const bodyText = this.snapshots <= 2 ? "Bug" : "Fixed";
-    return {
+    const result = {
       url: this.target.url,
       title: this.target.title,
       viewport: this.target.viewport,
@@ -72,6 +73,18 @@ class McpScriptedAdapter implements BrowserAdapter {
         console: { state: "pass", freshness: "fresh", provenance: "browser" },
       },
     };
+    this.lastSnapshot = result;
+    return result;
+  }
+  async probe(locator: BrowserLocator, properties: LocatorProperty[]): Promise<LocatorProbeResult> {
+    const text = this.lastSnapshot?.dom.bodyText ?? "";
+    const result: LocatorProbeResult = { locator, properties: [...new Set(properties)], observedAt: new Date().toISOString(), provenance: "browser", warnings: [] };
+    if (result.properties.includes("count")) result.count = 1;
+    if (result.properties.includes("visible")) result.visible = true;
+    if (result.properties.includes("enabled")) result.enabled = true;
+    if (result.properties.includes("checked")) result.checked = false;
+    if (result.properties.includes("text")) result.text = text;
+    return result;
   }
   async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }): Promise<DebuggerBreakpoint> { return { id: "mcp", sourceUrl: input.sourceUrl, line: input.line, column: input.column ?? null }; }
   async control(): Promise<DebuggerSnapshot> { return { paused: false, reason: null, callFrames: [], breakpoints: [] }; }
@@ -155,9 +168,9 @@ describe("MCP server contract", () => {
         sessionId: session.id,
         name: "MCP scenario",
         url: `http://127.0.0.1:4173/?token=${secret}`,
-        actions: [{ kind: "fill", selector: "#amount", value: secret }],
-        failureSignature: [{ kind: "textContains", value: "Bug", expected: "pass" }],
-        acceptanceChecks: [{ kind: "textContains", value: "Fixed" }],
+        actions: [{ kind: "fill", locator: { kind: "css", value: "#amount" }, value: secret }],
+        failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "pass" }],
+        acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
         buildReference: { source: "caller", value: "build-before" },
       },
     });
@@ -187,8 +200,8 @@ describe("MCP server contract", () => {
         name: "legacy build shape",
         url: "http://127.0.0.1:4173/",
         actions: [],
-        failureSignature: [{ kind: "textContains", value: "Bug", expected: "pass" }],
-        acceptanceChecks: [{ kind: "textContains", value: "Fixed" }],
+        failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", match: "contains", expected: "pass" }],
+        acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
         buildReference: "legacy-build",
       },
     });
@@ -196,7 +209,7 @@ describe("MCP server contract", () => {
 
     adapter.hangActions = true;
     const controller = new AbortController();
-    const cancellation = client.callTool({ name: "web_browser_action", arguments: { sessionId: session.id, action: { kind: "click", selector: "#hang" } } }, undefined, { signal: controller.signal });
+    const cancellation = client.callTool({ name: "web_browser_action", arguments: { sessionId: session.id, action: { kind: "click", locator: { kind: "css", value: "#hang" } } } }, undefined, { signal: controller.signal });
     for (let attempt = 0; attempt < 5 && !adapter.actionStarted; attempt += 1) await new Promise<void>((resolve) => setImmediate(resolve));
     expect(adapter.actionStarted).toBe(true);
     controller.abort();

@@ -4,7 +4,7 @@
 
 Run `npm install --no-audit --no-fund` from the repository root. Node.js 20 or newer is required. The MCP server is a stdio process; do not write human diagnostics to stdout.
 
-The optional Codex/ChatGPT/Claude Code plugin is installed from the repository marketplace. Codex uses `.agents/plugins/marketplace.json`; Claude Code uses `.claude-plugin/marketplace.json`. Both point to the same local stdio MCP server through `plugins/web-debug/.mcp.json`; enabling the plugin does not create a hosted endpoint or a second browser controller. Until the package is published to npm, the first server start uses `npx` to resolve the GitHub package, so Node.js 20+, npm, and network access are required at first launch.
+The optional Codex/ChatGPT/Claude Code plugin is installed from the repository marketplace. Codex uses `.agents/plugins/marketplace.json`; Claude Code uses `.claude-plugin/marketplace.json`. Both point to the same local stdio MCP server through `plugins/web-debug/.mcp.json`, pinned to immutable `github:MarlonJD/web-debug-mcp#v0.3.0`; enabling the plugin does not create a hosted endpoint or a second browser controller. Until the package is published to npm, the first server start uses `npx` to resolve the GitHub package, so Node.js 20+, npm, and network access are required at first launch.
 
 ## Local runtime
 
@@ -16,6 +16,8 @@ The fixture servers bind only to `127.0.0.1`: vanilla uses `npm run serve:fixtur
 Safari sessions use `browser: "safari"` with local `safaridriver` or an explicit loopback WebDriver endpoint. Safari runs visibly, can subscribe to WebDriver BiDi console/network events when the Node runtime exposes WebSocket support, and may disclose a bounded Performance Resource Timing fallback when the installed Safari does not emit network events. Safari JavaScript debugger parity is not part of this contract.
 
 Launch mode is the preferred deterministic path. Attach mode is supported for interactive debugging but the session summary marks it `isolated: false` and evidence includes a warning.
+
+Chromium actions, waits, and scenario checks use exact locators and fresh `probe` observations. An explicit `tls: "allow-insecure-loopback"` or project-contained `authFixture` derives one approved loopback origin before context/page creation and blocks other HTTP(S), redirects, popups, WebSockets, and service workers. Auth-seeded sessions suppress screenshots. Named checkpoints use completed-action offsets, and declared viewport matrices run sequential ephemeral candidates without changing canonical session state. Safari accepts CSS locators only and reports semantic locators, computed accessibility, TLS bypass, auth seeding, and matrices as unavailable.
 
 ## Lifecycle
 
@@ -34,7 +36,7 @@ Next development output under `fixtures/next/.next/` is generated state and is i
 
 ## Reset and cleanup
 
-Stop the fixture server with SIGINT or SIGTERM. Close MCP sessions with `web_session_close`; if the process is interrupted, its signal handler closes owned browser resources best effort and purges in-memory scenarios/evidence. Temporary screenshot handles may remain for inspection under the operating system's `web-debug-mcp-*` paths. Do not delete broad temporary directories; remove only a session artifact directory after its evidence is no longer needed.
+Stop the fixture server with SIGINT or SIGTERM. Close MCP sessions with `web_session_close`; if the process receives SIGINT/SIGTERM, stdin EOF/close, transport close, or an idle TTL, one idempotent shutdown path closes owned browser resources best effort, purges in-memory scenarios/evidence, and removes its exact owner-only registry record. `web-debug-mcp cleanup [--all-idle]` signals only locked, identity-verified registry records; unregistered legacy processes are never cleanup targets. Temporary screenshot handles may remain for inspection under the operating system's `web-debug-mcp-*` paths. Do not delete broad temporary directories; remove only a session artifact directory after its evidence is no longer needed.
 
 ## Unsupported environments
 

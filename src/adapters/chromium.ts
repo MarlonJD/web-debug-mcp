@@ -15,6 +15,7 @@ import type {
 import type {
   ActionResult,
   BrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
   ConsoleEntry,
@@ -24,6 +25,19 @@ import type {
   NetworkEntry,
   ReactSnapshot,
   OperationContext,
+  LocatorProbeResult,
+  LocatorProperty,
+  AccessibilityDiagnostics,
+  AccessibilityNode,
+  LocatorSuggestion,
+  PlaywrightStorageState,
+} from "../domain/types.js";
+import {
+  MAX_AX_NODES,
+  MAX_LOCATOR_SUGGESTIONS,
+  MAX_LOCATOR_CHARS,
+  MAX_ACCESSIBLE_NAME_CHARS,
+  MAX_PROPERTIES_PER_PROBE,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
@@ -100,11 +114,26 @@ export class ChromiumAdapter implements BrowserAdapter {
   private pausedEvent: PausedEvent | null = null;
   private targetId: string | null = null;
   private version: string | null = null;
+  private authSeeded = false;
+  private guardedOrigin: string | null = null;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
     this.allowRemote = options.allowRemote ?? false;
     assertAllowedUrl(options.url, this.allowRemote);
+    const requestedOrigin = new URL(options.url).origin;
+    const elevated = options.tls === "allow-insecure-loopback" || options.authState !== undefined || options.authFixture === "seeded-disposable";
+    if (elevated) {
+      if (options.cdpEndpoint) throw new WebDebugError("ELEVATED_MODE_REQUIRES_LAUNCH", "TLS bypass and disposable auth require an isolated Chromium launch.");
+      if (!options.approvedOrigin || options.approvedOrigin !== requestedOrigin) throw new WebDebugError("APPROVED_ORIGIN_REQUIRED", "Elevated browser modes require one exact approved origin before startup.");
+      const approved = new URL(options.approvedOrigin);
+      if (approved.protocol !== "http:" && approved.protocol !== "https:") throw new WebDebugError("APPROVED_ORIGIN_INVALID", "The approved origin must use HTTP or HTTPS.");
+      if (!isLoopback(approved.hostname)) throw new WebDebugError("APPROVED_ORIGIN_INVALID", "The approved origin must be loopback.");
+      this.guardedOrigin = approved.origin;
+    } else {
+      this.guardedOrigin = null;
+    }
+    this.authSeeded = options.authState !== undefined || options.authFixture === "seeded-disposable";
 
     if (options.cdpEndpoint) {
       assertAllowedCdpEndpoint(options.cdpEndpoint, this.allowRemote);
@@ -157,7 +186,13 @@ export class ChromiumAdapter implements BrowserAdapter {
         executablePath,
         headless: options.headless ?? true,
       });
-      this.context = await this.browser.newContext({ viewport: options.viewport ?? { width: 1440, height: 900 } });
+      this.context = await this.browser.newContext({
+        viewport: options.viewport ?? { width: 1440, height: 900 },
+        ...(options.tls === "allow-insecure-loopback" ? { ignoreHTTPSErrors: true } : {}),
+        ...(elevated ? { serviceWorkers: "block" as const } : {}),
+        ...(options.authState ? { storageState: options.authState } : {}),
+      });
+      if (elevated) await this.installGuards(this.context, this.guardedOrigin!);
       this.page = await this.context.newPage();
     }
 
@@ -179,8 +214,17 @@ export class ChromiumAdapter implements BrowserAdapter {
     await this.cdp.send("Runtime.enable");
     await this.cdp.send("Debugger.enable");
 
-    await withContext(this.page.goto(options.url, { waitUntil: "domcontentloaded" }), context);
-    this.baseOrigin = new URL(this.page.url()).origin;
+    try {
+      await withContext(this.page.goto(options.url, { waitUntil: "domcontentloaded" }), context);
+    } catch (error) {
+      if (this.guardedOrigin && !(error instanceof WebDebugError)) throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The navigation target is outside the one approved origin.");
+      throw error;
+    }
+    const finalOrigin = new URL(this.page.url()).origin;
+    if (this.guardedOrigin && finalOrigin !== this.guardedOrigin) {
+      throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The page navigated outside the one approved origin.");
+    }
+    this.baseOrigin = this.guardedOrigin ?? finalOrigin;
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
     this.lastKnownReact = await this.reactAdapter.snapshot(this.page).catch(() => null);
@@ -193,6 +237,30 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     return this.target();
+  }
+
+  async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {
+    assertContext(context);
+    validateLocator(locator);
+    if (this.pausedEvent) throw new WebDebugError("LOCATOR_PROBE_UNAVAILABLE", "Live locator probes are unavailable while JavaScript is paused.");
+    const unique = [...new Set(properties)];
+    if (unique.length === 0) throw new WebDebugError("PROBE_PROPERTIES_REQUIRED", "A locator probe must request at least one property.");
+    if (unique.length > MAX_PROPERTIES_PER_PROBE) throw new WebDebugError("PROBE_PROPERTIES_LIMIT", `A locator probe may request at most ${MAX_PROPERTIES_PER_PROBE} properties.`);
+    const resolved = this.resolveLocator(locator);
+    const result: LocatorProbeResult = {
+      locator: cloneLocator(locator),
+      properties: unique,
+      observedAt: new Date().toISOString(),
+      provenance: "browser",
+      warnings: [],
+    };
+    const count = unique.includes("count") || unique.some((property) => property !== "count") ? await withContext(resolved.count(), context) : 0;
+    if (unique.includes("count")) result.count = count;
+    if (unique.includes("visible")) result.visible = count > 0 ? await withContext(resolved.first().isVisible(), context) : false;
+    if (unique.includes("enabled")) result.enabled = count > 0 ? await withContext(resolved.first().isEnabled(), context) : false;
+    if (unique.includes("checked")) result.checked = count > 0 ? await withContext(resolved.first().isChecked().catch(() => false), context) : false;
+    if (unique.includes("text")) result.text = count > 0 ? boundText(await withContext(resolved.first().textContent().then((value) => value ?? ""), context), MAX_LOCATOR_CHARS) : null;
+    return result;
   }
 
   async close(_context: OperationContext = {}): Promise<void> {
@@ -211,6 +279,8 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.browser = null;
     this.targetId = null;
     this.version = null;
+    this.authSeeded = false;
+    this.guardedOrigin = null;
   }
 
   async resetObservers(_context: OperationContext = {}): Promise<void> {
@@ -236,34 +306,26 @@ export class ChromiumAdapter implements BrowserAdapter {
         if (this.baseOrigin && new URL(action.url).origin !== this.baseOrigin) {
           throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the session origin.");
         }
-        await this.runUntilCompleteOrPaused(() => page.goto(action.url, { waitUntil: "domcontentloaded" }).then(() => undefined), context);
+        try {
+          await this.runUntilCompleteOrPaused(() => page.goto(action.url, { waitUntil: "domcontentloaded" }).then(() => undefined), context);
+        } catch (error) {
+          if (this.guardedOrigin && !isWithinOrigin(action.url, this.guardedOrigin)) throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The navigation target is outside the one approved origin.");
+          throw error;
+        }
+        this.assertFinalOrigin(page.url());
         break;
       case "click":
-        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).click(), context);
+        await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).click(), context);
         break;
       case "fill":
-        await this.runUntilCompleteOrPaused(() => page.locator(action.selector).fill(action.value), context);
+        await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).fill(action.value), context);
         break;
       case "wait":
-        try {
-          if (action.text) {
-            await page.waitForFunction(
-              ({ selector, text }) => (document.querySelector(selector)?.textContent ?? "").includes(text),
-              { selector: action.selector ?? "body", text: action.text },
-              { timeout: boundedTimeout(action.timeoutMs) },
-            );
-          } else if (action.selector) {
-            await page.locator(action.selector).waitFor({ state: "visible", timeout: boundedTimeout(action.timeoutMs) });
-          } else {
-            throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a selector or text condition; elapsed-only waits are not supported.");
-          }
-        } catch (error) {
-          if (error instanceof WebDebugError) throw error;
-          throw new WebDebugError("WAIT_TIMEOUT", `Observable wait condition was not met within ${boundedTimeout(action.timeoutMs)}ms.`);
-        }
+        await this.waitForProbe(action, context);
         break;
       case "reload":
         await this.runUntilCompleteOrPaused(() => page.reload({ waitUntil: "domcontentloaded" }).then(() => undefined), context);
+        this.assertFinalOrigin(page.url());
         break;
     }
     const title = this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page);
@@ -309,7 +371,9 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     let screenshotPath: string | null = null;
-    if (options.captureScreenshot && !options.checksOnly) {
+    if (this.authSeeded) {
+      warnings.push("Screenshot suppressed for auth-seeded disposable storage; screenshot pixels are not claimed redacted.");
+    } else if (options.captureScreenshot && !options.checksOnly && !options.suppressScreenshot) {
       const optionalBudget = optionalBudgetMs(context, 1_000);
       if (optionalBudget === 0) {
         warnings.push("Screenshot skipped because the shared deadline left no optional-enrichment budget.");
@@ -348,6 +412,9 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
 
+    const accessibility = !this.pausedEvent && !options.checksOnly && options.accessibility === true
+      ? await this.collectAccessibility(context, warnings)
+      : null;
     const snapshot: BrowserSnapshot = {
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
@@ -365,6 +432,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       react,
       next: null,
       vite: null,
+      accessibility,
       warnings,
       observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
@@ -374,6 +442,114 @@ export class ChromiumAdapter implements BrowserAdapter {
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
     return snapshot;
+  }
+
+  private async installGuards(context: BrowserContext, approvedOrigin: string): Promise<void> {
+    this.guardedOrigin = approvedOrigin;
+    if (typeof (context as BrowserContext & { route?: unknown }).route !== "function") throw new WebDebugError("APPROVED_ORIGIN_GUARD_UNAVAILABLE", "Chromium transport could not install the approved-origin request guard before page creation.");
+    await context.route("**/*", async (route) => {
+      const requestUrl = route.request().url();
+      try {
+        const parsed = new URL(requestUrl);
+        if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.origin === approvedOrigin) {
+          await route.continue();
+        } else {
+          await route.abort("blockedbyclient");
+        }
+      } catch {
+        await route.abort("blockedbyclient");
+      }
+    });
+    const candidate = context as BrowserContext & { routeWebSocket?: (url: string, handler: (socket: any) => void) => Promise<void> | void };
+    if (typeof candidate.routeWebSocket === "function") {
+      const approved = new URL(approvedOrigin);
+      const websocketOrigin = `${approved.protocol === "https:" ? "wss:" : "ws:"}//${approved.host}`;
+      await candidate.routeWebSocket("**/*", (socket) => {
+        try {
+          const socketUrl = new URL(socket.url());
+          if (`${socketUrl.protocol}//${socketUrl.host}` === websocketOrigin) socket.connectToServer();
+          else void socket.close();
+        } catch {
+          void socket.close();
+        }
+      });
+    } else throw new WebDebugError("APPROVED_ORIGIN_GUARD_UNAVAILABLE", "Chromium transport could not install the approved-origin WebSocket guard before page creation.");
+    context.on("page", (page) => {
+      if (this.page && page !== this.page) void page.close().catch(() => undefined);
+    });
+  }
+
+  private assertFinalOrigin(rawUrl: string): void {
+    if (!this.baseOrigin) return;
+    try {
+      if (new URL(rawUrl).origin !== this.baseOrigin) throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the approved session origin.");
+    } catch (error) {
+      if (error instanceof WebDebugError) throw error;
+      throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the approved session origin.");
+    }
+  }
+
+  private resolveLocator(locator: BrowserLocator): import("playwright-core").Locator {
+    validateLocator(locator);
+    const page = this.requirePage();
+    switch (locator.kind) {
+      case "css": return page.locator(locator.value);
+      case "role": return page.getByRole(locator.role as any, locator.name === undefined ? undefined : { name: locator.name, exact: true });
+      case "text": return page.getByText(locator.text, { exact: true });
+      case "label": return page.getByLabel(locator.text, { exact: true });
+      case "testId": return page.getByTestId(locator.value);
+    }
+  }
+
+  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+    const timeout = boundedTimeout(action.timeoutMs);
+    const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
+    while (performance.now() <= deadline) {
+      assertContext(context);
+      const probe = await this.probe(action.locator, [action.property], context);
+      const actual = probe[action.property];
+      if (valuesMatch(actual, action.expected)) return;
+      await boundedDelay(50, context, deadline);
+    }
+    throw new WebDebugError("WAIT_TIMEOUT", `Observable wait condition was not met within ${timeout}ms.`);
+  }
+
+  private async collectAccessibility(context: OperationContext, warnings: string[]): Promise<AccessibilityDiagnostics | null> {
+    if (!this.cdp) return null;
+    try {
+      const raw = await withTimeout(this.cdp.send("Accessibility.getFullAXTree") as Promise<{ nodes?: unknown[] }>, optionalBudgetMs(context, 750));
+      if (!raw) { warnings.push("Accessibility diagnostics unavailable: optional enrichment timed out."); return null; }
+      const nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
+      const normalized: AccessibilityNode[] = nodes.slice(0, MAX_AX_NODES).flatMap((rawNode, index) => normalizeAxNode(rawNode, index));
+      const truncated = nodes.length > MAX_AX_NODES;
+      const suggestions: LocatorSuggestion[] = [];
+      if (nodes.length === 0) return { nodes: normalized, suggestions, truncated, warnings: [] };
+      const page = this.requirePage();
+      const candidates = await page.evaluate(() => Array.from(document.querySelectorAll("[id], [data-testid], [aria-label], label, button, input, [role]")).slice(0, 64).map((element) => ({
+        id: element.id || null,
+        testId: element.getAttribute("data-testid"),
+        aria: element.getAttribute("aria-label"),
+        tag: element.tagName.toLowerCase(),
+        text: (element.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 300),
+      }))).catch(() => [] as Array<{ id: string | null; testId: string | null; aria: string | null; tag: string; text: string }>);
+      for (const candidate of candidates) {
+        if (suggestions.length >= MAX_LOCATOR_SUGGESTIONS) break;
+        const locator: BrowserLocator | null = candidate.testId ? { kind: "testId", value: boundText(candidate.testId, MAX_LOCATOR_CHARS) }
+          : candidate.aria ? { kind: "role", role: candidate.tag === "button" ? "button" : "textbox", name: boundText(candidate.aria, MAX_ACCESSIBLE_NAME_CHARS) }
+            : candidate.id ? { kind: "css", value: `#${cssEscape(candidate.id)}` }
+              : candidate.text ? { kind: "text", text: boundText(candidate.text, MAX_LOCATOR_CHARS) } : null;
+        if (!locator) continue;
+        try {
+          const probe = await this.probe(locator, ["count"], context);
+          const matchCount = probe.count ?? 0;
+          suggestions.push({ locator, matchCount, uniqueAtCapture: matchCount === 1 });
+        } catch { /* optional suggestion validation is best effort */ }
+      }
+      return { nodes: normalized, suggestions, truncated, warnings: [] };
+    } catch (error) {
+      warnings.push(`Accessibility diagnostics unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      return null;
+    }
   }
 
   async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
@@ -687,6 +863,55 @@ function boundedTimeout(timeoutMs: number | undefined): number {
   return Math.min(Math.max(timeoutMs ?? 1_000, 0), 30_000);
 }
 
+function cloneLocator(locator: BrowserLocator): BrowserLocator {
+  return { ...locator } as BrowserLocator;
+}
+
+function validateLocator(locator: BrowserLocator): void {
+  if (!locator || typeof locator !== "object" || typeof locator.kind !== "string") throw new WebDebugError("LOCATOR_INVALID", "A browser locator must use one supported exact strategy.");
+  const value = "value" in locator ? locator.value : "text" in locator ? locator.text : locator.role;
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LOCATOR_INVALID", `Locator values are limited to ${MAX_LOCATOR_CHARS} characters.`);
+  if (locator.kind === "role" && locator.name !== undefined && (typeof locator.name !== "string" || locator.name.length > MAX_ACCESSIBLE_NAME_CHARS)) throw new WebDebugError("LOCATOR_INVALID", `Accessible names are limited to ${MAX_ACCESSIBLE_NAME_CHARS} characters.`);
+  if (!["css", "role", "text", "label", "testId"].includes(locator.kind)) throw new WebDebugError("LOCATOR_INVALID", "A browser locator must use one supported exact strategy.");
+}
+
+function valuesMatch(actual: unknown, expected: unknown): boolean {
+  if (typeof expected === "string" && typeof actual === "string") return actual === expected || actual.includes(expected);
+  return actual === expected;
+}
+
+async function boundedDelay(ms: number, context: OperationContext, deadline: number): Promise<void> {
+  const remaining = Math.max(0, Math.min(ms, deadline - performance.now()));
+  if (remaining === 0) return;
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, remaining);
+    const onAbort = () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); };
+    context.signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function cssEscape(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, (character) => `\\${character}`);
+}
+
+function normalizeAxNode(raw: unknown, index: number): AccessibilityNode[] {
+  if (!raw || typeof raw !== "object") return [];
+  const node = raw as { role?: { value?: unknown }; name?: { value?: unknown }; ignored?: unknown; depth?: unknown; ignoredReasons?: Array<{ name?: unknown; value?: { value?: unknown } }>; properties?: Array<{ name?: unknown; value?: { value?: unknown } }> };
+  const properties = new Map((node.properties ?? []).flatMap((property) => typeof property.name === "string" ? [[property.name, property.value?.value]] as const : []));
+  const stringValue = (value: unknown): string => typeof value === "string" ? boundText(value, MAX_ACCESSIBLE_NAME_CHARS) : "";
+  const boolValue = (key: string): boolean | null => typeof properties.get(key) === "boolean" ? properties.get(key) as boolean : null;
+  return [{
+    role: typeof node.role?.value === "string" ? boundText(node.role.value, 100) : null,
+    name: stringValue(node.name?.value),
+    selected: boolValue("selected"),
+    checked: boolValue("checked"),
+    disabled: boolValue("disabled"),
+    depth: Number.isInteger(node.depth) ? Math.max(0, Math.min(128, node.depth as number)) : Math.min(index, 128),
+    ignored: node.ignored === true,
+    ignoredReason: typeof node.ignoredReasons?.[0]?.value?.value === "string" ? boundText(node.ignoredReasons[0].value.value, 200) : null,
+  }];
+}
+
 function optionalBudgetMs(context: OperationContext, maximumMs: number): number {
   if (context.deadline === undefined) return maximumMs;
   const remaining = context.deadline - performance.now();
@@ -732,6 +957,10 @@ function assertAllowedCdpEndpoint(raw: string, allowRemote: boolean): void {
 function isLoopback(hostname: string): boolean {
   const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase();
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
+}
+
+function isWithinOrigin(rawUrl: string, origin: string): boolean {
+  try { return new URL(rawUrl).origin === origin; } catch { return false; }
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {

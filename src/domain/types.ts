@@ -2,6 +2,82 @@ export type Framework = "vanilla" | "react" | "vite" | "next";
 
 export type BrowserEngine = "chromium" | "safari";
 
+/** Public 0.3.0 limits. Keep these values in the domain so adapters and core
+ * can share the same contract without duplicating magic numbers. */
+export const MAX_SCENARIO_ACTIONS = 100;
+export const MAX_LOCATOR_CHARS = 500;
+export const MAX_ACCESSIBLE_NAME_CHARS = 300;
+export const MAX_SCENARIO_NAME_CHARS = 200;
+export const MAX_CHECKPOINT_NAME_CHARS = 80;
+export const MAX_VIEWPORT_NAME_CHARS = 40;
+export const MAX_PROPERTIES_PER_PROBE = 6;
+export const MAX_CHECKPOINTS = 16;
+export const MAX_CHECKPOINT_PROBES_TOTAL = 32;
+export const MAX_PROBES_PER_CHECKPOINT = 8;
+export const MAX_DECISIVE_OBSERVATIONS = 64;
+export const MAX_VIEWPORTS = 4;
+export const MAX_ATTEMPTS_PER_PHASE = 5;
+export const MAX_MATRIX_EXECUTION_UNITS_PER_PHASE = 20;
+export const MAX_AX_NODES = 128;
+export const MAX_LOCATOR_SUGGESTIONS = 32;
+export const MAX_AUTH_STATE_BYTES = 65_536;
+export const MAX_AUTH_COOKIES = 32;
+export const MAX_AUTH_ORIGINS = 8;
+export const MAX_AUTH_LOCAL_STORAGE_PER_ORIGIN = 32;
+export const MAX_AUTH_STORAGE_ITEMS_TOTAL = 128;
+export const MAX_EVIDENCE_BUNDLE_BYTES = 98_304;
+export const MAX_RESULT_BYTES = 262_144;
+export const MAX_MCP_OPERATION_MS = 150_000;
+export const MAX_ACTION_WAIT_MS = 30_000;
+export const MAX_REPLAY_FRAMES = 8;
+
+export type BrowserLocator =
+  | { kind: "css"; value: string }
+  | { kind: "role"; role: string; name?: string }
+  | { kind: "text"; text: string }
+  | { kind: "label"; text: string }
+  | { kind: "testId"; value: string };
+
+export type LocatorProperty = "count" | "visible" | "enabled" | "checked" | "text";
+export type LocatorProbeValue = number | boolean | string | null;
+
+export interface LocatorProbeResult {
+  locator: BrowserLocator;
+  properties: LocatorProperty[];
+  observedAt: string;
+  provenance: "browser" | "webdriver";
+  count?: number;
+  visible?: boolean;
+  enabled?: boolean;
+  checked?: boolean;
+  text?: string | null;
+  warnings: string[];
+}
+
+export interface AccessibilityNode {
+  role: string | null;
+  name: string;
+  selected: boolean | null;
+  checked: boolean | null;
+  disabled: boolean | null;
+  depth: number;
+  ignored: boolean;
+  ignoredReason: string | null;
+}
+
+export interface LocatorSuggestion {
+  locator: BrowserLocator;
+  matchCount: number;
+  uniqueAtCapture: boolean;
+}
+
+export interface AccessibilityDiagnostics {
+  nodes: AccessibilityNode[];
+  suggestions: LocatorSuggestion[];
+  truncated: boolean;
+  warnings: string[];
+}
+
 export type SessionStatus = "starting" | "ready" | "paused" | "failed" | "closed";
 
 export interface ViewportSize {
@@ -64,14 +140,16 @@ export interface DebugSessionSummary {
   target: BrowserTarget | null;
   capabilities: ProjectCapabilities;
   warnings: string[];
+  /** Public mode metadata; paths and parsed auth values stay private. */
+  tls?: "strict" | "allow-insecure-loopback";
+  authFixture?: "seeded-disposable" | "none";
 }
 
 export type BrowserAction =
   | { kind: "navigate"; url: string }
-  | { kind: "click"; selector: string }
-  | { kind: "fill"; selector: string; value: string }
-  | { kind: "wait"; selector: string; text?: string; timeoutMs?: number }
-  | { kind: "wait"; text: string; selector?: string; timeoutMs?: number }
+  | { kind: "click"; locator: BrowserLocator }
+  | { kind: "fill"; locator: BrowserLocator; value: string }
+  | { kind: "wait"; locator: BrowserLocator; property: LocatorProperty; expected: LocatorProbeValue; timeoutMs?: number }
   | { kind: "reload" };
 
 export interface OperationContext {
@@ -366,6 +444,7 @@ export interface BrowserSnapshot {
   react: ReactSnapshot | null;
   next: NextSnapshot | null;
   vite: ViteSnapshot | null;
+  accessibility?: AccessibilityDiagnostics | null;
   warnings: string[];
   /** Lightweight observation provenance used by adaptive verification. */
   observations?: BrowserObservations;
@@ -389,7 +468,7 @@ export interface BrowserObservations {
 }
 
 export interface EvidenceBundle {
-  schemaVersion: 1;
+  schemaVersion: 2;
   attemptId?: string;
   phase?: "baseline" | "post-fix" | "manual";
   capturedAt: string;
@@ -401,18 +480,24 @@ export interface EvidenceBundle {
     applied: true;
     policy: "default-sensitive-fields";
   };
+  truncation?: { optional?: boolean };
 }
 
-export interface ScenarioCheck {
-  kind: "urlContains" | "textContains" | "noConsoleErrors";
-  value?: string;
-}
+export type ScenarioCheck =
+  | { kind: "route"; path: string }
+  | { kind: "locatorText"; locator: BrowserLocator; text: string; match?: "exact" | "contains" }
+  | { kind: "locatorCount"; locator: BrowserLocator; count: number }
+  | { kind: "locatorVisible"; locator: BrowserLocator; visible: boolean }
+  | { kind: "locatorEnabled"; locator: BrowserLocator; enabled: boolean }
+  | { kind: "locatorDisabled"; locator: BrowserLocator; disabled: boolean }
+  | { kind: "locatorChecked"; locator: BrowserLocator; checked: boolean }
+  | { kind: "noConsoleErrors" };
 
 export type CheckExpectation = "pass" | "fail";
 
-export interface FailureSignatureEntry extends ScenarioCheck {
+export type FailureSignatureEntry = ScenarioCheck & {
   expected: CheckExpectation;
-}
+};
 
 export interface ScenarioRiskSignals {
   async?: boolean;
@@ -426,6 +511,52 @@ export interface ScenarioRiskSignals {
 export interface ServerStateResetContract {
   action?: BrowserAction;
   readyCheck?: ScenarioCheck;
+}
+
+export interface CheckpointProbe {
+  name: string;
+  locator: BrowserLocator;
+  property: LocatorProperty;
+  expected: LocatorProbeValue;
+  match?: "exact" | "contains";
+}
+
+export interface ScenarioCheckpoint {
+  name: string;
+  offset: number;
+  probes: CheckpointProbe[];
+  route?: string;
+}
+
+export interface ViewportContract {
+  name: string;
+  width: number;
+  height: number;
+}
+
+export interface ViewportObservation {
+  name: string;
+  width: number;
+  height: number;
+  verdict: "pass" | "fail" | "unavailable" | "inconclusive";
+  observationCount: number;
+  checkpointCount: number;
+  failingObservations: string[];
+  unavailableObservations: string[];
+  digest: string;
+  checkpointDigest?: string;
+  elapsedMs: number;
+  warnings: string[];
+}
+
+export interface MatrixAttemptSummary {
+  phase: "baseline" | "post-fix";
+  attemptId: string;
+  ordinal: number;
+  verdict: "pass" | "fail" | "unavailable" | "inconclusive";
+  viewports: ViewportObservation[];
+  elapsedMs: number;
+  warnings: string[];
 }
 
 export type VerificationLevel = "quick" | "standard" | "strict";
@@ -461,7 +592,7 @@ export interface BuildReference {
 }
 
 export interface EnvironmentFingerprint {
-  schemaVersion: 1;
+  schemaVersion: 2;
   projectRoot: string;
   descriptor: string;
   origin: string;
@@ -473,6 +604,8 @@ export interface EnvironmentFingerprint {
   remote: boolean;
   isolated: boolean;
   viewport: ViewportSize | null;
+  tls: "strict" | "allow-insecure-loopback";
+  authFixture: "seeded-disposable" | "none";
   nodeVersion: string;
   platform: string;
   architecture: string;
@@ -487,13 +620,14 @@ export interface ScenarioBaseline {
   observedRate: RateSummary;
   evidence: EvidenceBundle | null;
   warnings: string[];
+  viewportConsensus?: Record<string, string>;
   termination: string;
   terminationReason?: string;
   truncation?: { attempts?: boolean; evidence?: boolean; result?: boolean };
 }
 
 export interface PublicReproScenario {
-  schemaVersion: 2;
+  schemaVersion: 3;
   id: string;
   sessionId: string;
   name: string;
@@ -502,6 +636,11 @@ export interface PublicReproScenario {
   failureSignature: FailureSignatureEntry[];
   acceptanceChecks: ScenarioCheck[];
   regressionChecks: ScenarioCheck[];
+  checkpoints: ScenarioCheckpoint[];
+  viewports: ViewportContract[];
+  failureViewports?: string[];
+  authFixture: "seeded-disposable" | "none";
+  tls: "strict" | "allow-insecure-loopback";
   risks: ScenarioRiskSignals;
   serverStateReset?: ServerStateResetContract;
   requestedLevel: VerificationLevel;
@@ -517,16 +656,38 @@ export interface PrivateReproScenario extends PublicReproScenario {
   /** Raw URL retained only in the private in-memory scenario for replay. */
   privateUrl: string;
   privateActions: BrowserAction[];
+  privateAuthState?: PlaywrightStorageState;
 }
 
-export interface CheckObservation extends ScenarioCheck {
+export interface PlaywrightStorageCookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "Strict" | "Lax" | "None";
+}
+
+export interface PlaywrightStorageOrigin {
+  origin: string;
+  localStorage: Array<{ name: string; value: string }>;
+}
+
+export interface PlaywrightStorageState {
+  cookies: PlaywrightStorageCookie[];
+  origins: PlaywrightStorageOrigin[];
+}
+
+export type CheckObservation = ScenarioCheck & {
   state: ObservationState;
   freshness: ObservationFreshness;
   provenance: SurfaceObservation["provenance"];
   observed?: string;
-  expected?: CheckExpectation;
+  expected?: CheckExpectation | LocatorProbeValue;
   warning?: string;
-}
+};
 
 export interface AttemptSummary {
   phase: "baseline" | "post-fix";
@@ -538,6 +699,12 @@ export interface AttemptSummary {
   match?: boolean;
   passed?: boolean;
   checks: CheckObservation[];
+  checkpoints?: Array<{
+    name: string;
+    offset: number;
+    observations: CheckObservation[];
+    state: ObservationState;
+  }>;
   availableChecks: number;
   decisiveChecks: number;
   retryable: boolean;
@@ -553,6 +720,8 @@ export interface AttemptSummary {
   };
   error?: string;
   truncation?: { checks?: boolean; error?: boolean };
+  viewport?: ViewportObservation;
+  viewports?: ViewportObservation[];
 }
 
 export interface RateSummary {
@@ -568,7 +737,7 @@ export interface RateSummary {
 }
 
 export interface VerificationResult {
-  schemaVersion: 2;
+  schemaVersion: 3;
   outcome: VerificationOutcome;
   level: VerificationLevel;
   requestedLevel: VerificationLevel;

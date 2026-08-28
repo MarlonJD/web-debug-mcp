@@ -8,45 +8,87 @@ import { z } from "zod";
 
 import type {
   BrowserAction,
+  BrowserLocator,
   FailureSignatureEntry,
   NextInspection,
   ScenarioCheck,
   ScenarioRiskSignals,
   OperationContext,
   VerificationLevel,
+  ScenarioCheckpoint,
+  ViewportContract,
 } from "./domain/types.js";
+import { MAX_MCP_OPERATION_MS } from "./domain/types.js";
 import { WebDebugError, errorMessage } from "./core/errors.js";
 import { SessionManager } from "./core/session-manager.js";
+import { ProcessRegistry } from "./core/process-registry.js";
 import { boundText, redactText, redactValue } from "./core/redaction.js";
 
 const DEFAULT_PROJECT_ROOT = process.cwd();
-const MCP_OPERATION_BUDGET_MS = 150_000;
+const MCP_OPERATION_BUDGET_MS = MAX_MCP_OPERATION_MS;
 const viewportSchema = z.object({
   width: z.number().int().min(320).max(3_840),
   height: z.number().int().min(240).max(2_160),
-});
+}).strict();
+
+const locatorSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("css"), value: z.string().min(1).max(500) }).strict(),
+  z.object({ kind: z.literal("role"), role: z.string().min(1).max(100), name: z.string().min(1).max(300).optional() }).strict(),
+  z.object({ kind: z.literal("text"), text: z.string().min(1).max(500) }).strict(),
+  z.object({ kind: z.literal("label"), text: z.string().min(1).max(500) }).strict(),
+  z.object({ kind: z.literal("testId"), value: z.string().min(1).max(500) }).strict(),
+]);
+
+const locatorPropertySchema = z.enum(["count", "visible", "enabled", "checked", "text"]);
+const probeExpectedSchema = z.union([z.string().max(500), z.number().finite(), z.boolean(), z.null()]);
 
 const browserActionSchema = z.union([
-  z.object({ kind: z.literal("navigate"), url: z.string().url() }),
-  z.object({ kind: z.literal("click"), selector: z.string().min(1).max(500) }),
-  z.object({ kind: z.literal("fill"), selector: z.string().min(1).max(500), value: z.string().max(10_000) }),
-  z.union([
-    z.object({ kind: z.literal("wait"), selector: z.string().min(1).max(500), text: z.string().min(1).max(500).optional(), timeoutMs: z.number().int().min(0).max(30_000).optional() }),
-    z.object({ kind: z.literal("wait"), selector: z.string().min(1).max(500).optional(), text: z.string().min(1).max(500), timeoutMs: z.number().int().min(0).max(30_000).optional() }),
-  ]),
-  z.object({ kind: z.literal("reload") }),
+  z.object({ kind: z.literal("navigate"), url: z.string().url() }).strict(),
+  z.object({ kind: z.literal("click"), locator: locatorSchema }).strict(),
+  z.object({ kind: z.literal("fill"), locator: locatorSchema, value: z.string().max(10_000) }).strict(),
+  z.object({ kind: z.literal("wait"), locator: locatorSchema, property: locatorPropertySchema, expected: probeExpectedSchema, timeoutMs: z.number().int().min(0).max(30_000).optional() }).strict(),
+  z.object({ kind: z.literal("reload") }).strict(),
 ]);
 
 const scenarioCheckSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("urlContains"), value: z.string().min(1).max(500) }),
-  z.object({ kind: z.literal("textContains"), value: z.string().min(1).max(500) }),
-  z.object({ kind: z.literal("noConsoleErrors") }),
+  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048) }).strict(),
+  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains") }).strict(),
+  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000) }).strict(),
+  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean() }).strict(),
+  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean() }).strict(),
+  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean() }).strict(),
+  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean() }).strict(),
+  z.object({ kind: z.literal("noConsoleErrors") }).strict(),
 ]);
 
-const failureSignatureSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("urlContains"), value: z.string().min(1).max(500), expected: z.enum(["pass", "fail"]) }),
-  z.object({ kind: z.literal("textContains"), value: z.string().min(1).max(500), expected: z.enum(["pass", "fail"]) }),
-  z.object({ kind: z.literal("noConsoleErrors"), expected: z.enum(["pass", "fail"]) }),
+const failureSignatureSchema = z.union([
+  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains"), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
+  z.object({ kind: z.literal("noConsoleErrors"), expected: z.enum(["pass", "fail"]) }).strict(),
+]);
+
+const checkpointProbeSchema = z.object({
+  name: z.string().min(1).max(80),
+  locator: locatorSchema,
+  property: locatorPropertySchema,
+  expected: probeExpectedSchema,
+  match: z.enum(["exact", "contains"]).optional(),
+}).strict();
+const checkpointSchema = z.object({
+  name: z.string().min(1).max(80),
+  offset: z.number().int().min(0).max(100),
+  probes: z.array(checkpointProbeSchema).max(8),
+  route: z.string().startsWith("/").min(1).max(2_048).optional(),
+}).strict();
+const viewportContractSchema = z.union([
+  z.object({ name: z.string().min(1).max(40), width: z.number().int().min(320).max(3_840), height: z.number().int().min(240).max(2_160) }).strict(),
+  z.object({ name: z.string().min(1).max(40), size: viewportSchema }).strict().transform(({ name, size }) => ({ name, width: size.width, height: size.height })),
+  z.object({ name: z.string().min(1).max(40), viewport: viewportSchema }).strict().transform(({ name, viewport }) => ({ name, width: viewport.width, height: viewport.height })),
 ]);
 
 const risksSchema = z.object({
@@ -79,12 +121,13 @@ const nextInspectionSchema = z.union([
   }),
 ]);
 
-export function createServer(manager = new SessionManager()): McpServer {
+export function createServer(manager = new SessionManager(), registry?: ProcessRegistry): McpServer {
+  const respondFor = <T>(operation: () => T | Promise<T>) => respond(operation, registry);
   const server = new McpServer(
-    { name: "web-debug-mcp", version: "0.2.0" },
+    { name: "web-debug-mcp", version: "0.3.0" },
     {
       instructions:
-        "Use this local server for web debugging when a user asks to reproduce, inspect, capture, or verify a browser/React/Vite/Next/Safari issue. Start with web_project_detect, then web_session_start and web_issue_capture. For regression proof, web_repro_record executes a bounded pre-fix failure signature and web_fix_verify returns verified, failed, or inconclusive with adaptive attempt evidence. Use explicit local targets by default; remote targets and side effects require opt-in. Do not use it for native macOS/iOS build-debug, production monitoring, or arbitrary credentialed browser control. Data is bounded/redacted; close sessions when done.",
+        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -97,14 +140,14 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ projectRoot: z.string().min(1).default(DEFAULT_PROJECT_ROOT) }),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ projectRoot }) => respond(() => manager.detect(projectRoot)),
+    async ({ projectRoot }) => respondFor(() => manager.detect(projectRoot)),
   );
 
   server.registerTool(
     "web_session_start",
     {
       title: "Start web debug session",
-      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings; attached Chromium can supply targetId to pin the exact page.",
+      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings. Chromium can opt into one guarded HTTPS loopback origin and a project-contained disposable auth fixture; attached Chromium can supply targetId to pin the exact page. Safari remains strict and CSS-only.",
       inputSchema: z.object({
         projectRoot: z.string().min(1).default(DEFAULT_PROJECT_ROOT),
         url: z.string().url(),
@@ -116,10 +159,12 @@ export function createServer(manager = new SessionManager()): McpServer {
         headless: z.boolean().default(true),
         allowRemote: z.boolean().default(false),
         viewport: viewportSchema.optional(),
+        tls: z.enum(["strict", "allow-insecure-loopback"]).default("strict"),
+        authFixture: z.object({ kind: z.literal("playwrightStorageState"), path: z.string().min(1).max(2_048) }).strict().optional(),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async (input, extra) => respond(() => manager.start(input, requestContext(extra.signal))),
+    async (input, extra) => respondFor(async () => { const result = await manager.start(input, requestContext(extra.signal)); await registry?.sessionStarted(); return result; }),
   );
 
   server.registerTool(
@@ -130,29 +175,29 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid().optional() }),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ sessionId }) => respond(() => (sessionId ? manager.status(sessionId) : manager.list())),
+    async ({ sessionId }) => respondFor(() => (sessionId ? manager.status(sessionId) : manager.list())),
   );
 
   server.registerTool(
     "web_browser_action",
     {
       title: "Perform bounded browser action",
-      description: "Navigate, click, fill, wait, or reload within the selected debug session and same-origin target.",
+      description: "Navigate, click, fill, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits.",
       inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, action }, extra) => respond(() => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
+    async ({ sessionId, action }, extra) => respondFor(() => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_issue_capture",
     {
       title: "Capture bounded web issue evidence",
-      description: "Combine browser state, DOM summary, console, network metadata, debugger/framework evidence, replay state, and an optional screenshot into one redacted evidence bundle.",
+      description: "Combine browser state, DOM summary, console, network metadata, debugger/framework evidence, computed Chromium accessibility diagnostics, replay state, and an optional screenshot into one redacted evidence bundle. Auth-seeded sessions suppress screenshots.",
       inputSchema: z.object({ sessionId: z.string().uuid(), captureScreenshot: z.boolean().default(true) }),
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ sessionId, captureScreenshot }, extra) => respond(() => manager.capture(sessionId, captureScreenshot, requestContext(extra.signal))),
+    async ({ sessionId, captureScreenshot }, extra) => respondFor(() => manager.capture(sessionId, captureScreenshot, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -163,7 +208,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), inspection: nextInspectionSchema }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
-    async ({ sessionId, inspection }, extra) => respond(() => manager.inspectNext(sessionId, inspection as NextInspection, requestContext(extra.signal))),
+    async ({ sessionId, inspection }, extra) => respondFor(() => manager.inspectNext(sessionId, inspection as NextInspection, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -174,7 +219,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000), restore: z.boolean().default(false) }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, frameIndex, restore }, extra) => respond(() => manager.seekReplay(sessionId, frameIndex, restore, requestContext(extra.signal))),
+    async ({ sessionId, frameIndex, restore }, extra) => respondFor(() => manager.seekReplay(sessionId, frameIndex, restore, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -190,7 +235,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, sourceUrl, line, column }, extra) => respond(() => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
+    async ({ sessionId, sourceUrl, line, column }, extra) => respondFor(() => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -204,7 +249,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, action }, extra) => respond(() => manager.control(sessionId, action, requestContext(extra.signal))),
+    async ({ sessionId, action }, extra) => respondFor(() => manager.control(sessionId, action, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -219,22 +264,25 @@ export function createServer(manager = new SessionManager()): McpServer {
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, expression, allowSideEffects }, extra) => respond(() => manager.evaluate(sessionId, expression, allowSideEffects, requestContext(extra.signal))),
+    async ({ sessionId, expression, allowSideEffects }, extra) => respondFor(() => manager.evaluate(sessionId, expression, allowSideEffects, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_repro_record",
     {
       title: "Record reproducible web flow",
-      description: "Execute and store a bounded pre-fix reproduction with a named failure signature, acceptance checks, and optional adaptive-risk signals.",
+      description: "Execute and store a bounded pre-fix reproduction with exact locator checks, named ordered checkpoints, optional desktop/mobile viewport contracts and failure scope, and adaptive-risk signals.",
       inputSchema: z.object({
         sessionId: z.string().uuid(),
         name: z.string().min(1).max(200),
         url: z.string().url(),
         actions: z.array(browserActionSchema).max(100),
-        failureSignature: z.array(failureSignatureSchema).min(1).max(20),
-        acceptanceChecks: z.array(scenarioCheckSchema).min(1).max(20),
-        regressionChecks: z.array(scenarioCheckSchema).max(20).optional(),
+        failureSignature: z.array(failureSignatureSchema).min(1).max(64),
+        acceptanceChecks: z.array(scenarioCheckSchema).min(1).max(64),
+        regressionChecks: z.array(scenarioCheckSchema).max(64).optional(),
+        checkpoints: z.array(checkpointSchema).max(16).optional(),
+        viewports: z.array(viewportContractSchema).max(4).optional(),
+        failureViewports: z.array(z.string().min(1).max(40)).max(4).optional(),
         risks: risksSchema.optional(),
         requestedLevel: levelSchema.optional(),
         buildReference: buildReferenceSchema.optional(),
@@ -245,8 +293,8 @@ export function createServer(manager = new SessionManager()): McpServer {
       }).strict(),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, name, url, actions, failureSignature, acceptanceChecks, regressionChecks, risks, requestedLevel, buildReference, serverStateReset }, extra) =>
-      respond(() => manager.recordScenario({
+    async ({ sessionId, name, url, actions, failureSignature, acceptanceChecks, regressionChecks, checkpoints, viewports, failureViewports, risks, requestedLevel, buildReference, serverStateReset }, extra) =>
+      respondFor(() => manager.recordScenario({
         sessionId,
         name,
         url,
@@ -254,6 +302,9 @@ export function createServer(manager = new SessionManager()): McpServer {
         failureSignature: failureSignature as FailureSignatureEntry[],
         acceptanceChecks: acceptanceChecks as ScenarioCheck[],
         regressionChecks: regressionChecks as ScenarioCheck[] | undefined,
+        checkpoints: checkpoints as ScenarioCheckpoint[] | undefined,
+        viewports: viewports as ViewportContract[] | undefined,
+        failureViewports: failureViewports as string[] | undefined,
         risks: risks as ScenarioRiskSignals | undefined,
         requestedLevel: requestedLevel as VerificationLevel | undefined,
         buildReference,
@@ -274,7 +325,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       }).strict(),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
     },
-    async ({ sessionId, scenarioId, requestedLevel, buildReference }, extra) => respond(() => manager.verifyScenario({ sessionId, scenarioId, requestedLevel: requestedLevel as VerificationLevel | undefined, buildReference }, requestContext(extra.signal))),
+    async ({ sessionId, scenarioId, requestedLevel, buildReference }, extra) => respondFor(() => manager.verifyScenario({ sessionId, scenarioId, requestedLevel: requestedLevel as VerificationLevel | undefined, buildReference }, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -285,7 +336,7 @@ export function createServer(manager = new SessionManager()): McpServer {
       inputSchema: z.object({ sessionId: z.string().uuid() }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
     },
-    async ({ sessionId }) => respond(() => manager.close(sessionId)),
+    async ({ sessionId }) => respondFor(async () => { const result = await manager.close(sessionId); await registry?.sessionClosed(); return result; }),
   );
 
   return server;
@@ -296,8 +347,10 @@ function requestContext(signal?: AbortSignal): OperationContext {
   return { signal, clock: () => performance.now(), deadline: now + MCP_OPERATION_BUDGET_MS };
 }
 
-async function respond<T>(operation: () => T | Promise<T>) {
+async function respond<T>(operation: () => T | Promise<T>, registry?: ProcessRegistry) {
+  let accounted = false;
   try {
+    if (registry) { await registry.beginRequest(); accounted = true; }
     const value = await operation();
     // Core/adapters apply redaction and bounds at their ownership boundary;
     // serializing here must not traverse the graph a second time and turn
@@ -309,20 +362,30 @@ async function respond<T>(operation: () => T | Promise<T>) {
       isError: true,
       content: [{ type: "text" as const, text: JSON.stringify({ error: boundText(redactText(errorMessage(error)), 500), ...details }, null, 2) }],
     };
+  } finally {
+    if (accounted) await registry?.endRequest().catch(() => undefined);
   }
 }
 
 export async function startStdioServer(): Promise<void> {
   const manager = new SessionManager();
-  const server = createServer(manager);
+  const registry = new ProcessRegistry();
+  await registry.start();
+  const server = createServer(manager, registry);
   const transport = new StdioServerTransport();
-  const shutdown = async () => {
-    await manager.closeAll();
-    await server.close().catch(() => undefined);
-  };
+  const shutdown = () => registry.requestShutdown(async () => { await manager.closeAll(); await server.close().catch(() => undefined); });
+  registry.setShutdownHandler(async () => { await manager.closeAll(); await server.close().catch(() => undefined); });
+  transport.onclose = () => { void shutdown(); };
+  process.stdin.once("end", () => { void shutdown(); });
+  process.stdin.once("close", () => { void shutdown(); });
   process.once("SIGINT", () => void shutdown());
   process.once("SIGTERM", () => void shutdown());
-  await server.connect(transport);
+  try {
+    await server.connect(transport);
+  } catch (error) {
+    await shutdown();
+    throw error;
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "github:MarlonJD/web-debug-mcp#main"
+        "github:MarlonJD/web-debug-mcp#v0.3.0"
       ],
       "startup_timeout_sec": 20,
       "tool_timeout_sec": 150

@@ -1,12 +1,16 @@
 import type {
   ActionResult,
   BrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
   BrowserEngine,
   DebuggerBreakpoint,
   DebuggerSnapshot,
   OperationContext,
+  LocatorProbeResult,
+  LocatorProperty,
+  PlaywrightStorageState,
   ViewportSize,
 } from "../domain/types.js";
 
@@ -19,6 +23,12 @@ export interface BrowserStartOptions {
   headless?: boolean;
   allowRemote?: boolean;
   viewport?: ViewportSize;
+  /** Elevated modes are private core-validated settings. They are not
+   * serialized into public session summaries. */
+  tls?: "strict" | "allow-insecure-loopback";
+  approvedOrigin?: string;
+  authState?: PlaywrightStorageState;
+  authFixture?: "seeded-disposable" | "none";
 }
 
 export interface SnapshotOptions {
@@ -28,6 +38,9 @@ export interface SnapshotOptions {
   checksOnly?: boolean;
   /** Manual replay frames may retain observer data for the following full capture. */
   retainNetwork?: boolean;
+  /** Auth-seeded contexts never produce pixels. */
+  suppressScreenshot?: boolean;
+  accessibility?: boolean;
 }
 
 export interface EvaluationResult {
@@ -40,6 +53,7 @@ export interface BrowserAdapter {
   start(options: BrowserStartOptions, context?: OperationContext): Promise<BrowserTarget>;
   close(context?: OperationContext): Promise<void>;
   act(action: BrowserAction, context?: OperationContext): Promise<ActionResult>;
+  probe(locator: BrowserLocator, properties: LocatorProperty[], context?: OperationContext): Promise<LocatorProbeResult>;
   snapshot(options: SnapshotOptions, context?: OperationContext): Promise<BrowserSnapshot>;
   /** Clear only observers owned by this adapter before an attached retry. */
   resetObservers?(context?: OperationContext): Promise<void>;

@@ -28,7 +28,7 @@ describe("Safari WebDriver adapter", () => {
     try {
       const adapter = new SafariAdapter("http://127.0.0.1:4444");
       const target = await adapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      await adapter.act({ kind: "click", selector: "#submit" });
+      await adapter.act({ kind: "click", locator: { kind: "css", value: "#submit" } });
       const snapshot = await adapter.snapshot({ artifactDir: "/tmp/web-debug-safari-test", captureScreenshot: false });
 
       expect(target.browser).toBe("safari");

@@ -26,8 +26,8 @@ try {
     headless: false,
   });
   await manager.evaluate(session.id, "console.info('Safari BiDi smoke event')", true);
-  await manager.act(session.id, { kind: "click", selector: "#submit" });
-  await manager.act(session.id, { kind: "wait", selector: "#status", text: "Payment submitted", timeoutMs: 5_000 });
+  await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "#submit" } });
+  await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "#status" }, property: "text", expected: "Payment submitted", timeoutMs: 5_000 });
   const verificationEvidence = await manager.capture(session.id, true);
   if (!verificationEvidence) {
     throw new Error("Safari WebDriver evidence capture returned no evidence.");

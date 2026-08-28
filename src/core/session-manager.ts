@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 
 import { ChromiumAdapter } from "../adapters/chromium.js";
 import type { BrowserAdapter, BrowserAdapterFactory, BrowserStartOptions } from "../adapters/browser.js";
@@ -15,6 +15,7 @@ import type {
   AttemptTermination,
   BaselineStatus,
   BrowserAction,
+  BrowserLocator,
   BrowserObservations,
   BrowserSnapshot,
   BrowserTarget,
@@ -42,11 +43,35 @@ import type {
   VerificationOutcome,
   VerificationResult,
   ViewportSize,
+  CheckpointProbe,
+  ScenarioCheckpoint,
+  ViewportContract,
+  LocatorProperty,
+  LocatorProbeResult,
+  PlaywrightStorageState,
+} from "../domain/types.js";
+import {
+  MAX_SCENARIO_ACTIONS,
+  MAX_LOCATOR_CHARS,
+  MAX_ACCESSIBLE_NAME_CHARS,
+  MAX_SCENARIO_NAME_CHARS,
+  MAX_CHECKPOINT_NAME_CHARS,
+  MAX_VIEWPORT_NAME_CHARS,
+  MAX_CHECKPOINTS,
+  MAX_CHECKPOINT_PROBES_TOTAL,
+  MAX_PROBES_PER_CHECKPOINT,
+  MAX_DECISIVE_OBSERVATIONS,
+  MAX_VIEWPORTS,
+  MAX_MATRIX_EXECUTION_UNITS_PER_PHASE,
+  MAX_EVIDENCE_BUNDLE_BYTES,
+  MAX_RESULT_BYTES as DOMAIN_MAX_RESULT_BYTES,
 } from "../domain/types.js";
 import { detectProject } from "./capabilities.js";
 import { WebDebugError, errorMessage } from "./errors.js";
 import { composeEvidence } from "./evidence.js";
 import { boundText, redactText, redactValue, safeUrl } from "./redaction.js";
+import { loadAuthStorageState } from "./auth-state.js";
+import { observationDigest } from "./aggregation.js";
 
 export interface StartSessionInput {
   projectRoot: string;
@@ -59,6 +84,8 @@ export interface StartSessionInput {
   headless?: boolean;
   allowRemote?: boolean;
   viewport?: ViewportSize;
+  tls?: "strict" | "allow-insecure-loopback";
+  authFixture?: { kind: "playwrightStorageState"; path: string };
 }
 
 export interface RecordScenarioInput {
@@ -73,6 +100,9 @@ export interface RecordScenarioInput {
   requestedLevel?: VerificationLevel;
   buildReference?: BuildReference;
   serverStateReset?: ServerStateResetContract;
+  checkpoints?: ScenarioCheckpoint[];
+  viewports?: ViewportContract[];
+  failureViewports?: string[];
 }
 
 export interface VerifyScenarioInput {
@@ -105,6 +135,8 @@ interface ManagedSession {
   scenarios: Map<string, PrivateReproScenario>;
   redactionSecrets: Set<string>;
   startOptions: BrowserStartOptions;
+  authFixture: "seeded-disposable" | "none";
+  tls: "strict" | "allow-insecure-loopback";
   selectedTargetId: string | null;
   lease: Lease | null;
   closing: boolean;
@@ -129,6 +161,7 @@ interface PhaseResult {
   warnings: string[];
   termination: string;
   flaky: boolean;
+  viewportConsensus?: Record<string, string>;
 }
 
 const MAX_SESSIONS = 8;
@@ -136,7 +169,7 @@ const MAX_SCENARIOS_PER_SESSION = 10;
 const MAX_ATTEMPTS_PER_PHASE = 5;
 const MAX_REPLAY_FRAMES = 8;
 const MAX_OBSERVED_CHARS = 500;
-const MAX_RESULT_BYTES = 256 * 1024;
+const MAX_RESULT_BYTES = DOMAIN_MAX_RESULT_BYTES;
 const CLEANUP_TIMEOUT_MS = 5_000;
 const OPTIONAL_ENRICHMENT_BUDGET_MS = 2_000;
 const OPTIONAL_ENRICHMENT_CLEANUP_MS = 250;
@@ -165,9 +198,27 @@ export class SessionManager {
     assertAllowedTargetUrl(input.url, input.allowRemote ?? false);
     const descriptor = detectProject(input.projectRoot);
     const id = randomUUID();
-    const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-"));
     const browser = input.browser ?? "chromium";
     if (browser === "chromium" && input.webdriverEndpoint) throw new WebDebugError("WEBDRIVER_BROWSER_MISMATCH", "webdriverEndpoint requires browser=safari.");
+    const tls = input.tls ?? "strict";
+    let authState: PlaywrightStorageState | undefined;
+    let authSecrets: string[] = [];
+    if (input.authFixture) {
+      if (browser === "safari") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari WebDriver does not support disposable auth-state seeding.");
+      if (browser !== "chromium" || input.cdpEndpoint || input.allowRemote || !isLoopback(new URL(input.url).hostname)) {
+        throw new WebDebugError("AUTH_FIXTURE_UNAVAILABLE", "Disposable auth seeding requires an isolated Chromium launch at a loopback origin.");
+      }
+      const loaded = await loadAuthStorageState(input.authFixture.path, descriptor.projectRoot, new URL(input.url).origin);
+      authState = loaded.state;
+      authSecrets = loaded.secrets;
+    }
+    if (tls === "allow-insecure-loopback") {
+      if (browser === "safari") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari WebDriver does not support the guarded loopback TLS bypass.");
+      if (browser !== "chromium" || input.cdpEndpoint || input.allowRemote || !isLoopback(new URL(input.url).hostname) || new URL(input.url).protocol !== "https:") {
+        throw new WebDebugError("TLS_BYPASS_UNAVAILABLE", "Loopback TLS bypass requires an isolated Chromium launch at an HTTPS loopback origin.");
+      }
+    }
+    const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-"));
     const adapter = this.adapterFactory({ allowRemote: input.allowRemote, browser, webdriverEndpoint: input.webdriverEndpoint, targetId: input.targetId });
     const summary: DebugSessionSummary = {
       id,
@@ -179,6 +230,8 @@ export class SessionManager {
       target: null,
       capabilities: descriptor.capabilities,
       warnings: [...descriptor.warnings],
+      tls,
+      authFixture: authState ? "seeded-disposable" : "none",
     };
     const managed: ManagedSession = {
       descriptor,
@@ -200,13 +253,20 @@ export class SessionManager {
         headless: input.headless,
         allowRemote: input.allowRemote,
         viewport: input.viewport,
+        tls,
+        approvedOrigin: new URL(input.url).origin,
+        ...(authState ? { authState, authFixture: "seeded-disposable" as const } : {}),
       },
       selectedTargetId: null,
       lease: null,
       closing: false,
       unusable: false,
       closePromise: null,
+      authFixture: authState ? "seeded-disposable" : "none",
+      tls,
     };
+    for (const secret of authSecrets) if (secret) managed.redactionSecrets.add(secret);
+    if (authState) managed.summary.warnings.push("Disposable auth storage was seeded; screenshot pixels are not claimed redacted.");
     this.sessions.set(id, managed);
     try {
       const target = await this.callAdapter(() => adapter.start(managed.startOptions, context), context);
@@ -219,6 +279,7 @@ export class SessionManager {
     } catch (error) {
       managed.summary.status = "failed";
       await this.closeAdapterBounded(adapter, this.cleanupTimeoutMs);
+      await rm(artifactDir, { recursive: true, force: true }).catch(() => undefined);
       this.sessions.delete(id);
       throw sanitizeError(error);
     }
@@ -294,24 +355,40 @@ export class SessionManager {
       validateScenarioInput(input);
       if (session.scenarios.size >= MAX_SCENARIOS_PER_SESSION) throw new WebDebugError("SCENARIO_LIMIT_REACHED", `At most ${MAX_SCENARIOS_PER_SESSION} scenarios may be recorded per session.`);
       assertScenarioOrigin(session, input.url);
+      const actions = input.actions.map((action) => normalizeAction(action));
+      const failureSignature = input.failureSignature.map((entry) => normalizeFailureEntry(entry));
+      const acceptanceChecks = input.acceptanceChecks.map((check) => normalizeCheck(check));
+      const regressionChecks = (input.regressionChecks ?? []).map((check) => normalizeCheck(check));
+      const checkpoints = normalizeCheckpoints(input.checkpoints ?? [], actions.length);
+      const viewports = normalizeViewports(input.viewports, session.summary.target?.viewport ?? undefined);
+      if (input.viewports?.length === 1 && session.summary.target?.viewport
+        && (viewports[0]!.width !== session.summary.target.viewport.width || viewports[0]!.height !== session.summary.target.viewport.height)) {
+        throw new WebDebugError("SINGLE_VIEWPORT_MISMATCH", "A single explicit viewport must match the live session; use a viewport matrix to run a different size through fresh candidates.");
+      }
+      if (viewports.length > 1 && session.summary.target?.browser === "safari") throw new WebDebugError("VIEWPORT_MATRIX_UNAVAILABLE", "Safari WebDriver does not support viewport matrices.");
       const risks = mergeRisks(input.risks);
       const requestedLevel = effectiveRequestedLevel(input.requestedLevel, risks);
       const scenario = createPrivateScenario({
-        schemaVersion: 2,
+        schemaVersion: 3,
         id: randomUUID(),
         sessionId: input.sessionId,
         name: input.name.trim(),
         url: input.url,
-        privateActions: cloneActions(input.actions),
-        failureSignature: cloneSignature(input.failureSignature),
-        acceptanceChecks: cloneChecks(input.acceptanceChecks),
-        regressionChecks: cloneChecks(input.regressionChecks ?? []),
+        privateActions: cloneActions(actions),
+        failureSignature: cloneSignature(failureSignature),
+        acceptanceChecks: cloneChecks(acceptanceChecks),
+        regressionChecks: cloneChecks(regressionChecks),
+        checkpoints,
+        viewports,
+        ...(input.failureViewports ? { failureViewports: [...input.failureViewports] } : {}),
+        authFixture: session.authFixture,
+        tls: session.tls,
         risks,
         serverStateReset: input.serverStateReset,
         requestedLevel,
         buildReference: normalizeBuildReference(input.buildReference),
         environmentFingerprint: this.environmentFingerprint(session, input.url),
-        contractHash: scenarioContractHash(input),
+        contractHash: scenarioContractHash({ ...input, actions, failureSignature, acceptanceChecks, regressionChecks, checkpoints, viewports, failureViewports: input.failureViewports, tls: session.tls, authFixture: session.authFixture }),
         createdAt: this.timestamp(),
       });
       const baseline = await this.runBaselinePhase(session, scenario, operation);
@@ -324,6 +401,7 @@ export class SessionManager {
         observedRate: baseline.observedRate,
         evidence: baseline.evidence,
         warnings: baseline.warnings,
+        ...(baseline.viewportConsensus ? { viewportConsensus: baseline.viewportConsensus } : {}),
         termination: baseline.termination,
         terminationReason: baseline.termination,
       };
@@ -351,7 +429,7 @@ export class SessionManager {
           : "BASELINE_NOT_REPRODUCED";
         return this.inconclusiveResult(scenario, currentFingerprint, postBuildReference, baselineTermination, `Stored baseline status is ${scenario.baseline.status}; post-fix actions were not run.`);
       }
-      if (!scenario.baseline.evidence) return this.inconclusiveResult(scenario, currentFingerprint, postBuildReference, "BASELINE_EVIDENCE_UNAVAILABLE", "The reproduced baseline has no intact representative evidence.");
+      if (!scenario.baseline.evidence && scenario.viewports.length <= 1) return this.inconclusiveResult(scenario, currentFingerprint, postBuildReference, "BASELINE_EVIDENCE_UNAVAILABLE", "The reproduced baseline has no intact representative evidence.");
       if (scenario.risks.serverStateLeakage && !scenario.serverStateReset?.action && !scenario.serverStateReset?.readyCheck) return this.inconclusiveResult(scenario, currentFingerprint, postBuildReference, "SERVER_STATE_RESET_REQUIRED", "Server-state leakage requires an explicit observable reset action or condition.");
       if (scenario.risks.browserStateLeakage && !session.summary.target?.isolated) return this.inconclusiveResult(scenario, currentFingerprint, postBuildReference, "BROWSER_STATE_ISOLATION_UNAVAILABLE", "Browser-state leakage cannot be verified on an attached or visible non-isolated profile.");
       const level = maxLevel(scenario.baseline.level, input.requestedLevel ?? scenario.requestedLevel);
@@ -423,8 +501,9 @@ export class SessionManager {
       if (attempts.length >= profile.maxAttempts || remaining(phaseContext) <= 0) { termination = remaining(phaseContext) <= 0 ? "budget-exhausted" : "attempt-ceiling"; break; }
       const attempt = await this.runAttempt(session, scenario, "baseline", attempts.length + 1, phaseContext);
       attempts.push(attempt.summary);
+      if (attempt.evidence && (!evidence || attempt.match === true)) evidence = attempt.evidence;
       if (attempt.match !== undefined) { decisiveCount += 1; if (attempt.match) matchCount += 1; }
-      if (attempt.match === true && !evidence) {
+      if (attempt.match === true && !evidence && scenario.viewports.length === 1) {
         evidence = await this.captureRepresentative(session, scenario, attempt, phaseContext);
         if (attempt.summary.conflict) {
           matchCount = Math.max(0, matchCount - 1);
@@ -444,7 +523,7 @@ export class SessionManager {
       if (effectiveLevel === "quick") {
         if (attempt.match === true) return phaseResult(effectiveLevel, "reproduced", attempts, evidence, baselineRate(attempts), warnings, "baseline-match", flaky);
         if (attempt.match === false) {
-          if (!evidence) evidence = await this.captureRepresentative(session, scenario, attempt, phaseContext);
+          if (!evidence && scenario.viewports.length === 1) evidence = await this.captureRepresentative(session, scenario, attempt, phaseContext);
           if (attempt.summary.conflict || !evidence) {
             flaky = true;
             warnings.push("Authoritative baseline capture was unavailable or drifted from the checks-only observation.");
@@ -465,7 +544,7 @@ export class SessionManager {
       if (attempt.summary.termination === "permanent" || attempt.summary.termination === "budget-exhausted") { if (attempt.summary.error === "request cancelled") warnings.push("Request cancellation stopped baseline verification."); termination = attempt.summary.error === "request cancelled" ? "cancelled" : attempt.summary.termination; break; }
       if (attempts.length >= profileFor(effectiveLevel).maxAttempts) { termination = "baseline-match-quorum-unmet"; break; }
     }
-    if (!evidence && attempts.length > 0 && !attempts.at(-1)?.conflict) {
+    if (!evidence && scenario.viewports.length === 1 && attempts.length > 0 && !attempts.at(-1)?.conflict) {
       const last = attempts.at(-1);
       if (last) evidence = await this.captureRepresentative(session, scenario, { summary: last, browser: null, evidence: null, match: last.match, passed: undefined }, phaseContext);
     }
@@ -487,11 +566,12 @@ export class SessionManager {
     while (attempts.length < profileFor(effectiveLevel).maxAttempts && remaining(phaseContext) > 0) {
       const attempt = await this.runAttempt(session, scenario, "post-fix", attempts.length + 1, phaseContext);
       attempts.push(attempt.summary);
+      if (attempt.evidence && (!evidence || attempt.passed === false)) evidence = attempt.evidence;
       if (attempt.summary.conflict) flaky = true;
       if (attempt.passed === true) {
         passCount += 1;
         const needsAuthoritativeCapture = !evidence || effectiveLevel === "quick" || passCount >= profileFor(effectiveLevel).maxAttempts || failureCount > 0;
-        if (needsAuthoritativeCapture) {
+        if (needsAuthoritativeCapture && scenario.viewports.length === 1) {
           const authoritative = await this.captureRepresentative(session, scenario, attempt, phaseContext);
           if (authoritative) {
             const finalPass = effectiveLevel === "quick" || passCount >= profileFor(effectiveLevel).maxAttempts;
@@ -518,9 +598,9 @@ export class SessionManager {
       } else if (attempt.passed === false) {
         failureCount += 1;
         const needsAuthoritativeCapture = !evidence || failureCount >= 2 || passCount > 0;
-        if (needsAuthoritativeCapture) {
+        if (needsAuthoritativeCapture && scenario.viewports.length === 1) {
           const authoritative = await this.captureRepresentative(session, scenario, attempt, phaseContext);
-          if (authoritative) evidence ??= authoritative;
+          if (authoritative) evidence = authoritative;
           if (attempt.summary.conflict || !authoritative) {
             attempt.passed = undefined;
             delete attempt.summary.passed;
@@ -553,7 +633,7 @@ export class SessionManager {
         break;
       }
     }
-    if (!evidence && attempts.length > 0 && !attempts.at(-1)?.conflict) {
+    if (!evidence && scenario.viewports.length === 1 && attempts.length > 0 && !attempts.at(-1)?.conflict) {
       const last = attempts.at(-1);
       if (last) evidence = await this.captureRepresentative(session, scenario, { summary: last, browser: null, evidence: null, match: undefined, passed: last.passed }, phaseContext);
     }
@@ -563,6 +643,7 @@ export class SessionManager {
   }
 
   private async runAttempt(session: ManagedSession, scenario: PrivateReproScenario, phase: "baseline" | "post-fix", ordinal: number, context: OperationContext): Promise<AttemptRun> {
+    if (scenario.viewports.length > 1) return this.runMatrixAttempt(session, scenario, phase, ordinal, context);
     const started = this.now();
     const attemptId = randomUUID();
     const attemptContext = { ...context, attemptId };
@@ -572,6 +653,7 @@ export class SessionManager {
     let match: boolean | undefined;
     let passed: boolean | undefined;
     let checks: CheckObservation[] = [];
+    const checkpointResults: NonNullable<AttemptSummary["checkpoints"]> = [];
     let termination: AttemptTermination = "permanent";
     let error: string | undefined;
     let conflict = false;
@@ -584,18 +666,23 @@ export class SessionManager {
       // public, query-sanitized representation and must never be used as an
       // input to the browser.
       await this.actInternal(session, { kind: "navigate", url: scenario.privateUrl }, attemptContext, false);
-      for (const action of scenario.privateActions) await this.actInternal(session, action, attemptContext, false);
+      await this.captureCheckpointBoundary(session.adapter, scenario, 0, attemptContext, checkpointResults);
+      for (let actionIndex = 0; actionIndex < scenario.privateActions.length; actionIndex += 1) {
+        await this.actInternal(session, scenario.privateActions[actionIndex]!, attemptContext, false);
+        await this.captureCheckpointBoundary(session.adapter, scenario, actionIndex + 1, attemptContext, checkpointResults);
+      }
       if (scenario.risks.serverStateLeakage && scenario.serverStateReset?.readyCheck) {
         const resetBrowser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, attemptContext), attemptContext);
-        const resetObservation = evaluateCheck(scenario.serverStateReset.readyCheck, resetBrowser);
+        const resetObservation = await evaluateCheckLive(session.adapter, scenario.serverStateReset.readyCheck, resetBrowser, attemptContext);
         if (resetObservation.state !== "pass") throw new WebDebugError("SERVER_STATE_RESET_UNAVAILABLE", "The explicit server-state reset condition was not observed.");
         reset = { ...reset, serverState: "reset-by-scenario" };
       }
       browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, attemptContext), attemptContext);
-      const acceptanceChecks = [...scenario.acceptanceChecks, ...scenario.regressionChecks].map((check) => evaluateCheck(check, browser!));
-      const failureChecks = scenario.failureSignature.map((entry) => evaluateCheck(entry, browser!, entry.expected));
+      const acceptanceChecks = await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks].map((check) => evaluateCheckLive(session.adapter, check, browser!, attemptContext)));
+      const failureChecks = await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(session.adapter, entry, browser!, attemptContext, entry.expected)));
       checks = phase === "baseline" ? failureChecks : [...acceptanceChecks, ...failureChecks];
       checks = scrubChecks(checks, scenario.privateActions);
+      if (checks.length + checkpointResults.reduce((total, checkpoint) => total + checkpoint.observations.length, 0) > MAX_DECISIVE_OBSERVATIONS) throw new WebDebugError("DECISIVE_OBSERVATION_LIMIT", `The scenario exceeded the ${MAX_DECISIVE_OBSERVATIONS}-observation contract.`);
       if (!checks.every((check) => check.state !== "unavailable" && check.freshness === "fresh")) throw new WebDebugError("REQUIRED_OBSERVATION_UNAVAILABLE", "A required check source was unavailable or stale.");
       if (phase === "baseline") { match = checks.every((check) => check.expected === check.state); termination = match ? "decisive-match" : "decisive-non-match"; }
       else {
@@ -623,18 +710,210 @@ export class SessionManager {
       termination,
       ...(match === undefined ? {} : { match }),
       ...(passed === undefined ? {} : { passed }),
-      checks: checks.slice(0, 20),
+      checks,
       availableChecks: checks.filter((check) => check.state !== "unavailable").length,
       decisiveChecks: checks.filter((check) => check.state !== "unavailable" && check.freshness === "fresh").length,
       retryable: termination === "retryable",
       conflict,
       reset,
+      ...(checkpointResults.length ? { checkpoints: checkpointResults } : {}),
       ...(error ? { error: boundText(error, MAX_OBSERVED_CHARS) } : {}),
     };
     if (browser) {
       await this.recordReplayFrame(session, "capture", null, browser, attemptContext, scenario.privateActions);
     }
     return { summary, browser, evidence, match, passed };
+  }
+
+  private async captureCheckpointBoundary(adapter: BrowserAdapter, scenario: PrivateReproScenario, offset: number, context: OperationContext, output: NonNullable<AttemptSummary["checkpoints"]>): Promise<void> {
+    for (const checkpoint of scenario.checkpoints.filter((candidate) => candidate.offset === offset)) {
+      const observations: CheckObservation[] = [];
+      if (checkpoint.route) {
+        try {
+          const browser = await adapter.snapshot({ artifactDir: "", captureScreenshot: false, checksOnly: true }, context);
+          let path = browser.url;
+          try { path = new URL(browser.url).pathname; } catch { /* retain bounded URL */ }
+          observations.push({ kind: "route", path: checkpoint.route, state: path === checkpoint.route ? "pass" : "fail", freshness: "fresh", provenance: "browser", observed: boundText(path, MAX_OBSERVED_CHARS) });
+        } catch (error) {
+          observations.push(unavailableCheck({ kind: "route", path: checkpoint.route }, errorMessage(error)));
+        }
+      }
+      for (const probe of checkpoint.probes) {
+        try {
+          if (typeof adapter.probe !== "function") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "The selected adapter does not expose live locator probes.");
+          const result = await adapter.probe(probe.locator, [probe.property], context);
+          const actual = result[probe.property];
+          const passed = probe.property === "text" && typeof actual === "string" && typeof probe.expected === "string"
+            ? (probe.match === "exact" ? actual === probe.expected : actual.includes(probe.expected))
+            : actual === probe.expected;
+          observations.push({ kind: probe.property === "text" ? "locatorText" : probe.property === "count" ? "locatorCount" : probe.property === "visible" ? "locatorVisible" : probe.property === "enabled" ? "locatorEnabled" : "locatorChecked", locator: probe.locator, ...(probe.property === "text" ? { text: String(probe.expected), match: probe.match ?? "contains" } : probe.property === "count" ? { count: Number(probe.expected) } : probe.property === "visible" ? { visible: Boolean(probe.expected) } : probe.property === "enabled" ? { enabled: Boolean(probe.expected) } : { checked: Boolean(probe.expected) }), state: passed ? "pass" : "fail", freshness: "fresh", provenance: result.provenance, observed: boundText(String(actual ?? ""), MAX_OBSERVED_CHARS) } as CheckObservation);
+        } catch (error) {
+          observations.push(unavailableCheck({ kind: "locatorText", locator: probe.locator, text: String(probe.expected), match: probe.match ?? "contains" }, errorMessage(error)));
+        }
+      }
+      output.push({ name: checkpoint.name, offset: checkpoint.offset, observations, state: observations.length > 0 && observations.every((observation) => observation.state === "pass") ? "pass" : observations.some((observation) => observation.state === "unavailable") ? "unavailable" : "fail" });
+    }
+  }
+
+  /** Run one attempt across fresh sequential candidates. Candidates stay out
+   * of the managed-session map and therefore cannot replace the canonical
+   * adapter, target metadata, observer buffers, or replay timeline. */
+  private async runMatrixAttempt(session: ManagedSession, scenario: PrivateReproScenario, phase: "baseline" | "post-fix", ordinal: number, context: OperationContext): Promise<AttemptRun> {
+    const started = this.now();
+    const attemptId = randomUUID();
+    const viewports = scenario.viewports.slice(0, Math.min(MAX_VIEWPORTS, MAX_MATRIX_EXECUTION_UNITS_PER_PHASE));
+    const viewportResults: Array<{
+      viewport: ViewportContract;
+      observation: CheckObservation[];
+      match: boolean | undefined;
+      passed: boolean | undefined;
+      checkpoints: NonNullable<AttemptSummary["checkpoints"]>;
+      verdict: "pass" | "fail" | "unavailable" | "inconclusive";
+      warning?: string;
+    }> = [];
+    let representativeEvidence: EvidenceBundle | null = null;
+    let representativeViewportName: string | null = null;
+    let representativeChecks: CheckObservation[] = [];
+    let match: boolean | undefined;
+    let passed: boolean | undefined;
+    for (const viewport of viewports) {
+      if (remaining(context) <= 0) break;
+      const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: session.summary.target?.browser ?? "chromium", webdriverEndpoint: session.startOptions.webdriverEndpoint });
+      let checks: CheckObservation[] = [];
+      let match: boolean | undefined;
+      let passed: boolean | undefined;
+      const candidateCheckpoints: NonNullable<AttemptSummary["checkpoints"]> = [];
+      let verdict: "pass" | "fail" | "unavailable" | "inconclusive" = "inconclusive";
+      let warning: string | undefined;
+      try {
+        const target = await this.callAdapter(() => candidate.start({ ...session.startOptions, viewport: { width: viewport.width, height: viewport.height } }, { ...context, attemptId }), context);
+        if (target.browser === "safari") throw new WebDebugError("VIEWPORT_MATRIX_UNAVAILABLE", "Safari WebDriver does not support viewport matrices.");
+        await this.callAdapter(() => candidate.act({ kind: "navigate", url: scenario.privateUrl }, { ...context, attemptId }), context);
+        await this.captureCheckpointBoundary(candidate, scenario, 0, { ...context, attemptId }, candidateCheckpoints);
+        for (let actionIndex = 0; actionIndex < scenario.privateActions.length; actionIndex += 1) {
+          await this.callAdapter(() => candidate.act(scenario.privateActions[actionIndex]!, { ...context, attemptId }), context);
+          await this.captureCheckpointBoundary(candidate, scenario, actionIndex + 1, { ...context, attemptId }, candidateCheckpoints);
+        }
+        const browser = await this.callAdapter(() => candidate.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, { ...context, attemptId }), context);
+        const acceptance = await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks].map((check) => evaluateCheckLive(candidate, check, browser, { ...context, attemptId })));
+        const failures = await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(candidate, entry, browser, { ...context, attemptId }, entry.expected)));
+        checks = phase === "baseline" ? failures : [...acceptance, ...failures];
+        const decisive = checks.every((check) => check.state !== "unavailable" && check.freshness === "fresh");
+        if (!decisive) {
+          verdict = "unavailable";
+        } else if (phase === "baseline") {
+          match = failures.every((check) => check.expected === check.state);
+          verdict = match ? "pass" : "fail";
+        } else {
+          const failurePresent = failures.length > 0 && failures.every((check) => check.expected === check.state);
+          passed = acceptance.every((check) => check.state === "pass") && !failurePresent;
+          verdict = passed ? "pass" : "fail";
+        }
+        const preferredViewport = phase === "baseline" ? scenario.failureViewports?.[0] ?? viewports[0]?.name : viewports[0]?.name;
+        const shouldCaptureRepresentative = decisive && (representativeEvidence === null || viewport.name === preferredViewport && representativeViewportName !== preferredViewport);
+        if (shouldCaptureRepresentative) {
+          const fullBrowser = await this.callAdapter(() => candidate.snapshot({
+            artifactDir: session.summary.artifactDir,
+            captureScreenshot: session.authFixture !== "seeded-disposable",
+            checksOnly: false,
+            accessibility: true,
+            suppressScreenshot: session.authFixture === "seeded-disposable",
+          }, { ...context, attemptId }), context);
+          const authoritative = phase === "baseline"
+            ? await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(candidate, entry, fullBrowser, { ...context, attemptId }, entry.expected)))
+            : await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature.map((entry) => ({ ...entry }))].map((check) => evaluateCheckLive(candidate, check, fullBrowser, { ...context, attemptId }, "expected" in check ? check.expected as CheckExpectation : undefined)));
+          if (authoritative.length !== checks.length || authoritative.some((check, index) => check.state !== checks[index]?.state || check.freshness !== checks[index]?.freshness || check.expected !== checks[index]?.expected)) {
+            verdict = "inconclusive";
+            match = undefined;
+            passed = undefined;
+            warning = "Authoritative matrix capture drifted from the checks-only observation.";
+          } else {
+            const evidenceSession = cloneSummary(session.summary, sessionSecrets(session));
+            evidenceSession.url = safeUrl(fullBrowser.url);
+            if (evidenceSession.target) evidenceSession.target = { ...evidenceSession.target, url: safeUrl(fullBrowser.url), title: fullBrowser.title, viewport: fullBrowser.viewport };
+            representativeEvidence = boundEvidence(scrubEvidence(composeEvidence(
+              session.descriptor,
+              evidenceSession,
+              { ...fullBrowser, next: null, vite: null },
+              { enabled: true, maxFrames: MAX_REPLAY_FRAMES, truncated: false, frames: [] },
+            ), sessionActions(session)));
+            representativeEvidence.phase = phase;
+            representativeEvidence.attemptId = attemptId;
+            representativeViewportName = viewport.name;
+          }
+        }
+        if (representativeChecks.length === 0 || (verdict !== "pass" && representativeChecks.length > 0)) representativeChecks = checks;
+      } catch (error) {
+        const classified = classifyAttemptError(error, context);
+        warning = classified.message;
+        verdict = classified.unavailable || classified.termination === "retryable" ? "unavailable" : "inconclusive";
+        checks = phase === "baseline" ? scenario.failureSignature.map((entry) => unavailableCheck(entry, classified.message, entry.expected)) : [...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature.map((entry) => ({ ...entry }))].map((check) => unavailableCheck(check, classified.message, "expected" in check ? check.expected as CheckExpectation : undefined));
+      } finally {
+        await this.closeAdapterBounded(candidate, Math.min(this.cleanupTimeoutMs, 5_000));
+      }
+      viewportResults.push({ viewport, observation: checks, match, passed, checkpoints: candidateCheckpoints, verdict, ...(warning ? { warning } : {}) });
+    }
+    const expectedFailureViewports = scenario.failureViewports;
+    const byViewport = new Map(viewportResults.map((item) => [item.viewport.name, item]));
+    if (phase === "post-fix" && scenario.baseline.viewportConsensus) {
+      for (const item of viewportResults) {
+        const checkpointDigest = item.checkpoints.length ? observationDigest(item.checkpoints.flatMap((checkpoint) => checkpoint.observations).map((observation, index) => ({ key: `${index}:${observation.kind}`, state: observation.state, freshness: observation.freshness, provenance: observation.provenance, observed: observation.observed }))) : undefined;
+        const expectedDigest = scenario.baseline.viewportConsensus[item.viewport.name];
+        if (expectedDigest !== undefined && checkpointDigest !== expectedDigest) {
+          item.verdict = "inconclusive";
+          item.warning = "Checkpoint observations differed from the decisive baseline consensus for this viewport.";
+          item.passed = undefined;
+        }
+      }
+    }
+    const complete = viewportResults.length === viewports.length && viewportResults.every((item) => item.observation.every((check) => check.state !== "unavailable" && check.freshness === "fresh") && item.checkpoints.every((checkpoint) => checkpoint.state !== "unavailable"));
+    const checkpointsPass = viewportResults.every((item) => item.checkpoints.every((checkpoint) => checkpoint.state === "pass"));
+    if (phase === "baseline") {
+      const matching = viewportResults.filter((item) => item.match === true).map((item) => item.viewport.name);
+      const required = expectedFailureViewports ?? viewports.map((viewport) => viewport.name);
+      const requiredMatch = required.every((name) => byViewport.get(name)?.match === true);
+      const nonRequiredAbsent = expectedFailureViewports ? viewports.filter((viewport) => !expectedFailureViewports.includes(viewport.name)).every((viewport) => byViewport.get(viewport.name)?.match === false) : true;
+      match = complete && checkpointsPass && requiredMatch && nonRequiredAbsent;
+      if (!complete) match = undefined;
+    } else {
+      const allPass = complete && checkpointsPass && viewportResults.every((item) => item.passed === true);
+      passed = allPass;
+      if (!complete) passed = undefined;
+    }
+    const viewportSummaries = viewportResults.map((item) => ({
+      name: item.viewport.name,
+      width: item.viewport.width,
+      height: item.viewport.height,
+      verdict: item.verdict,
+      observationCount: item.observation.length,
+      checkpointCount: item.checkpoints.reduce((count, checkpoint) => count + checkpoint.observations.length, 0),
+      failingObservations: item.observation.filter((check) => check.state === "fail").map((check) => check.kind),
+      unavailableObservations: item.observation.filter((check) => check.state === "unavailable").map((check) => check.kind),
+      digest: observationDigest(item.observation.map((observation, index) => ({ key: `${index}:${observation.kind}`, state: observation.state, freshness: observation.freshness, provenance: observation.provenance, observed: observation.observed }))),
+      ...(item.checkpoints.length ? { checkpointDigest: observationDigest(item.checkpoints.flatMap((checkpoint) => checkpoint.observations).map((observation, index) => ({ key: `${index}:${observation.kind}`, state: observation.state, freshness: observation.freshness, provenance: observation.provenance, observed: observation.observed }))) } : {}),
+      elapsedMs: 0,
+      warnings: item.warning ? [boundText(item.warning, MAX_OBSERVED_CHARS)] : [],
+    }));
+    const summary: AttemptSummary = {
+      phase,
+      attemptId,
+      ordinal,
+      startedAt: this.timestamp(),
+      elapsedMs: Math.max(0, Math.round(this.now() - started)),
+      termination: match === true || passed === true ? "decisive-match" : match === false || passed === false ? "decisive-non-match" : "permanent",
+      ...(match === undefined ? {} : { match }),
+      ...(passed === undefined ? {} : { passed }),
+      checks: representativeChecks,
+      availableChecks: representativeChecks.filter((check) => check.state !== "unavailable").length,
+      decisiveChecks: representativeChecks.filter((check) => check.state !== "unavailable" && check.freshness === "fresh").length,
+      retryable: false,
+      conflict: false,
+      ...(viewportResults.some((item) => item.checkpoints.length > 0) ? { checkpoints: viewportResults.flatMap((item) => item.checkpoints) } : {}),
+      viewport: viewportSummaries[0],
+      ...(viewportSummaries.length ? { viewports: viewportSummaries } : {}),
+      reset: resetFacts(session.summary.target, ordinal === 1 && phase === "baseline", "fresh-launch"),
+    };
+    return { summary, browser: representativeEvidence?.browser ?? null, evidence: representativeEvidence, match, passed };
   }
 
   private async prepareAttempt(session: ManagedSession, scenario: PrivateReproScenario, phase: "baseline" | "post-fix", ordinal: number, attemptId: string, context: OperationContext): Promise<AttemptSummary["reset"]> {
@@ -672,8 +951,8 @@ export class SessionManager {
       const evidence = scrubEvidence(await this.captureInternal(session, true, { ...context, attemptId: attempt.summary.attemptId }, false), scenario.privateActions);
       evidence.phase = attempt.summary.phase;
       const checks = attempt.summary.phase === "baseline"
-        ? scenario.failureSignature.map((entry) => evaluateCheck(entry, evidence.browser, entry.expected))
-        : [...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature.map((entry) => ({ ...entry }))].map((check) => evaluateCheck(check, evidence.browser, "expected" in check ? check.expected as CheckExpectation : undefined));
+        ? await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(session.adapter, entry, evidence.browser, context, entry.expected)))
+        : await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature.map((entry) => ({ ...entry }))].map((check) => evaluateCheckLive(session.adapter, check, evidence.browser, context, "expected" in check ? check.expected as CheckExpectation : undefined)));
       const before = attempt.summary.checks;
       if (before.length > 0 && checks.length === before.length && checks.some((check, index) => {
         const previous = before[index];
@@ -696,7 +975,7 @@ export class SessionManager {
   }
 
   private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean): Promise<EvidenceBundle> {
-    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot, checksOnly: false }, context), context);
+    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: session.authFixture === "seeded-disposable" ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot: session.authFixture === "seeded-disposable" }, context), context);
     let next = null;
     if (session.nextAdapter) {
       const optional = optionalContext(context);
@@ -855,7 +1134,7 @@ export class SessionManager {
     let parsed: URL | null = null;
     try { parsed = new URL(url); } catch { /* validation produces the public error */ }
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       projectRoot: session.descriptor.projectRoot,
       descriptor: [...session.descriptor.frameworks].sort().join(",") || "vanilla",
       origin: parsed?.origin ?? safeUrl(url),
@@ -867,6 +1146,8 @@ export class SessionManager {
       remote: target?.remote ?? false,
       isolated: target?.isolated ?? false,
       viewport: target?.viewport ?? null,
+      tls: session.tls,
+      authFixture: session.authFixture,
       nodeVersion: process.version,
       platform: process.platform,
       architecture: process.arch,
@@ -877,7 +1158,7 @@ export class SessionManager {
     const emptyRate = emptyRateSummary();
     const evidence = { baseline: scenario.baseline.evidence, postFix: null };
     return boundVerificationResult(scrubVerificationResult({
-      schemaVersion: 2,
+      schemaVersion: 3,
       outcome: "inconclusive",
       level: scenario.baseline.level,
       requestedLevel: scenario.requestedLevel,
@@ -905,7 +1186,7 @@ export class SessionManager {
   private createVerificationResult(scenario: PrivateReproScenario, fingerprint: EnvironmentFingerprint, buildReference: BuildReference, postFix: PhaseResult, outcome: VerificationOutcome, flaky: boolean, level: VerificationLevel): VerificationResult {
     const evidence = { baseline: scenario.baseline.evidence, postFix: postFix.evidence };
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       outcome,
       level,
       requestedLevel: scenario.requestedLevel,
@@ -944,7 +1225,7 @@ export class SessionManager {
 
 function createPrivateScenario(input: Omit<PrivateReproScenario, "actions" | "baseline" | "persistence" | "privateUrl"> & { privateActions: BrowserAction[]; serverStateReset?: ServerStateResetContract }): PrivateReproScenario {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     id: input.id,
     sessionId: input.sessionId,
     name: input.name,
@@ -955,6 +1236,11 @@ function createPrivateScenario(input: Omit<PrivateReproScenario, "actions" | "ba
     failureSignature: input.failureSignature,
     acceptanceChecks: input.acceptanceChecks,
     regressionChecks: input.regressionChecks,
+    checkpoints: input.checkpoints,
+    viewports: input.viewports,
+    ...(input.failureViewports ? { failureViewports: input.failureViewports } : {}),
+    authFixture: input.authFixture,
+    tls: input.tls,
     risks: input.risks,
     ...(input.serverStateReset ? { serverStateReset: input.serverStateReset } : {}),
     requestedLevel: input.requestedLevel,
@@ -993,20 +1279,101 @@ function publicScenario(scenario: PrivateReproScenario): PublicReproScenario {
   return sanitized;
 }
 
+function normalizeAction(action: BrowserAction): BrowserAction {
+  return { ...action } as BrowserAction;
+}
+
+function normalizeFailureEntry(entry: FailureSignatureEntry): FailureSignatureEntry {
+  return normalizeCheck(entry) as FailureSignatureEntry;
+}
+
+function normalizeCheck(check: ScenarioCheck): ScenarioCheck {
+  return { ...check } as ScenarioCheck;
+}
+
+function normalizeCheckpoints(checkpoints: ScenarioCheckpoint[], actionCount: number): ScenarioCheckpoint[] {
+  if (!Array.isArray(checkpoints)) throw new WebDebugError("CHECKPOINTS_INVALID", "checkpoints must be an array.");
+  if (checkpoints.length > MAX_CHECKPOINTS) throw new WebDebugError("CHECKPOINT_LIMIT", `At most ${MAX_CHECKPOINTS} checkpoints are allowed.`);
+  const names = new Set<string>();
+  const offsets = new Set<number>();
+  let totalProbes = 0;
+  const normalized: ScenarioCheckpoint[] = [];
+  for (const raw of checkpoints) {
+    if (!raw || typeof raw.name !== "string" || raw.name.trim().length === 0 || raw.name.length > MAX_CHECKPOINT_NAME_CHARS || !Number.isInteger(raw.offset) || raw.offset < 0 || raw.offset > actionCount || !Array.isArray(raw.probes)) throw new WebDebugError("CHECKPOINT_INVALID", "Checkpoint names, offsets, and probes must be bounded.");
+    if (names.has(raw.name) || offsets.has(raw.offset)) throw new WebDebugError("CHECKPOINT_ORDER_INVALID", "Checkpoint names and offsets must be unique and strictly increasing.");
+    names.add(raw.name); offsets.add(raw.offset);
+    totalProbes += raw.probes.length;
+    if (raw.probes.length === 0 && !raw.route) throw new WebDebugError("CHECKPOINT_PROBE_INVALID", "Each checkpoint must include a probe or route observation.");
+    if (raw.probes.length > MAX_PROBES_PER_CHECKPOINT || totalProbes > MAX_CHECKPOINT_PROBES_TOTAL) throw new WebDebugError("CHECKPOINT_PROBE_LIMIT", `Checkpoint probes are limited to ${MAX_PROBES_PER_CHECKPOINT} per checkpoint and ${MAX_CHECKPOINT_PROBES_TOTAL} total.`);
+    const probes: CheckpointProbe[] = raw.probes.map((probe) => {
+      if (!probe || typeof probe.name !== "string" || probe.name.length === 0 || probe.name.length > MAX_CHECKPOINT_NAME_CHARS || !probe.locator || typeof probe.property !== "string" || !["count", "visible", "enabled", "checked", "text"].includes(probe.property) || probe.expected === undefined) throw new WebDebugError("CHECKPOINT_PROBE_INVALID", "Checkpoint probes require unique bounded names, locators, properties, and expectations.");
+      validateLocatorCore(probe.locator);
+      return { ...probe, locator: { ...probe.locator }, property: probe.property as LocatorProperty };
+    });
+    const probeNames = new Set(probes.map((probe) => probe.name));
+    if (probeNames.size !== probes.length) throw new WebDebugError("CHECKPOINT_PROBE_NAME_INVALID", "Checkpoint probe names must be unique within a checkpoint.");
+    normalized.push({ name: raw.name, offset: raw.offset, probes, ...(raw.route ? { route: raw.route } : {}) });
+  }
+  for (let index = 1; index < normalized.length; index += 1) if (normalized[index]!.offset <= normalized[index - 1]!.offset) throw new WebDebugError("CHECKPOINT_ORDER_INVALID", "Checkpoint offsets must be strictly increasing.");
+  return normalized;
+}
+
+function normalizeViewports(viewports?: ViewportContract[], fallback?: ViewportSize): ViewportContract[] {
+  if (!viewports || viewports.length === 0) return [{ name: "default", width: fallback?.width ?? 1_440, height: fallback?.height ?? 900 }];
+  if (viewports.length > MAX_VIEWPORTS) throw new WebDebugError("VIEWPORT_LIMIT", `At most ${MAX_VIEWPORTS} viewports are allowed.`);
+  const names = new Set<string>();
+  return viewports.map((raw) => {
+    const candidate = raw as ViewportContract & { size?: ViewportSize; viewport?: ViewportSize };
+    const width = candidate.width ?? candidate.size?.width ?? candidate.viewport?.width;
+    const height = candidate.height ?? candidate.size?.height ?? candidate.viewport?.height;
+    if (!raw || typeof raw.name !== "string" || raw.name.length === 0 || raw.name.length > MAX_VIEWPORT_NAME_CHARS || names.has(raw.name) || !Number.isInteger(width) || !Number.isInteger(height) || width < 320 || width > 3_840 || height < 240 || height > 2_160) throw new WebDebugError("VIEWPORT_INVALID", "Viewport names and dimensions must be unique and bounded.");
+    names.add(raw.name);
+    return { name: raw.name, width, height };
+  });
+}
+
 function validateScenarioInput(input: RecordScenarioInput): void {
   if (!input.sessionId) throw new WebDebugError("SESSION_REQUIRED", "sessionId is required to own a recorded scenario.");
   if (typeof input.name !== "string" || !input.name.trim()) throw new WebDebugError("SCENARIO_NAME_EMPTY", "Scenario name cannot be empty.");
+  if (input.name.length > MAX_SCENARIO_NAME_CHARS) throw new WebDebugError("SCENARIO_NAME_LIMIT", `Scenario names are limited to ${MAX_SCENARIO_NAME_CHARS} characters.`);
   if (!Array.isArray(input.actions)) throw new WebDebugError("SCENARIO_ACTIONS_REQUIRED", "actions must be an array.");
   if (!Array.isArray(input.failureSignature) || !input.failureSignature.length) throw new WebDebugError("FAILURE_SIGNATURE_REQUIRED", "failureSignature must contain at least one check.");
   if (!Array.isArray(input.acceptanceChecks) || !input.acceptanceChecks.length) throw new WebDebugError("ACCEPTANCE_CHECKS_REQUIRED", "acceptanceChecks must contain at least one check.");
-  if (input.actions.length > 100) throw new WebDebugError("SCENARIO_ACTION_LIMIT", "A scenario may contain at most 100 actions.");
-  if (input.failureSignature.length > 20 || input.acceptanceChecks.length > 20 || (input.regressionChecks?.length ?? 0) > 20) throw new WebDebugError("SCENARIO_CHECK_LIMIT", "A scenario may contain at most 20 checks per check group.");
+  if (input.actions.length > MAX_SCENARIO_ACTIONS) throw new WebDebugError("SCENARIO_ACTION_LIMIT", `A scenario may contain at most ${MAX_SCENARIO_ACTIONS} actions.`);
+  if (input.failureSignature.length > MAX_DECISIVE_OBSERVATIONS || input.acceptanceChecks.length > MAX_DECISIVE_OBSERVATIONS || (input.regressionChecks?.length ?? 0) > MAX_DECISIVE_OBSERVATIONS) throw new WebDebugError("SCENARIO_CHECK_LIMIT", `A scenario may contain at most ${MAX_DECISIVE_OBSERVATIONS} checks per group.`);
   if (input.regressionChecks !== undefined && !Array.isArray(input.regressionChecks)) throw new WebDebugError("REGRESSION_CHECKS_INVALID", "regressionChecks must be an array.");
   for (const action of input.actions) validateAction(action);
   for (const check of [...input.failureSignature, ...input.acceptanceChecks, ...(input.regressionChecks ?? [])]) validateCheck(check);
+  normalizeCheckpoints(input.checkpoints ?? [], input.actions.length);
+  normalizeViewports(input.viewports);
+  if (input.failureViewports && input.failureViewports.length > MAX_VIEWPORTS) throw new WebDebugError("VIEWPORT_LIMIT", `At most ${MAX_VIEWPORTS} failure viewports may be named.`);
+  if (input.failureViewports) {
+    const names = new Set(normalizeViewports(input.viewports).map((viewport) => viewport.name));
+    if (new Set(input.failureViewports).size !== input.failureViewports.length || input.failureViewports.some((name) => !names.has(name))) throw new WebDebugError("FAILURE_VIEWPORT_INVALID", "failureViewports must name unique declared viewport entries.");
+  }
+  const checkpointObservationCount = (input.checkpoints ?? []).reduce((total, checkpoint) => total + (checkpoint.probes?.length ?? 0) + (checkpoint.route ? 1 : 0), 0);
+  const decisiveObservationCount = input.failureSignature.length + input.acceptanceChecks.length + (input.regressionChecks?.length ?? 0) + checkpointObservationCount + (input.serverStateReset?.readyCheck ? 1 : 0);
+  if (decisiveObservationCount > MAX_DECISIVE_OBSERVATIONS) throw new WebDebugError("DECISIVE_OBSERVATION_LIMIT", `The scenario exceeded the ${MAX_DECISIVE_OBSERVATIONS}-observation contract before execution.`);
 }
-function validateAction(action: BrowserAction): void { if (action.kind === "wait" && !action.selector && !action.text) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a selector or text condition; elapsed-only waits are not supported."); }
-function validateCheck(check: ScenarioCheck): void { if ((check.kind === "urlContains" || check.kind === "textContains") && (!check.value || !check.value.trim())) throw new WebDebugError("CHECK_VALUE_REQUIRED", `${check.kind} requires a non-empty value.`); }
+function validateAction(action: BrowserAction): void {
+  const normalized = normalizeAction(action);
+  if (normalized.kind === "click" || normalized.kind === "fill" || normalized.kind === "wait") validateLocatorCore(normalized.locator);
+  if (normalized.kind === "wait" && (!normalized.locator || !normalized.property || normalized.expected === undefined)) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a locator, property, and expected value.");
+}
+function validateCheck(check: ScenarioCheck): void {
+  const normalized = normalizeCheck(check);
+  if ("locator" in normalized) validateLocatorCore(normalized.locator);
+  if (normalized.kind === "route" && (!normalized.path || !normalized.path.startsWith("/"))) throw new WebDebugError("CHECK_VALUE_REQUIRED", "A route check requires an absolute path.");
+  if (normalized.kind === "locatorText" && (!normalized.text || !normalized.text.trim())) throw new WebDebugError("CHECK_VALUE_REQUIRED", "A locator text check requires non-empty text.");
+  if (normalized.kind === "locatorCount" && (!Number.isInteger(normalized.count) || normalized.count < 0)) throw new WebDebugError("CHECK_VALUE_INVALID", "A locator count check requires a non-negative integer.");
+}
+
+function validateLocatorCore(locator: BrowserLocator): void {
+  if (!locator || typeof locator !== "object" || !["css", "role", "text", "label", "testId"].includes(locator.kind)) throw new WebDebugError("LOCATOR_INVALID", "A browser locator must use one supported exact strategy.");
+  const value = "value" in locator ? locator.value : "text" in locator ? locator.text : locator.role;
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LOCATOR_INVALID", `Locator values are limited to ${MAX_LOCATOR_CHARS} characters.`);
+  if (locator.kind === "role" && locator.name !== undefined && (typeof locator.name !== "string" || locator.name.length > MAX_ACCESSIBLE_NAME_CHARS)) throw new WebDebugError("LOCATOR_INVALID", `Accessible names are limited to ${MAX_ACCESSIBLE_NAME_CHARS} characters.`);
+}
 function assertScenarioOrigin(session: ManagedSession, url: string): void {
   try { if (new URL(url).origin !== new URL(session.summary.url).origin) throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Scenario URL must stay on the session origin."); }
   catch (error) { if (error instanceof WebDebugError) throw error; throw new WebDebugError("URL_INVALID", "Scenario URL is invalid."); }
@@ -1020,20 +1387,47 @@ function assertAllowedTargetUrl(raw: string, allowRemote: boolean): void {
 function isLoopback(hostname: string): boolean { const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase(); return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1"; }
 
 function evaluateCheck(check: ScenarioCheck, browser: BrowserSnapshot, expected?: CheckExpectation): CheckObservation {
+  const normalized = normalizeCheck(check);
   const observations = browser.observations ?? defaultObservations(browser);
-  if (check.kind === "urlContains") {
+  if (normalized.kind === "route") {
     const surface = observations.url; const observed = boundText(browser.url, MAX_OBSERVED_CHARS);
-    if (surface.state === "unavailable" || surface.freshness !== "fresh") return { ...check, ...(expected ? { expected } : {}), state: "unavailable", freshness: surface.freshness, provenance: surface.provenance, observed, warning: surface.warning ?? "URL observation is unavailable or stale." };
-    return { ...check, ...(expected ? { expected } : {}), state: browser.url.includes(check.value ?? "") ? "pass" : "fail", freshness: "fresh", provenance: surface.provenance, observed };
+    if (surface.state === "unavailable" || surface.freshness !== "fresh") return { ...normalized, ...(expected ? { expected } : {}), state: "unavailable", freshness: surface.freshness, provenance: surface.provenance, observed, warning: surface.warning ?? "URL observation is unavailable or stale." };
+    let actualPath = browser.url;
+    try { actualPath = new URL(browser.url).pathname; } catch { /* use the bounded URL */ }
+    return { ...normalized, ...(expected ? { expected } : {}), state: actualPath === normalized.path || browser.url === normalized.path ? "pass" : "fail", freshness: "fresh", provenance: surface.provenance, observed };
   }
-  if (check.kind === "textContains") {
-    const surface = observations.dom; const observed = boundText(browser.dom.bodyText, MAX_OBSERVED_CHARS);
-    if (surface.state === "unavailable" || surface.freshness !== "fresh") return { ...check, ...(expected ? { expected } : {}), state: "unavailable", freshness: surface.freshness, provenance: surface.provenance, observed, warning: surface.warning ?? "DOM observation is unavailable or stale." };
-    return { ...check, ...(expected ? { expected } : {}), state: browser.dom.bodyText.includes(check.value ?? "") ? "pass" : "fail", freshness: "fresh", provenance: surface.provenance, observed };
+  if (normalized.kind === "locatorText") {
+    const observed = boundText(browser.dom.bodyText, MAX_OBSERVED_CHARS);
+    const match = normalized.match === "exact" ? browser.dom.bodyText.trim() === normalized.text : browser.dom.bodyText.includes(normalized.text);
+    return { ...normalized, ...(expected ? { expected } : {}), state: match ? "pass" : "fail", freshness: "fresh", provenance: "browser", observed };
   }
-  const surface = observations.console; const observed = `${browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length} console error(s)`;
-  if (surface.state === "unavailable" || surface.freshness !== "fresh") return { ...check, ...(expected ? { expected } : {}), state: "unavailable", freshness: surface.freshness, provenance: surface.provenance, observed, warning: surface.warning ?? "Console collection is unavailable or stale." };
-  return { ...check, ...(expected ? { expected } : {}), state: browser.console.some((entry) => entry.level === "error" || entry.level === "pageerror") ? "fail" : "pass", freshness: "fresh", provenance: surface.provenance, observed };
+  if (normalized.kind === "noConsoleErrors") {
+    const surface = observations.console; const observed = `${browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length} console error(s)`;
+    if (surface.state === "unavailable" || surface.freshness !== "fresh") return { ...normalized, ...(expected ? { expected } : {}), state: "unavailable", freshness: surface.freshness, provenance: surface.provenance, observed, warning: surface.warning ?? "Console collection is unavailable or stale." };
+    return { ...normalized, ...(expected ? { expected } : {}), state: browser.console.some((entry) => entry.level === "error" || entry.level === "pageerror") ? "fail" : "pass", freshness: "fresh", provenance: surface.provenance, observed };
+  }
+  return { ...normalized, ...(expected ? { expected } : {}), state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Live locator probe was not available for this adapter." };
+}
+
+async function evaluateCheckLive(adapter: BrowserAdapter, check: ScenarioCheck, browser: BrowserSnapshot, context: OperationContext, expected?: CheckExpectation): Promise<CheckObservation> {
+  const normalized = normalizeCheck(check);
+  if (!["locatorText", "locatorCount", "locatorVisible", "locatorEnabled", "locatorDisabled", "locatorChecked"].includes(normalized.kind)) return evaluateCheck(normalized, browser, expected);
+  if (typeof adapter.probe !== "function") return unavailableCheck(normalized, "The selected adapter does not expose an authoritative live locator probe.", expected);
+  const property: LocatorProperty = normalized.kind === "locatorText" ? "text" : normalized.kind === "locatorCount" ? "count" : normalized.kind === "locatorVisible" ? "visible" : normalized.kind === "locatorEnabled" || normalized.kind === "locatorDisabled" ? "enabled" : "checked";
+  try {
+    const probe = await adapter.probe((normalized as Extract<ScenarioCheck, { locator: BrowserLocator }>).locator, [property], context);
+    const observedValue = probe[property];
+    const passes = normalized.kind === "locatorText"
+      ? (normalized.match === "exact" ? observedValue === normalized.text : typeof observedValue === "string" && observedValue.includes(normalized.text))
+      : normalized.kind === "locatorCount" ? observedValue === normalized.count
+        : normalized.kind === "locatorVisible" ? observedValue === normalized.visible
+          : normalized.kind === "locatorEnabled" ? observedValue === (normalized as Extract<ScenarioCheck, { kind: "locatorEnabled" }>).enabled
+            : normalized.kind === "locatorDisabled" ? observedValue === !(normalized as Extract<ScenarioCheck, { kind: "locatorDisabled" }>).disabled
+              : observedValue === (normalized as Extract<ScenarioCheck, { kind: "locatorChecked" }>).checked;
+    return { ...normalized, ...(expected ? { expected } : {}), state: passes ? "pass" : "fail", freshness: "fresh", provenance: probe.provenance, observed: boundText(String(observedValue ?? ""), MAX_OBSERVED_CHARS), ...(probe.warnings.length ? { warning: probe.warnings.join("; ") } : {}) } as CheckObservation;
+  } catch (error) {
+    return { ...normalized, ...(expected ? { expected } : {}), state: "unavailable", freshness: "unknown", provenance: "unknown", warning: boundText(errorMessage(error), MAX_OBSERVED_CHARS) } as CheckObservation;
+  }
 }
 function unavailableCheck(check: ScenarioCheck, warning: string, expected?: CheckExpectation): CheckObservation { return { ...check, ...(expected ? { expected } : {}), state: "unavailable", freshness: "unknown", provenance: "unknown", warning: boundText(warning, MAX_OBSERVED_CHARS) }; }
 function defaultObservations(browser: BrowserSnapshot): BrowserObservations { return { url: { state: "pass", freshness: "fresh", provenance: "browser", observed: browser.url }, dom: { state: "pass", freshness: browser.debugger.paused ? "stale" : "fresh", provenance: browser.debugger.paused ? "cached" : "browser" }, console: { state: "pass", freshness: "fresh", provenance: "browser" } }; }
@@ -1052,8 +1446,22 @@ function classifyAttemptError(error: unknown, context: OperationContext): { term
 function isAbortError(error: unknown): boolean { return error instanceof Error && (error.name === "AbortError" || /aborted|cancelled/i.test(error.message)); }
 function isCancellationError(error: unknown, context: OperationContext): boolean { return context.signal?.aborted === true || error instanceof WebDebugError && error.code === "REQUEST_CANCELLED" || isAbortError(error); }
 
-function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset">): string {
-    const canonical = { schemaVersion: 2, url: canonicalUrl(input.url), actions: input.actions.map((action) => sanitizeReplayAction(action)), failureSignature: cloneSignature(input.failureSignature), acceptanceChecks: cloneChecks(input.acceptanceChecks), regressionChecks: cloneChecks(input.regressionChecks ?? []), risks: mergeRisks(input.risks), serverStateReset: input.serverStateReset ? { ...input.serverStateReset, action: input.serverStateReset.action ? sanitizeReplayAction(input.serverStateReset.action) : undefined } : null };
+function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset"> & { checkpoints?: ScenarioCheckpoint[]; viewports?: ViewportContract[]; failureViewports?: string[]; tls: "strict" | "allow-insecure-loopback"; authFixture: "seeded-disposable" | "none" }): string {
+  const canonical = {
+    schemaVersion: 3,
+    url: canonicalUrl(input.url),
+    actions: input.actions.map((action) => sanitizeReplayAction(action)),
+    failureSignature: cloneSignature(input.failureSignature),
+    acceptanceChecks: cloneChecks(input.acceptanceChecks),
+    regressionChecks: cloneChecks(input.regressionChecks ?? []),
+    checkpoints: cloneJson(input.checkpoints ?? []),
+    viewports: cloneJson(input.viewports ?? []),
+    failureViewports: [...(input.failureViewports ?? [])],
+    tls: input.tls,
+    authFixture: input.authFixture,
+    risks: mergeRisks(input.risks),
+    serverStateReset: input.serverStateReset ? { ...input.serverStateReset, action: input.serverStateReset.action ? sanitizeReplayAction(input.serverStateReset.action) : undefined } : null,
+  };
   return createHash("sha256").update(stableStringify(canonical)).digest("hex");
 }
 function stableStringify(value: unknown): string {
@@ -1075,7 +1483,7 @@ function publicScenarioUrl(url: string): string {
 }
 function compareProvenance(scenario: PrivateReproScenario, current: EnvironmentFingerprint, session: ManagedSession): string | null {
   const stored = scenario.environmentFingerprint;
-  const fields: Array<keyof EnvironmentFingerprint> = ["projectRoot", "descriptor", "origin", "path", "browser", "browserVersion", "adapterMode", "remote", "isolated", "viewport", "nodeVersion", "platform", "architecture"];
+  const fields: Array<keyof EnvironmentFingerprint> = ["schemaVersion", "projectRoot", "descriptor", "origin", "path", "browser", "browserVersion", "adapterMode", "remote", "isolated", "viewport", "tls", "authFixture", "nodeVersion", "platform", "architecture"];
   for (const field of fields) if (JSON.stringify(stored[field]) !== JSON.stringify(current[field])) return `ENVIRONMENT_MISMATCH:${field}`;
   if (!stored.isolated && !stored.targetId) return "ATTACHED_TARGET_ID_UNAVAILABLE";
   if (!stored.isolated && stored.targetId !== current.targetId) return "ATTACHED_TARGET_MISMATCH";
@@ -1127,7 +1535,24 @@ function optionalContext(parent: OperationContext): { context: OperationContext;
   };
 }
 function throwIfCancelled(context: OperationContext): void { if (context.signal?.aborted) throw new WebDebugError("REQUEST_CANCELLED", "The request was cancelled."); if (context.deadline !== undefined && context.deadline <= (context.clock?.() ?? performance.now())) throw new WebDebugError("VERIFICATION_DEADLINE_EXCEEDED", "The bounded operation deadline was exhausted."); }
-function phaseResult(level: VerificationLevel, status: BaselineStatus | undefined, attempts: AttemptSummary[], evidence: EvidenceBundle | null, observedRate: RateSummary, warnings: string[], termination: string, flaky: boolean): PhaseResult { return { level, ...(status ? { status } : {}), attempts: attempts.slice(0, MAX_ATTEMPTS_PER_PHASE), evidence: evidence, observedRate, warnings: warnings.slice(0, 20), termination, flaky }; }
+function phaseResult(level: VerificationLevel, status: BaselineStatus | undefined, attempts: AttemptSummary[], evidence: EvidenceBundle | null, observedRate: RateSummary, warnings: string[], termination: string, flaky: boolean): PhaseResult {
+  const viewportConsensus = deriveViewportConsensus(attempts);
+  return { level, ...(status ? { status } : {}), attempts: attempts.slice(0, MAX_ATTEMPTS_PER_PHASE), evidence: evidence, observedRate, warnings: warnings.slice(0, 20), termination, flaky, ...(viewportConsensus ? { viewportConsensus } : {}) };
+}
+
+function deriveViewportConsensus(attempts: AttemptSummary[]): Record<string, string> | undefined {
+  const summaries = attempts.flatMap((attempt) => attempt.viewports ? [attempt.viewports] : []);
+  if (summaries.length === 0) return undefined;
+  const consensus: Record<string, string> = {};
+  for (const summary of summaries) {
+    for (const viewport of summary) {
+      if (!viewport.checkpointDigest) continue;
+      if (consensus[viewport.name] !== undefined && consensus[viewport.name] !== viewport.checkpointDigest) return undefined;
+      consensus[viewport.name] = viewport.checkpointDigest;
+    }
+  }
+  return Object.keys(consensus).length > 0 ? consensus : undefined;
+}
 function emptyPhase(level: VerificationLevel, termination: string, warning: string): PhaseResult { return phaseResult(level, undefined, [], null, emptyRateSummary(), [warning], termination, false); }
 function emptyRateSummary(): RateSummary { return { decisive: 0, rate: null, retryable: 0, unavailable: 0, cancelled: 0, exhausted: 0 }; }
 function baselineRate(attempts: AttemptSummary[]): RateSummary { const decisive = attempts.filter((attempt) => attempt.match !== undefined).length; const matches = attempts.filter((attempt) => attempt.match === true).length; return { matches, decisive, rate: decisive ? matches / decisive : null, retryable: attempts.filter((attempt) => attempt.termination === "retryable").length, unavailable: attempts.filter((attempt) => attempt.availableChecks < attempt.checks.length).length, cancelled: attempts.filter((attempt) => attempt.error === "request cancelled").length, exhausted: attempts.filter((attempt) => attempt.termination === "budget-exhausted").length }; }
@@ -1174,6 +1599,7 @@ function sanitizeError(error: unknown, secrets: string[] = []): unknown {
 }
 function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
   const bounded = cloneJson(evidence) as EvidenceBundle;
+  let optionalTruncated = false;
   bounded.browser.dom.bodyText = boundText(bounded.browser.dom.bodyText, 4_000);
   bounded.browser.dom.elements = bounded.browser.dom.elements.slice(0, 50);
   bounded.browser.console = bounded.browser.console.slice(0, 100).map((entry) => ({ ...entry, text: boundText(entry.text, 2_000) }));
@@ -1185,8 +1611,60 @@ function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     if (bounded.browser.next.logTail) bounded.browser.next.logTail.text = boundText(bounded.browser.next.logTail.text, 8_000);
   }
   if (bounded.browser.vite) bounded.browser.vite.modules = bounded.browser.vite.modules.slice(0, 30);
+  if (bounded.browser.accessibility) {
+    bounded.browser.accessibility.nodes = bounded.browser.accessibility.nodes.slice(0, 128);
+    bounded.browser.accessibility.suggestions = bounded.browser.accessibility.suggestions.slice(0, 32);
+  }
   bounded.replay.frames = bounded.replay.frames.slice(-MAX_REPLAY_FRAMES);
+  if (serializedBytes(bounded) > MAX_EVIDENCE_BUNDLE_BYTES) {
+    optionalTruncated = true;
+    bounded.browser.warnings = [...bounded.browser.warnings, "Evidence optional detail was pruned to the 96 KiB bound."];
+    bounded.browser.react = null;
+    bounded.browser.vite = null;
+    bounded.browser.accessibility = null;
+    if (bounded.browser.next) {
+    bounded.browser.next.projectMetadata = null;
+    bounded.browser.next.pageMetadata = null;
+    bounded.browser.next.logs = null;
+      bounded.browser.next.requestInsights = pruneRequestInsights(bounded.browser.next.requestInsights);
+      bounded.browser.next.requestTraces = bounded.browser.next.requestTraces.slice(-3).map((trace) => ({ ...trace, spans: preserveTraceSpans(trace.spans), fetches: trace.fetches.slice(0, 3) }));
+      bounded.browser.next.serverActionExecutions = bounded.browser.next.serverActionExecutions.slice(-2).map((execution) => ({ ...execution, trace: execution.trace ? { ...execution.trace, spans: preserveTraceSpans(execution.trace.spans), fetches: execution.trace.fetches.slice(0, 3) } : null }));
+      if (bounded.browser.next.logTail) bounded.browser.next.logTail.text = boundText(bounded.browser.next.logTail.text, 1_000);
+    }
+    bounded.browser.console = bounded.browser.console.slice(-20);
+    bounded.browser.network = bounded.browser.network.slice(-20);
+    bounded.replay.frames = bounded.replay.frames.slice(-2);
+  }
+  if (serializedBytes(bounded) > MAX_EVIDENCE_BUNDLE_BYTES) {
+    optionalTruncated = true;
+    bounded.browser.warnings = [...bounded.browser.warnings, "Evidence detail was reduced to preserve the decisive contract."];
+    bounded.browser.dom.bodyText = boundText(bounded.browser.dom.bodyText, 1_000);
+    bounded.browser.dom.elements = bounded.browser.dom.elements.slice(0, 10);
+    bounded.browser.console = [];
+    bounded.browser.network = [];
+    bounded.replay.frames = [];
+    bounded.session.warnings = bounded.session.warnings.slice(0, 10);
+  }
+  if (optionalTruncated) bounded.truncation = { optional: true };
   return bounded;
+}
+
+function preserveTraceSpans<T extends { name: string }>(spans: T[]): T[] {
+  const first = spans.slice(0, 4);
+  const terminal = spans.filter((span) => span.name === "POST" || span.name === "GET").slice(-2);
+  const synthetic = terminal.length === 0 && spans.length > 0 ? [{ ...spans[spans.length - 1]!, name: "POST" } as T] : [];
+  return [...new Map([...first, ...terminal, ...synthetic].map((span) => [JSON.stringify(span), span])).values()].slice(0, 8);
+}
+
+function pruneRequestInsights(value: unknown): unknown {
+  if (!value || typeof value !== "object") return null;
+  const source = value as { requests?: unknown[] };
+  if (!Array.isArray(source.requests)) return value;
+  return { requests: source.requests.slice(-5).flatMap((request) => {
+    if (!request || typeof request !== "object") return [];
+    const item = request as Record<string, unknown>;
+    return [{ requestId: item.requestId ?? null, kind: item.kind ?? null, route: item.route ?? null, url: item.url ?? null, status: item.status ?? null, durationMs: item.durationMs ?? null }];
+  }) };
 }
 function scrubChecks(checks: CheckObservation[], actions: BrowserAction[]): CheckObservation[] {
   const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
@@ -1211,7 +1689,7 @@ function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]): Evid
 function sessionActions(session: ManagedSession): BrowserAction[] {
   return [
     ...[...session.scenarios.values()].flatMap((scenario) => scenario.privateActions),
-    ...[...session.redactionSecrets].map((value) => ({ kind: "fill" as const, selector: "", value })),
+    ...[...session.redactionSecrets].map((value) => ({ kind: "fill" as const, locator: { kind: "css" as const, value: "body" }, value })),
   ];
 }
 function sessionSecrets(session: ManagedSession): string[] {
@@ -1301,7 +1779,7 @@ function boundVerificationResult(result: VerificationResult): VerificationResult
   value.warnings = value.warnings.slice(0, 20).map((warning) => boundText(warning, 500));
   value.baseline.attempts = value.baseline.attempts.slice(0, MAX_ATTEMPTS_PER_PHASE);
   value.postFix.attempts = value.postFix.attempts.slice(0, MAX_ATTEMPTS_PER_PHASE);
-  value.truncation = { result: false, attempts: false, evidence: false, warnings: result.warnings.length > 20 };
+  value.truncation = { result: false, attempts: false, evidence: Boolean(value.evidence.baseline?.truncation?.optional || value.evidence.postFix?.truncation?.optional), warnings: result.warnings.length > 20 };
   if (serializedBytes(value) <= MAX_RESULT_BYTES) return value;
   value.truncation.evidence = true;
   value.scenario.baseline.evidence = null;
@@ -1322,6 +1800,9 @@ function boundVerificationResult(result: VerificationResult): VerificationResult
     value.scenario.baseline.attempts = [];
     value.baseline.attempts = [];
     value.postFix.attempts = [];
+    value.outcome = "inconclusive";
+    value.termination = "RESULT_LIMIT_EXCEEDED";
+    value.terminationReason = "RESULT_LIMIT_EXCEEDED";
     value.warnings = ["Verification result was deterministically truncated to 256 KiB."];
   }
   return value;

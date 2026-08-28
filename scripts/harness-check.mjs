@@ -35,7 +35,7 @@ const requiredFiles = [
   "docs/agent-harness/operating-loop.md",
   "docs/agent-harness/entropy-cleanup-checklist.md",
   "docs/exec-plans/index.md",
-  "docs/exec-plans/active/web-debug-mcp-mvp.md",
+  "docs/exec-plans/completed/web-debug-mcp-mvp.md",
   "docs/exec-plans/plan-template.md",
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
@@ -49,6 +49,9 @@ const requiredFiles = [
   "src/index.ts",
   "bin/web-debug-mcp.mjs",
   "src/core/session-manager.ts",
+  "src/core/auth-state.ts",
+  "src/core/aggregation.ts",
+  "src/core/process-registry.ts",
   "src/core/redaction.ts",
   "src/adapters/chromium.ts",
   "fixtures/vanilla/index.html",
@@ -77,6 +80,7 @@ const requiredFiles = [
   "scripts/serve-react-vite.mjs",
   "scripts/live-next-smoke.mjs",
   "scripts/live-safari-smoke.mjs",
+  "scripts/live-local-fidelity-smoke.mjs",
   "scripts/demo-compare.mjs",
   "scripts/serve-complex-vite.mjs",
   "scripts/serve-next.mjs",
@@ -93,10 +97,11 @@ const requiredFiles = [
 ];
 for (const relativePath of requiredFiles) read(relativePath);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "demo:compare"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "smoke:local-fidelity", "demo:compare"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
+check(packageJson.version === "0.3.0", "package.json must expose the 0.3.0 release version");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -124,16 +129,17 @@ check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to i
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
-check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("github:MarlonJD/web-debug-mcp#main"), "Codex plugin must resolve the current GitHub MCP package");
+check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("github:MarlonJD/web-debug-mcp#v0.3.0"), "Codex plugin must resolve the immutable 0.3.0 GitHub MCP package");
 check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
+check(pluginManifest.version?.startsWith("0.3.0+codex."), "Codex plugin manifest must expose a timestamped 0.3.0 build");
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
 check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
 check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
-check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.2.0", "Claude Code plugin manifest must expose the web-debug identity and version");
+check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.3.0", "Claude Code plugin manifest must expose the web-debug identity and version");
 check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest must expose the Web Debug display name");
 check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
-check(claudeMarketplaceEntry?.version === "0.2.0" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
+check(claudeMarketplaceEntry?.version === "0.3.0" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 
 const sourceRoot = join(root, "src");
@@ -181,6 +187,12 @@ check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must
 check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"), "Post-fix verification must require the complete polarity-aware failure signature to be absent");
 check(sessionSource.includes("owned adapter was made unusable before lease release"), "Cancelled adapter work must poison the session before releasing its lease");
 check(sessionSource.includes("resetReplayForAttempt") && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
+check(mcpSource.includes("locatorSchema") && mcpSource.includes("checkpoints") && mcpSource.includes("failureViewports"), "MCP schemas must expose the exact locator/checkpoint/matrix contract");
+check(chromiumSource.includes("async probe") && chromiumSource.includes("ignoreHTTPSErrors") && chromiumSource.includes("routeWebSocket"), "Chromium adapter must expose live probes and guarded elevated context controls");
+check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.includes("acceptInsecureCerts: false"), "Safari adapter must retain CSS-only semantic limits and strict TLS")
+check(sessionSource.includes("MAX_DECISIVE_OBSERVATIONS") && sessionSource.includes("runMatrixAttempt"), "Session manager must enforce aggregate observations and ephemeral matrix candidates");
+check(read("src/core/auth-state.ts").includes("fstat") || read("src/core/auth-state.ts").includes("handle.stat"), "Auth fixture validation must re-stat one open descriptor");
+check(read("src/core/process-registry.ts").includes("REGISTRY_RECORD_CAP") && read("src/core/process-registry.ts").includes("identityMatches"), "Process cleanup must be registry and identity backed");
 check(!sessionSource.includes("Object.defineProperty"), "Verification output must not use a compatibility alias hack");
 check(!sessionSource.includes("copyToSafeArtifactPath") && !sessionSource.includes("copyFileSync"), "Redaction must not copy screenshots outside the owning session artifact directory");
 check(mcpSource.includes("deadline: now + MCP_OPERATION_BUDGET_MS"), "MCP handlers must propagate an absolute bounded deadline");
@@ -192,6 +204,7 @@ check(read("README.md").includes("codex mcp add"), "README must document Codex M
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
+check(read("README.md").includes("#v0.3.0") && !read("README.md").includes("#main"), "README MCP runtime must use the immutable 0.3.0 ref");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
 check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");
