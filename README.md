@@ -258,6 +258,8 @@ Recorded scenarios execute a bounded pre-fix baseline before they are stored. Th
 
 Scenarios are session-owned and in-memory. The private executable URL retains its exact query for replay, while the public scenario URL is query-free; public actions replace fill values with a redaction marker, contract hashes contain only the sanitized contract, and build references are explicitly untrusted caller labels. Each result reports environment/target provenance, rates over decisive observations, per-attempt summaries, reset/isolation truth, cancellation or deadline state, and one bounded representative evidence bundle per phase. A full representative recapture is authoritative: drift or unavailable evidence is `inconclusive`, never `verified`. A scenario is not reusable across sessions, and closing a session purges private actions and retained evidence.
 
+Scenario recording is intentionally not a test-definition generator. The project does not export or import YAML/JSON scenario files and does not provide a standalone or CI scenario runner. When a reproduced regression needs durable cross-session or CI coverage, encode it in the repository's native test suite; use this MCP workflow for browser-grounded reproduction, diagnosis, and same-session fix verification.
+
 Recorded scenarios make the loop repeatable:
 
 ```text
@@ -288,7 +290,7 @@ Use this project when you want the debugging agent to have evidence rather than 
 - keep browser state, framework state, and dev-server state in one response;
 - diagnose React re-render and HMR issues with source-oriented context;
 - connect a Next Server Action request to its route, manifest entry, and server spans;
-- preserve a redacted reproduction that can be inspected or safely replayed;
+- retain a redacted reproduction within the live session so it can be inspected or safely replayed;
 - use exact semantic locators, named checkpoints, and bounded viewport matrices for repeatable responsive flows;
 - make cross-browser checks explicit instead of silently treating WebKit as Safari;
 - avoid installing several MCP servers that each own part of the same frontend workflow;
@@ -393,6 +395,7 @@ This project is not:
 - a Safari JavaScript debugger with Chromium CDP parity;
 - a production monitoring, incident-management, or hosted MCP service;
 - an unattended remote-browser controller;
+- a YAML/JSON test-case generator, scenario importer, or cross-session/CI scenario runner;
 - a secret, cookie, browser-storage, or raw-response-body collector;
 - proof that a local smoke passed in production.
 

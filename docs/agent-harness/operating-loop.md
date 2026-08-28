@@ -6,7 +6,8 @@
 4. **Capture** — call `web_issue_capture` at the failure point. Treat source locations and framework context as evidence only when the adapter returned them.
 5. **Change** — the MCP server observes and verifies; code changes remain the responsibility of the coding agent and user-authorized workflow.
 6. **Verify** — record the pre-fix flow with an explicit failure signature and acceptance checks, then replay the same session-bound scenario after the change. Interpret only `verified`, `failed`, or `inconclusive`; inspect rates, attempt summaries, freshness/provenance, and representative evidence.
-7. **Close** — close the session and retain only the artifact paths needed for review.
+7. **Persist regressions natively** — when the behavior needs durable cross-session or CI coverage, add it to the repository's native test suite. Do not export the session scenario as YAML/JSON or treat it as a portable test definition.
+8. **Close** — close the session and retain only the artifact paths needed for review.
 
 ## Escalation boundaries
 

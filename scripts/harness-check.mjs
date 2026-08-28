@@ -40,6 +40,7 @@ const requiredFiles = [
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
   "docs/examples-evidence.md",
+  "docs/design-docs/scenario-persistence-boundary.md",
   ".agents/plugins/marketplace.json",
   ".claude-plugin/marketplace.json",
   "plugins/web-debug/.codex-plugin/plugin.json",
@@ -214,6 +215,9 @@ check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp
 check(read("README.md").includes("/plugin install web-debug@web-debug"), "README must document the Claude Code plugin install command");
 check(read("README.md").includes("claude --plugin-dir ./plugins/web-debug"), "README must document local Claude Code plugin testing");
 check(read("README.md").includes("GPL-3.0-or-later"), "README must declare the project license");
+check(read("README.md").includes("does not export or import YAML/JSON scenario files"), "README must keep portable YAML/JSON scenarios out of scope");
+const scenarioPersistenceBoundary = read("docs/design-docs/scenario-persistence-boundary.md");
+check(scenarioPersistenceBoundary.includes('persistence: "in-memory"') && scenarioPersistenceBoundary.includes("repository's native test suite"), "Scenario persistence boundary must keep scenarios session-only and durable tests repository-native");
 const demoDocs = read("docs/demos/comparison.md");
 check(demoDocs.includes("complex-logic-fix"), "comparison demo docs must describe the complex logic repair");
 check(demoDocs.includes("complex-async-fix"), "comparison demo docs must describe the async repair");

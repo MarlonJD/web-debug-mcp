@@ -18,6 +18,8 @@
 
 Adaptive verification returns a versioned scenario/result contract with separate `failureSignature`, `acceptanceChecks`, and `regressionChecks`. Outcomes are exactly `verified`, `failed`, or `inconclusive`; the result carries canonical `level`/`requestedLevel` fields, total phase budgets, `escalations`, baseline and post-fix attempt summaries, decisive rates, environment fingerprint, sanitized contract hash, untrusted build references, reset/isolation facts, deferred five-second cleanup status, and bounded representative evidence under `evidence`. Required URL/DOM/console checks expose `pass`, `fail`, or `unavailable` together with `fresh`/`stale`/`unknown` freshness and provenance. No result contains raw fill values, a root-level legacy `passed`/`checks` field, or more than 256 KiB of serialized JSON.
 
+The scenario/result contract is an MCP response for the owning live session, not a portable test artifact. The project intentionally has no YAML/JSON scenario export/import contract or standalone CI runner; repository-native tests own durable regression coverage.
+
 ## Handoff labels
 
 | Label | Meaning |
