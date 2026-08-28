@@ -30,7 +30,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `plugins/web-debug/.codex-plugin/plugin.json` | Codex/ChatGPT plugin identity and install metadata | Platform Engineering; update with plugin packaging changes |
 | `plugins/web-debug/.claude-plugin/plugin.json` | Claude Code plugin identity and install metadata | Platform Engineering; update with Claude Code packaging changes |
 | `plugins/web-debug/.mcp.json` | Bundled stdio MCP server launch configuration | Platform Engineering; update with MCP distribution changes |
-| `plugins/web-debug/skills/web-debug-workflow/SKILL.md` | Agent workflow and safety guidance for the bundled tools | Platform Engineering; update with workflow or policy changes |
+| `plugins/web-debug/skills/web-debug-workflow/SKILL.md` | Agent routing, handoff, workflow, and safety guidance for the bundled tools | Platform Engineering; update with workflow or policy changes |
 | `.agents/plugins/marketplace.json` | Repository marketplace entry for the Web Debug plugin | Platform Engineering; update when plugin availability or ordering changes |
 | `.claude-plugin/marketplace.json` | Claude Code marketplace entry for the Web Debug plugin | Platform Engineering; update when Claude Code availability or ordering changes |
 | `fixtures/vanilla/` | Framework-neutral deterministic browser target | Test ownership; update when a reproducible behavior contract changes |

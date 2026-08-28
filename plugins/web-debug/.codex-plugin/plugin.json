@@ -1,7 +1,7 @@
 {
   "name": "web-debug",
-  "version": "0.3.1+codex.20260828103736",
-  "description": "Evidence-first local web debugging, complex repair verification, and responsive visual QA for Codex and ChatGPT.",
+  "version": "0.3.2+codex.20260828121321",
+  "description": "Evidence-first local web debugging that complements frontend build and test workflows with bounded browser evidence.",
   "author": {
     "name": "Marlon J.D.",
     "url": "https://github.com/MarlonJD"
@@ -34,12 +34,12 @@
     ],
     "websiteURL": "https://github.com/MarlonJD/web-debug-mcp",
     "defaultPrompt": [
-      "Reproduce this local web bug and capture evidence.",
-      "Inspect this React, Vite, or Next.js issue.",
-      "Verify this frontend fix against the recorded flow.",
-      "Debug this responsive visual issue at desktop and mobile sizes.",
-      "Compare this bug with and without Web Debug evidence.",
-      "Diagnose this flow with semantic locators and named checkpoints."
+      "Use Web Debug to reproduce this local browser bug and capture evidence.",
+      "Inspect this React, Vite, or Next.js runtime issue with Web Debug.",
+      "Verify this frontend fix against a recorded Web Debug flow.",
+      "Use Web Debug to diagnose responsive geometry at desktop and mobile sizes.",
+      "Compare deterministic test evidence with Web Debug browser evidence.",
+      "Diagnose this flow with Web Debug semantic locators and named checkpoints."
     ],
     "brandColor": "#2563EB"
   },

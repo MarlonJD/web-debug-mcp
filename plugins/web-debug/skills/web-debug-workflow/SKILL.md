@@ -1,11 +1,21 @@
 ---
 name: web-debug-workflow
-description: Use when reproducing, inspecting, capturing, or verifying a bug in a running local web application with the bundled Web Debug MCP server.
+description: Use when Web Debug is explicitly requested or a local web bug needs browser-grounded evidence such as DOM, console, network, debugger, framework runtime, responsive geometry, replay, or fix verification. Do not use for exact unit, Go, or Vitest failures with no browser symptom; keep those on the native runner path.
 ---
 
 # Web Debug Workflow
 
 Use the bundled web-debug-mcp tools when a local web application needs browser-grounded evidence. The MCP server remains the execution boundary; this skill supplies the workflow and safety context.
+
+## Selection and handoff boundary
+
+Web Debug complements frontend authoring and deterministic test runners; it does not replace them.
+
+- Use this skill when the user explicitly names `@Web Debug`, `web-debug@web-debug`, `web-debug-workflow`, or the bundled Web Debug MCP, or when the diagnosis needs live browser evidence: DOM, console, network, screenshots, CDP debugger state, React/Vite/Next runtime signals, responsive geometry, action replay, or recorded fix verification.
+- Keep repository-native Vitest, Go, and project Playwright commands as the primary evidence when they identify an exact failure and no browser symptom remains. A passing runner does not prove browser behavior, and a runner failure does not by itself require a browser session.
+- Use `build-web-apps` when it is available for frontend authoring, dev-server work, generic rendered QA, or visual implementation. Do not copy that workflow or silently substitute it for an explicit Web Debug request.
+- For a mixed task, establish the deterministic failure with the native runner, use this skill for the missing browser-grounded evidence, then rerun the relevant runner and interpret the two evidence types separately.
+- An explicit Web Debug request is an execution request, not an escalation suggestion: start with `web_project_detect` or report the exact MCP/runtime availability blocker. Do not claim Web Debug evidence when the bundled tools were not available or were not called.
 
 ## Workflow
 

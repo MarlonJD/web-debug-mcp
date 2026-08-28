@@ -9,8 +9,8 @@
       "name": "web-debug",
       "source": "./plugins/web-debug",
       "displayName": "Web Debug",
-      "description": "Evidence-first local web debugging for Claude Code.",
-      "version": "0.3.1",
+      "description": "Evidence-first local web debugging that complements frontend build and test workflows.",
+      "version": "0.3.2",
       "author": {
         "name": "Marlon J.D.",
         "url": "https://github.com/MarlonJD"
