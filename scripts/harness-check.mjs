@@ -101,7 +101,7 @@ for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
-check(packageJson.version === "0.3.2", "package.json must expose the 0.3.2 release version");
+check(packageJson.version === "0.3.3", "package.json must expose the 0.3.3 release version");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -129,18 +129,18 @@ check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to i
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
-check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("web-debug-mcp@0.3.2"), "Codex plugin must resolve the immutable 0.3.2 npm package");
+check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("web-debug-mcp@0.3.3"), "Codex plugin must resolve the immutable 0.3.3 npm package");
 check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
-check(pluginManifest.version?.startsWith("0.3.2+codex."), "Codex plugin manifest must expose a timestamped 0.3.2 build");
-check(marketplaceEntry?.version === "0.3.2", "Codex marketplace metadata must match the 0.3.2 plugin release");
+check(pluginManifest.version?.startsWith("0.3.3+codex."), "Codex plugin manifest must expose a timestamped 0.3.3 build");
+check(marketplaceEntry?.version === "0.3.3", "Codex marketplace metadata must match the 0.3.3 plugin release");
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
 check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
 check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
-check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.3.2", "Claude Code plugin manifest must expose the web-debug identity and version");
+check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.3.3", "Claude Code plugin manifest must expose the web-debug identity and version");
 check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest must expose the Web Debug display name");
 check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
-check(claudeMarketplaceEntry?.version === "0.3.2" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
+check(claudeMarketplaceEntry?.version === "0.3.3" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
 
@@ -190,6 +190,7 @@ check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"),
 check(sessionSource.includes("owned adapter was made unusable before lease release"), "Cancelled adapter work must poison the session before releasing its lease");
 check(sessionSource.includes("resetReplayForAttempt") && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
 check(mcpSource.includes("locatorSchema") && mcpSource.includes("checkpoints") && mcpSource.includes("failureViewports"), "MCP schemas must expose the exact locator/checkpoint/matrix contract");
+check(mcpSource.includes('{ name: "web-debug-mcp", version: "0.3.3" }'), "MCP server metadata must expose the 0.3.3 release version");
 check(chromiumSource.includes("async probe") && chromiumSource.includes("ignoreHTTPSErrors") && chromiumSource.includes("routeWebSocket"), "Chromium adapter must expose live probes and guarded elevated context controls");
 check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.includes("acceptInsecureCerts: false"), "Safari adapter must retain CSS-only semantic limits and strict TLS")
 check(sessionSource.includes("MAX_DECISIVE_OBSERVATIONS") && sessionSource.includes("runMatrixAttempt"), "Session manager must enforce aggregate observations and ephemeral matrix candidates");
@@ -206,7 +207,7 @@ check(read("README.md").includes("codex mcp add"), "README must document Codex M
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
-check(read("README.md").includes("web-debug-mcp@0.3.2") && !read("README.md").includes("#main"), "README MCP runtime must use the immutable 0.3.2 npm version");
+check(read("README.md").includes("web-debug-mcp@0.3.3") && !read("README.md").includes("#main"), "README MCP runtime must use the immutable 0.3.3 npm version");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
 check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");

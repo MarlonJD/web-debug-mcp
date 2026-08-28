@@ -1,6 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.3.2+codex.20260828121321",
+  "version": "0.3.3+codex.20260828123311",
   "description": "Evidence-first local web debugging that complements frontend build and test workflows with bounded browser evidence.",
   "author": {
     "name": "Marlon J.D.",

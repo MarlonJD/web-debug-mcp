@@ -124,7 +124,7 @@ const nextInspectionSchema = z.union([
 export function createServer(manager = new SessionManager(), registry?: ProcessRegistry): McpServer {
   const respondFor = <T>(operation: () => T | Promise<T>) => respond(operation, registry);
   const server = new McpServer(
-    { name: "web-debug-mcp", version: "0.3.1" },
+    { name: "web-debug-mcp", version: "0.3.3" },
     {
       instructions:
         "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",

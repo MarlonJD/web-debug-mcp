@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Clarify Web Debug routing and publish 0.3.2](active/web-debug-routing-0.3.2.md) | Platform Engineering | active | 2026-08-28 | Skill routing, immutable package/plugin release, and Codex installation |
+| [Clarify Web Debug routing and publish 0.3.2/0.3.3 correction](active/web-debug-routing-0.3.2.md) | Platform Engineering | active | 2026-08-28 | Routing release complete; 0.3.3 metadata correction, npm, and Codex installation |
 <!-- harness:plans:active:end -->
 
 ## Completed

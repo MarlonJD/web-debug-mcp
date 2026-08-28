@@ -1,6 +1,6 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
   "license": "GPL-3.0-or-later",
