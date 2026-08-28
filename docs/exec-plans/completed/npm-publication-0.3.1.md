@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: npm-publication-0.3.1
-status: active
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
-completed:
+completed: 2026-08-28
 owner: Platform Engineering
 -->
 
@@ -19,19 +19,21 @@ Publish a runnable `web-debug-mcp` package to the public npm registry, then upda
 
 - [x] (2026-08-28 10:37Z) Authenticate to npm as `marlonjd` through the web login flow.
 - [x] (2026-08-28 10:37Z) Abort the initial publish before registry mutation after npm reported that it would remove the invalid `bin` entry.
-- [ ] Correct package metadata, bump package/plugin/runtime surfaces to `0.3.1`, and switch the bundled runtime from GitHub `v0.3.0` to immutable npm `web-debug-mcp@0.3.1`.
-- [ ] Run deterministic gates, plugin validation, a real pack/fresh-prefix binary handshake, and registry/tag/release preflight.
-- [ ] Commit and push, tag `v0.3.1`, publish npm, publish the GitHub release, refresh/install the Codex plugin, and verify all published identities.
+- [x] (2026-08-28 10:40Z) Correct package metadata, remove install-time scripts, bump package/plugin/runtime surfaces to `0.3.1`, and switch the bundled runtime from GitHub `v0.3.0` to immutable npm `web-debug-mcp@0.3.1`.
+- [x] (2026-08-28 10:40Z) Run 61 deterministic tests, typecheck, build, harness (`232 checks`), plugin validation, warning-free real pack/fresh-prefix install, 13-tool stdio handshake, and registry/tag/release preflight.
+- [x] (2026-08-28 10:50Z) Commit and push `e97bab0`, tag `v0.3.1`, publish npm with `latest=0.3.1`, publish the GitHub release, refresh/install Codex plugin `0.3.1+codex.20260828103736`, and verify all published identities.
 
 ## Surprises & Discoveries
 
 - npm 11 normalizes repository URLs and rejects a `bin` target beginning with `./`; continuing would have published a package without the `web-debug-mcp` executable.
 - `web-debug-mcp` is currently absent from npm, so `0.3.1` will be the first registry version. npm authentication is now available on this host.
+- npm 11's exec resolver prefers the same-named local root package when invoked inside this repository, so registry `npx` verification must run from an empty working directory. Empty-directory/empty-cache execution passed and listed all 13 tools.
 
 ## Decision Log
 
 - Decision: publish `0.3.1` rather than rewriting `v0.3.0`. Rationale: GitHub tag/release `v0.3.0` is immutable historical evidence; the packaging correction is a patch release. Date/Author: 2026-08-28 / Platform Engineering.
 - Decision: use `npx -y web-debug-mcp@0.3.1` in the bundled plugin. Rationale: npm versions are immutable and avoid GitHub package resolution after the first registry publication. Date/Author: 2026-08-28 / Platform Engineering.
+- Decision: remove `prepare` and keep `prepack`. Rationale: the npm artifact ships built `dist/`; consumers need no install-time script, while publication still rebuilds deterministically. Date/Author: 2026-08-28 / Platform Engineering.
 
 ## Validation and Acceptance
 
@@ -43,8 +45,9 @@ Preflight npm and GitHub identities before irreversible writes. If npm publicati
 
 ## Outcomes & Retrospective
 
-Pending implementation and publication.
+`web-debug-mcp@0.3.1` is public on npm with `latest=0.3.1`, executable `bin/web-debug-mcp.mjs`, shasum `67a8c85607b7c1cfc961bd586677f2cd3b9c488f`, and no install-time script. A real tarball and the public registry package both installed into fresh directories and completed a 13-tool MCP handshake. Commit, remote main, annotated tag `v0.3.1`, and GitHub release resolve to `e97bab0c2deea5c7ec98dc7d1eaf96727dbc9276`. Codex reports `web-debug@web-debug` installed/enabled at `0.3.1+codex.20260828103736`, whose bundled MCP runtime is pinned to `web-debug-mcp@0.3.1`.
 
 ## Revision History
 
 - (2026-08-28 10:37Z) Created after the npm 11 prepublish check prevented a broken first registry release.
+- (2026-08-28 10:50Z) Completed after npm/GitHub/Codex publication and exact registry/runtime identity verification.
