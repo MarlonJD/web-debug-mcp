@@ -11,7 +11,7 @@ This repository adopts the harness-engineering v2 certification contract for the
 - Evidence issuer: `local-platform-engineering`; this is a local observer label, not an external authority
 - HMAC key custody: the caller controls an owner-only raw key outside the repository; the key is never committed or printed
 - Optional production verifier: unavailable; this repository has no production deployment or provider trust root
-- Escalation boundary: external CDP targets, credentialed browser profiles, hosted deployment, production approval, rollback authority, and destructive or external infrastructure changes require explicit user/provider authority. Exact-SHA GitHub release and reversible Codex marketplace/plugin updates are repository-owned release actions; the current task explicitly authorizes those release actions while deployment/production remain out of scope.
+- Escalation boundary: external CDP targets, credentialed browser profiles, hosted deployment, production approval, rollback authority, and destructive or external infrastructure changes require explicit user/provider authority. Exact-SHA GitHub release and reversible Codex marketplace/plugin updates are repository-owned release actions; `v0.3.0` exercised that explicit authority while deployment/production remain out of scope.
 
 ## Source and attestation lifecycle
 

@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: local-fidelity-and-session-lifecycle
-status: active
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
-completed:
+completed: 2026-08-28
 owner: Platform Engineering
 -->
 
@@ -28,7 +28,7 @@ The release is `0.3.0`. Package, lockfile, server metadata, plugin manifests, ma
 - [x] (2026-08-28 00:22Z) Merge both reviews with GPT-5.6 Sol `xhigh` into this corrected executable plan.
 - [x] (2026-08-28 04:05Z) Implement the revised plan with GPT-5.6 Luna at `max`, using one writer in the shared working tree; contract, guarded adapters, auth validation, matrix orchestration, registry lifecycle, docs, and version parity are now present.
 - [x] (2026-08-28 04:50Z) Run focused, deterministic, type, build, harness, real-package, live-browser, TLS/auth/accessibility/checkpoint/matrix, and process-cleanup verification; all locally available required surfaces pass.
-- [ ] Use the user's explicit release authority to create one Conventional Commit on current `main`, push/tag/publish GitHub release `v0.3.0`, refresh/install the `web-debug` marketplace/plugin snapshot, and verify/rollback installed state.
+- [x] (2026-08-28 02:19Z) Use the user's explicit release authority to commit and push `74e03ff`, publish exact tag/release `v0.3.0`, update the Codex marketplace/plugin to `0.3.0+codex.20260828010031`, remove the duplicate standalone MCP registration, and verify the released runtime without rollback.
 
 ## Surprises & Discoveries
 
@@ -74,7 +74,11 @@ The release is `0.3.0`. Package, lockfile, server metadata, plugin manifests, ma
 
 ## Outcomes & Retrospective
 
-Implementation and all required local deterministic/live/package/process gates are complete. The public contract now uses exact locator actions/probes, named checkpoints, explicit viewport/failure scope, guarded TLS/auth modes, computed Chromium AX diagnostics, CSS-only Safari limits, representative matrix evidence, and registry-backed lifecycle cleanup. The prior MVP plan has moved to `completed/` with external CDP retained as candidate debt. The user explicitly authorized the exact-SHA release and reversible Codex plugin update; those writes are the remaining work before this plan moves to `completed/`. Local passing evidence is `verified locally`; it is not production readiness.
+Implementation, local verification, release, and Codex installation are complete. The public contract now uses exact locator actions/probes, named checkpoints, explicit viewport/failure scope, guarded TLS/auth modes, computed Chromium AX diagnostics, CSS-only Safari limits, representative matrix evidence, and registry-backed lifecycle cleanup. The prior MVP plan is completed with external CDP retained as candidate debt.
+
+Source commit `74e03ffbb8f6c83b5e11c0473b1bb032dd0fd514` was pushed to `origin/main`; annotated local/remote tag `v0.3.0` peels to the same SHA; GitHub release `Web Debug MCP v0.3.0` is published at `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.3.0`. Codex marketplace revision is the same source SHA and `web-debug@web-debug` is installed/enabled at `0.3.0+codex.20260828010031`. The installed manifest, workflow skill, and MCP configuration were inspected, and an independent `npx -y github:MarlonJD/web-debug-mcp#v0.3.0` handshake listed 13 tools with TLS/auth schemas. The previous standalone global MCP registration was removed; the remaining `web-debug-mcp` entry is plugin-owned and pinned to `#v0.3.0`. No plugin rollback was needed.
+
+Local and release evidence is verified; it is not deployment or production readiness. The external plugin Python validator remains blocked by its host's missing `yaml` module, while the project harness and all six JSON manifests/catalogs passed. Pre-existing unregistered `0.2.0` MCP processes remain intentionally unsignaled because the new registry cannot retroactively prove ownership; new `0.3.0` instances are covered by EOF, TTL, and cleanup tests.
 
 ## Context and Orientation
 
@@ -241,7 +245,7 @@ Before plugin mutation, preserve previous marketplace/plugin state. If refresh/i
 - Planning baseline: `docs/exec-plans/active/local-fidelity-and-session-lifecycle.md` is new and `docs/exec-plans/index.md` is modified; these are expected plan-phase changes, not a clean baseline.
 - Prior release: `v0.2.0` at commit `750f94b`, GitHub release `Web Debug MCP v0.2.0` remains intact.
 - Current worktree metadata: package/plugin `0.3.0` (`0.3.0+codex.20260828010031`), bundled runtime `github:MarlonJD/web-debug-mcp#v0.3.0`.
-- Installed Codex plugin before release: `web-debug@web-debug`, installed/enabled prior version `0.2.0+codex.20260827204916`; capture this state again immediately before the authorized marketplace/plugin write.
+- Installed Codex plugin transition: before `0.2.0+codex.20260827204916` at marketplace revision `750f94b`; after `0.3.0+codex.20260828010031` at revision `74e03ff`, installed/enabled from `web-debug` with no rollback.
 - Current public catalog: 13 tools; cleanup is a binary subcommand, not a fourteenth MCP tool.
 - Current Safari defect: `WebDriverClient.createSession` sends `acceptInsecureCerts: true`; corrected strict behavior is a release gate.
 - Current scenario defect: `runAttempt` stores `checks.slice(0, 20)` and repeated launch candidates replace `session.adapter`; both paths are removed for the new contract.
@@ -249,7 +253,7 @@ Before plugin mutation, preserve previous marketplace/plugin state. If refresh/i
 - Local CLI evidence: Codex `0.146.0` exposes `plugin marketplace upgrade`, `plugin add`, `plugin remove`, and JSON listing, but no dedicated update verb; before/after state is therefore mandatory.
 - Review evidence: independent Sol `xhigh` and Sol `ultra` reviews, the Sol `xhigh` merged revision, and the single-writer Luna `max` implementation pass are complete. The primary agent then corrected auth-secret over-redaction, registry-directory trust, scenario hashing/provenance versions, representative matrix evidence, process-level tests, and the live acceptance flow before release.
 - Implementation artifacts: `src/domain/types.ts` and `src/index.ts` define the 0.3.0 locator/probe/checkpoint/matrix schemas; `src/core/auth-state.ts` validates contained disposable storage; `src/core/aggregation.ts` provides pure bounded stages; `src/core/process-registry.ts` owns locked identity-verified lifecycle cleanup; Chromium/Safari adapters enforce transport capability boundaries; `scripts/live-local-fidelity-smoke.mjs` is the command-owned TLS/auth/AX/checkpoint/matrix flow; `test/local-fidelity-contract.test.ts` covers schema, aggregation, auth, registry, matrix, and Safari boundaries.
-- Verified locally: deterministic suite `61 tests` passes; `npm install --no-audit --no-fund`, `npm run typecheck`, `npm run build`, and `npm run harness:check` pass (`231 checks`); `npm run smoke:live`, `npm run smoke:react-vite`, `npm run smoke:next`, `npm run smoke:safari`, strengthened `npm run smoke:local-fidelity`, and `npm run demo:compare -- --runs=1` pass. The local-fidelity smoke proves strict rejection, guarded TLS/auth, screenshot suppression, computed role/name, emitted-locator round trip, origin/WebSocket/service-worker blocking, named checkpoints, mobile-only reproduction, fixed matrix verification, and representative evidence in both phases. Real `npm pack --json`/fresh-prefix install passed for `0.3.0`; the installed binary listed all 13 tools, exposed TLS/auth/locator schemas, exited cleanly on EOF, and emitted a bounded cleanup report. GitHub and Codex writes remain release-pending only until the authorized release steps below execute.
+- Verified locally: deterministic suite `61 tests` passes; `npm install --no-audit --no-fund`, `npm run typecheck`, `npm run build`, and `npm run harness:check` pass (`231 checks`); `npm run smoke:live`, `npm run smoke:react-vite`, `npm run smoke:next`, `npm run smoke:safari`, strengthened `npm run smoke:local-fidelity`, and `npm run demo:compare -- --runs=1` pass. The local-fidelity smoke proves strict rejection, guarded TLS/auth, screenshot suppression, computed role/name, emitted-locator round trip, origin/WebSocket/service-worker blocking, named checkpoints, mobile-only reproduction, fixed matrix verification, and representative evidence in both phases. Real `npm pack --json`/fresh-prefix install passed for `0.3.0`; the installed binary listed all 13 tools, exposed TLS/auth/locator schemas, exited cleanly on EOF, and emitted a bounded cleanup report. Release evidence is source commit/tag/release SHA equality, the published GitHub release, released-tag handshake, updated Codex plugin, and duplicate standalone-MCP removal.
 - Final local process hygiene: command-owned fixture/Vite/Next/Safari/Playwright/package children were absent after each run; pre-existing unregistered `0.2.0` Web Debug processes were inspected and left untouched. `git diff --check` passed. The external `harness.py check --root .` remains blocked by legacy completed-plan schema/attestation errors and is recorded candidate-only; native `npm run harness:check` is the passing project gate.
 
 ## Interfaces and Dependencies
@@ -277,3 +281,4 @@ Public MCP tool count stays 13. Any demonstrated impossibility must stop impleme
 - (2026-08-28 04:05Z) Change: Added exact locator/probe/checkpoint/viewport domain contracts, guarded Chromium TLS and WebSocket/page/request policy, strict CSS-only Safari behavior, bounded AX suggestions, descriptor-validated disposable auth with screenshot suppression, ephemeral matrix attempt execution, pure aggregation helpers, and the owner-only process registry/cleanup CLI. Reason: Implement the corrected local-fidelity and lifecycle contract in layers while keeping the 13-tool facade.
 - (2026-08-28 04:10Z) Change: Reconciled the prior MVP plan into `completed/`, moved the approved external-CDP item to candidate debt, updated harness release ownership, documentation, plugin metadata, and immutable `#v0.3.0` runtime pin. Reason: Keep release and evidence claims literal and repository-local.
 - (2026-08-28 05:10Z) Change: Corrected structural auth over-redaction, secured cleanup-directory validation, versioned evidence/provenance, hashed viewport/checkpoint/failure scope, retained representative matrix evidence, added real EOF/cleanup child-process tests, and strengthened the live role-handoff matrix from shape checks to reproduce/fix verification. Reason: Close gaps found by primary-agent review before exercising release authority.
+- (2026-08-28 02:19Z) Change: Published exact source commit/tag/GitHub release `v0.3.0`, upgraded and installed the Codex plugin, removed the duplicate standalone MCP registration, verified the released tag runtime, and completed the plan without rollback. Reason: Deliver the explicitly authorized release while keeping production/deployment and unregistered legacy processes outside the claim.
