@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "8133040dca88847a1e7b3aef035234954d09ace9",
+  "repository_commit": "1f6df37af26a63612848186d8b343d1740440f5d",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,14 +9,14 @@
   "environment": "repository-local",
   "command": "User-authorized repository release procedure for v0.4.0; provider production deployment was not requested.",
   "exit_code": 0,
-  "observed_at": "2026-08-29T20:51:54Z",
+  "observed_at": "2026-08-29T20:56:16Z",
   "result": "passed",
   "artifacts": [
-    "git:8133040dca88847a1e7b3aef035234954d09ace9",
+    "git:1f6df37af26a63612848186d8b343d1740440f5d",
     "docs/exec-plans/completed/complete-0-4-0-release.md",
     "https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.4.0"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "812fc910a12ad7df59e8c12eff1038d48b3db9ae8c144c00737c783d53079461"
+  "signature": "8d83d9468f30e0b2ca0b4e813d4fb9985729d38a6d90e9781b280a1100061606"
 }

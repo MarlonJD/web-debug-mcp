@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "8133040dca88847a1e7b3aef035234954d09ace9",
+  "repository_commit": "1f6df37af26a63612848186d8b343d1740440f5d",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,13 +9,13 @@
   "environment": "repository-local",
   "command": "npm run smoke:react-vite",
   "exit_code": 0,
-  "observed_at": "2026-08-29T20:51:54Z",
+  "observed_at": "2026-08-29T20:56:16Z",
   "result": "passed",
   "artifacts": [
-    "git:8133040dca88847a1e7b3aef035234954d09ace9",
+    "git:1f6df37af26a63612848186d8b343d1740440f5d",
     "docs/agent-harness/certification.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "6b3722d03e31873858f85202dfdccf197a4b6b0994a86d3112426dcca1280e2c"
+  "signature": "e0ea7e084979c679704e3b23d00e5086d9f1114db25cf02e9e1132ca2e90babd"
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "repository_commit": "8133040dca88847a1e7b3aef035234954d09ace9",
+  "repository_commit": "1f6df37af26a63612848186d8b343d1740440f5d",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "capabilities": [
@@ -9,16 +9,16 @@
   "environment": "repository-local",
   "command": "Authorized release observation: commit/push, annotated tag, npm/GitHub publication, public handshake, and reversible Codex plugin update for v0.4.0.",
   "exit_code": 0,
-  "observed_at": "2026-08-29T20:51:54Z",
+  "observed_at": "2026-08-29T20:56:16Z",
   "result": "passed",
   "artifacts": [
-    "git:8133040dca88847a1e7b3aef035234954d09ace9",
-    "git:8133040dca88847a1e7b3aef035234954d09ace9",
+    "git:1f6df37af26a63612848186d8b343d1740440f5d",
+    "git:1f6df37af26a63612848186d8b343d1740440f5d",
     "npm:web-debug-mcp@0.4.0#c7daee55f175d113503d4e662ea8bc418da149ea",
     "https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.4.0",
     "docs/exec-plans/completed/complete-0-4-0-release.md"
   ],
   "issuer": "local-platform-engineering",
   "key_id": "cb80354f765d64eff8d1643c289b2b07493707bea2b99dbd12594273ca513e0b",
-  "signature": "4917b786920422bf056bd005f245137b373d9e7d611e3656405d144a69cb84e3"
+  "signature": "adb528d3c27808430dffa03e6fdb29692218a67848edccec6dfd383a46c1326c"
 }
