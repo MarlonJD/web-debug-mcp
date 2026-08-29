@@ -2,7 +2,7 @@
 
 Use this matrix to prove that the repository implements every applicable harness-engineering capability. A document name alone is not evidence.
 
-The attested source and direct-child commits are recorded in certification.json and Git parent history; this matrix is valid only with the current direct-child attestation.
+The historical attested source and direct-child commits are recorded in certification.json and Git parent history. The current matrix has changed since that window and is not HMAC-attested; its rows remain repository evidence, while the native gate must report certification as stale until a fresh direct-child attestation exists.
 
 Revalidated after the public README and GitHub repository metadata positioning update.
 

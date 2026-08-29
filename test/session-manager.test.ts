@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { access, readdir, writeFile } from "node:fs/promises";
 
 import type {
   ActionResult,
@@ -8,20 +9,20 @@ import type {
   BrowserTarget,
   DebuggerBreakpoint,
   DebuggerSnapshot,
-  EvaluationResult,
   FailureSignatureEntry,
   OperationContext,
   ScenarioCheck,
   LocatorProperty,
   LocatorProbeResult,
 } from "../src/domain/types.js";
-import type { BrowserAdapter, BrowserStartOptions, SnapshotOptions } from "../src/adapters/browser.js";
+import type { BrowserAdapter, BrowserStartOptions, EvaluationResult, SnapshotOptions } from "../src/adapters/browser.js";
 import { WebDebugError } from "../src/core/errors.js";
 import { SessionManager, type RecordScenarioInput, type StartSessionInput } from "../src/core/session-manager.js";
 import { NextAdapter } from "../src/adapters/next.js";
 import { ViteAdapter } from "../src/adapters/vite.js";
+import { MAX_ARTIFACT_BYTES, MAX_SESSION_SCREENSHOTS } from "../src/core/artifact-store.js";
 
-type SnapshotScript = BrowserSnapshot | Error | ((options: SnapshotOptions, adapter: ScriptedBrowserAdapter) => BrowserSnapshot);
+type SnapshotScript = BrowserSnapshot | Error | ((options: SnapshotOptions, adapter: ScriptedBrowserAdapter) => BrowserSnapshot | Promise<BrowserSnapshot>);
 
 interface AdapterConfig {
   browser?: "chromium" | "safari";
@@ -33,6 +34,8 @@ interface AdapterConfig {
   hangActions?: boolean;
   hangClose?: boolean;
   bufferNetwork?: boolean;
+  navigateOnClickTo?: string;
+  finalStartUrl?: string;
 }
 
 class ScriptedBrowserAdapter implements BrowserAdapter {
@@ -47,7 +50,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   targetIdValue: string | null;
   private readonly target: BrowserTarget;
   private actionRelease: ((result: ActionResult) => void) | null = null;
-  private readonly actionGate: Promise<ActionResult> | null;
+  private readonly actionGate: Promise<ActionResult> | null = null;
   private networkGeneration = 1;
   private networkBuffer: BrowserSnapshot["network"] = [];
   private lastSnapshot: BrowserSnapshot | null = null;
@@ -86,7 +89,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
     this.startedUrls.push(options.url);
     const shouldFail = typeof this.config.failStart === "function" ? this.config.failStart(this.instanceNumber) : this.config.failStart;
     if (shouldFail) throw new WebDebugError("BROWSER_START_RETRYABLE", "scripted candidate startup failed");
-    this.target.url = options.url;
+    this.target.url = this.config.finalStartUrl ?? options.url;
     if (options.viewport) this.target.viewport = options.viewport;
     return { ...this.target, targetId: this.targetIdValue ?? undefined };
   }
@@ -110,6 +113,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   async act(action: BrowserAction): Promise<ActionResult> {
     this.actions.push({ ...action } as BrowserAction);
     if (action.kind === "navigate") this.target.url = action.url;
+    if (action.kind === "click" && this.config.navigateOnClickTo) this.target.url = this.config.navigateOnClickTo;
     if (this.config.failAction) throw this.config.failAction;
     const result = { kind: action.kind, url: this.target.url, title: this.target.title };
     if (this.actionGate) return this.actionGate;
@@ -127,7 +131,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
     this.snapshotOptions.push(options);
     const next = this.snapshots.shift();
     if (next instanceof Error) throw next;
-    const scripted = typeof next === "function" ? next(options, this) : next ?? snapshotFor("Fixed");
+    const scripted = await (typeof next === "function" ? next(options, this) : next ?? snapshotFor("Fixed"));
     if (!this.config.bufferNetwork) { this.lastSnapshot = scripted; return scripted; }
     const network = options.checksOnly ? [] : this.networkBuffer;
     this.snapshotNetworks.push(network);
@@ -621,6 +625,33 @@ describe("session manager adaptive contract", () => {
     }
   });
 
+  it("serializes Next inspection through the session lease and propagates cancellation", async () => {
+    let observedSignal = false;
+    const inspect = vi.spyOn(NextAdapter.prototype, "inspect").mockImplementation((_url, _inspection, context = {}) => new Promise((resolve, reject) => {
+      observedSignal = Boolean(context.signal);
+      const onAbort = () => reject(new WebDebugError("REQUEST_CANCELLED", "inspection cancelled"));
+      if (context.signal?.aborted) onAbort();
+      else context.signal?.addEventListener("abort", onAbort, { once: true });
+      void resolve;
+    }));
+    const { manager } = managerFor([], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager, { projectRoot: "fixtures/next" });
+    const controller = new AbortController();
+    try {
+      const active = manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" }, { signal: controller.signal, deadline: 10_000 });
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(observedSignal).toBe(true);
+      await expect(manager.capture(session.id, false)).rejects.toMatchObject({ code: "SESSION_BUSY" });
+      const cancelled = expect(active).rejects.toMatchObject({ code: "REQUEST_CANCELLED" });
+      controller.abort();
+      await cancelled;
+      await expect(manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" })).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
+    } finally {
+      inspect.mockRestore();
+      await manager.close(session.id);
+    }
+  });
+
   it("contains a timed-out optional Vite enrichment in a child budget", async () => {
     const viteSnapshot = vi.spyOn(ViteAdapter.prototype, "snapshot").mockImplementation(() => new Promise(() => undefined));
     vi.useFakeTimers();
@@ -645,6 +676,7 @@ describe("session manager adaptive contract", () => {
 
   it("keeps private raw URL and fill values executable while every public response is scrubbed", async () => {
     const secret = "raw-secret-value";
+    const selectSecret = "private-option-value";
     const raw = (body: string) => snapshotFor(`${body} ${secret}`, {
       elements: [{ tag: "div", id: secret, role: null, text: secret }],
       console: [{ level: "error", text: `details=${secret}` }],
@@ -657,16 +689,22 @@ describe("session manager adaptive contract", () => {
     const session = await start(manager);
     const scenario = await record(manager, session.id, {
       url: `http://127.0.0.1:4173/?token=${secret}`,
-      actions: [{ kind: "fill", locator: { kind: "css", value: `#${secret}` }, value: secret }],
+      actions: [
+        { kind: "fill", locator: { kind: "css", value: `#${secret}` }, value: secret },
+        { kind: "select", locator: { kind: "css", value: "#private-option" }, value: selectSecret },
+      ],
       buildReference: { source: "caller", value: secret },
     });
     const result = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id, buildReference: { source: "caller", value: secret } });
     expect(adapters[0]?.actions.some((action) => action.kind === "navigate" && action.url.includes(`token=${secret}`))).toBe(true);
     expect(adapters[0]?.actions.some((action) => action.kind === "fill" && action.value === secret)).toBe(true);
+    expect(adapters[0]?.actions.some((action) => action.kind === "select" && action.value === selectSecret)).toBe(true);
     expect(scenario.url).toBe("http://127.0.0.1:4173/");
     expect(scenario.contractHash).not.toContain(secret);
     expect(JSON.stringify(scenario)).not.toContain(secret);
+    expect(JSON.stringify(scenario)).not.toContain(selectSecret);
     expect(JSON.stringify(result)).not.toContain(secret);
+    expect(JSON.stringify(result)).not.toContain(selectSecret);
     expect(result.evidence.postFix?.browser.screenshotPath).toBeNull();
     const postFrameIndex = result.evidence.postFix?.replay.frames[0]?.index;
     expect(postFrameIndex).toBeTypeOf("number");
@@ -676,10 +714,31 @@ describe("session manager adaptive contract", () => {
 
     const errorManager = managerFor([], { mode: "attach", targetId: "tab-1", failAction: new WebDebugError("SCRIPTED_FAILURE", secret, { details: secret }) });
     const errorSession = await start(errorManager.manager);
-    const error = await errorManager.manager.act(errorSession.id, { kind: "fill", locator: { kind: "css", value: "#secret" }, value: secret }).catch((value) => value as Error & { details?: unknown });
+    const error = await errorManager.manager.act(errorSession.id, { kind: "fill", locator: { kind: "css", value: "#secret" }, value: secret }).catch((value) => value) as Error & { details?: unknown };
     expect(error.message).not.toContain(secret);
     expect(JSON.stringify(error)).not.toContain(secret);
     await errorManager.manager.close(errorSession.id);
+  });
+
+  it("restores navigation-causing actions from the private session start and fails after start truncation", async () => {
+    const { manager, adapters } = managerFor([snapshotFor("Dashboard")], {
+      mode: "attach",
+      targetId: "tab-1",
+      navigateOnClickTo: "http://127.0.0.1:4173/dashboard",
+    });
+    const session = await start(manager, { url: "http://127.0.0.1:4173/login" });
+    await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "#login" } });
+    const restored = await manager.seekReplay(session.id, 0, true);
+    expect(restored.restored).toBe(true);
+    expect(adapters[0]?.actions.slice(-2)).toEqual([
+      { kind: "navigate", url: "http://127.0.0.1:4173/login" },
+      { kind: "click", locator: { kind: "css", value: "#login" } },
+    ]);
+
+    for (let index = 0; index < 9; index += 1) await manager.act(session.id, { kind: "hover", locator: { kind: "css", value: `#item-${index}` } });
+    const newest = (await manager.capture(session.id, false)).replay.frames.at(-1)!.index;
+    await expect(manager.seekReplay(session.id, newest, true)).rejects.toMatchObject({ code: "REPLAY_START_UNAVAILABLE" });
+    await manager.close(session.id, "delete");
   });
 
   it("caps scenarios, replay frames, observations, and serialized evidence, then purges on close", async () => {
@@ -709,6 +768,129 @@ describe("session manager adaptive contract", () => {
     expect(Buffer.byteLength(JSON.stringify(boundedResult))).toBeLessThanOrEqual(256 * 1024);
     expect(boundedResult.truncation.evidence).toBe(true);
     await bounded.manager.close(boundedSession.id);
+  });
+
+  it("destroys managed private state on close and bounds sanitized tombstones", async () => {
+    const secret = "closed-session-secret";
+    const { manager } = managerFor([], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager, { url: `http://127.0.0.1:4173/?token=${secret}` });
+    await manager.act(session.id, { kind: "fill", locator: { kind: "css", value: "#secret" }, value: secret });
+    const internals = manager as unknown as {
+      sessions: Map<string, unknown>;
+      closedSessions: Map<string, unknown>;
+    };
+    expect(JSON.stringify(internals.sessions.get(session.id))).toContain(secret);
+
+    const closed = await manager.close(session.id, "delete");
+    expect(closed.status).toBe("closed");
+    expect(closed.target).toBeNull();
+    expect(closed.artifactState).toBe("deleted");
+    expect(manager.list()).toEqual([]);
+    expect(manager.status(session.id).status).toBe("closed");
+    expect((await manager.close(session.id, "delete")).artifactState).toBe("deleted");
+    expect(internals.sessions.has(session.id)).toBe(false);
+    expect(JSON.stringify(internals.closedSessions.get(session.id))).not.toContain(secret);
+    await expect(access(session.artifactDir)).rejects.toThrow();
+
+    const ids: string[] = [];
+    for (let index = 0; index < 33; index += 1) {
+      const candidate = await start(manager);
+      ids.push(candidate.id);
+      await manager.close(candidate.id, "delete");
+    }
+    expect(internals.closedSessions.size).toBe(32);
+    expect(() => manager.status(ids[0]!)).toThrowError(/Unknown debug session/);
+    expect(manager.status(ids.at(-1)!).status).toBe("closed");
+  });
+
+  it("rolls back a short start whose final target URL exceeds the result boundary", async () => {
+    const oversizedFinalUrl = `http://127.0.0.1:4173/?redirected=${"x".repeat(3_000)}`;
+    const { manager, adapters } = managerFor([], { mode: "attach", targetId: "tab-1", finalStartUrl: oversizedFinalUrl });
+    await expect(start(manager)).rejects.toMatchObject({ code: "URL_LIMIT_EXCEEDED" });
+    expect(manager.list()).toEqual([]);
+    expect(adapters[0]?.closeCount).toBe(1);
+  });
+
+  it("suppresses screenshot pixels after private fill or select input", async () => {
+    const { manager, adapters } = managerFor([
+      snapshotFor("Ready"),
+      snapshotFor("Private value visible", { screenshotPath: "/tmp/private-input.png" }),
+    ], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+    await manager.act(session.id, { kind: "select", locator: { kind: "css", value: "#private" }, value: "private-option" });
+    const evidence = await manager.capture(session.id, true);
+    expect(evidence.browser.screenshotPath).toBeNull();
+    expect(evidence.browser.warnings).toContainEqual(expect.stringContaining("private fill/select input values"));
+    expect(adapters[0]?.snapshotOptions.at(-1)).toMatchObject({ captureScreenshot: false, suppressScreenshot: true });
+    await manager.close(session.id, "delete");
+  });
+
+  it("deletes oversized screenshots and prunes retained session artifacts", async () => {
+    const snapshots: SnapshotScript[] = [];
+    const { manager } = managerFor(snapshots, { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+
+    const oversized = `${session.artifactDir}/screenshot-1.png`;
+    await writeFile(oversized, Buffer.alloc(MAX_ARTIFACT_BYTES + 1));
+    snapshots.push(snapshotFor("Oversized", { screenshotPath: oversized }));
+    const rejected = await manager.capture(session.id, true);
+    expect(rejected.browser.screenshotPath).toBeNull();
+    expect(rejected.browser.warnings).toContainEqual(expect.stringContaining("per-file limit"));
+    await expect(access(oversized)).rejects.toThrow();
+
+    for (let index = 0; index < MAX_SESSION_SCREENSHOTS + 1; index += 1) {
+      const path = `${session.artifactDir}/capture-${100 + index}.png`;
+      await writeFile(path, Buffer.from(`capture-${index}`));
+      snapshots.push(snapshotFor(`Capture ${index}`, { screenshotPath: path }));
+      await manager.capture(session.id, true);
+    }
+    const retained = (await readdir(session.artifactDir)).filter((name) => name.endsWith(".png"));
+    expect(retained).toHaveLength(MAX_SESSION_SCREENSHOTS);
+    expect(retained).not.toContain("capture-100.png");
+
+    const closed = await manager.close(session.id, "retain");
+    expect(closed.artifactState).toBe("retained");
+    expect((await readdir(session.artifactDir)).filter((name) => name.endsWith(".png"))).toHaveLength(MAX_SESSION_SCREENSHOTS);
+    expect((await manager.close(session.id, "delete")).artifactState).toBe("deleted");
+    await expect(access(session.artifactDir)).rejects.toThrow();
+  });
+
+  it("applies the screenshot quota to matrix representative captures", async () => {
+    const snapshots: SnapshotScript[] = [
+      snapshotFor("Bug"),
+      async (options) => {
+        const path = `${options.artifactDir}/screenshot-900.png`;
+        await writeFile(path, Buffer.alloc(MAX_ARTIFACT_BYTES + 1));
+        return snapshotFor("Bug", { screenshotPath: path });
+      },
+      snapshotFor("Healthy"),
+    ];
+    const { manager } = managerFor(snapshots, { isolated: true, mode: "launch" });
+    const session = await start(manager);
+    const scenario = await record(manager, session.id, {
+      viewports: [
+        { name: "desktop", width: 1_440, height: 900 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      failureViewports: ["desktop"],
+    });
+    expect(scenario.baseline.status).toBe("reproduced");
+    expect(scenario.baseline.evidence?.browser.screenshotPath).toBeNull();
+    expect(scenario.baseline.evidence?.browser.warnings).toContainEqual(expect.stringContaining("per-file limit"));
+    expect((await readdir(session.artifactDir)).filter((name) => name.endsWith(".png"))).toEqual([]);
+    await manager.close(session.id, "delete");
+  });
+
+  it("enforces the MCP fill-value bound for direct SessionManager callers", async () => {
+    const { manager, adapters } = managerFor([], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+    await expect(manager.act(session.id, {
+      kind: "fill",
+      locator: { kind: "css", value: "#input" },
+      value: "x".repeat(10_001),
+    })).rejects.toMatchObject({ code: "FILL_VALUE_INVALID" });
+    expect(adapters[0]?.actions).toEqual([]);
+    await manager.close(session.id, "delete");
   });
 
   it("recovers from a failed launch candidate and keeps cancellation from allowing a late operation", async () => {

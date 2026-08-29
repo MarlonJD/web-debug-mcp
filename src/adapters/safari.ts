@@ -18,9 +18,11 @@ import type {
   LocatorProbeResult,
   LocatorProperty,
 } from "../domain/types.js";
-import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE } from "../domain/types.js";
+import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
+import { MAX_SCREENSHOT_RESPONSE_BYTES, MAX_WEBDRIVER_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
+import { assertTopLevelOrigin, navigationOriginError, originOf } from "../core/origin-policy.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -30,6 +32,7 @@ import type {
 
 const DEFAULT_DRIVER_ENDPOINT = "http://127.0.0.1:4444";
 const MAX_REQUEST_MS = 5_000;
+const MAX_BIDI_MESSAGE_BYTES = 256 * 1024;
 
 interface WebDriverEnvelope {
   value?: unknown;
@@ -48,6 +51,7 @@ interface WebDriverElement {
 interface CreatedWebDriverSession {
   id: string;
   webSocketUrl?: string;
+  browserVersion?: string;
 }
 
 interface BidiEvent {
@@ -76,6 +80,7 @@ export class SafariAdapter implements BrowserAdapter {
   private lastKnownTitle = "";
   private lastKnownDom: DomSnapshot = { bodyText: "", elements: [] };
   private browserVersionValue: string | null = null;
+  private selectedWindowHandle: string | null = null;
 
   constructor(private readonly configuredEndpoint?: string) {}
 
@@ -89,6 +94,7 @@ export class SafariAdapter implements BrowserAdapter {
     this.allowRemote = options.allowRemote ?? false;
     this.headlessRequested = options.headless ?? true;
     assertAllowedUrl(options.url, this.allowRemote);
+    this.baseOrigin = originOf(options.url);
 
     const configured = options.webdriverEndpoint
       ?? this.configuredEndpoint
@@ -102,7 +108,9 @@ export class SafariAdapter implements BrowserAdapter {
     try {
       const created = await this.client.createSession(context);
       this.sessionId = created.id;
+      this.selectedWindowHandle = await this.command<string>("/window", "GET", undefined, context);
       if (created.webSocketUrl) {
+        assertAllowedBidiEndpoint(created.webSocketUrl, this.allowRemote);
         try {
           this.bidi = await SafariBidiClient.connect(created.webSocketUrl, (event) => this.recordBidiEvent(event));
         } catch (error) {
@@ -112,10 +120,10 @@ export class SafariAdapter implements BrowserAdapter {
         this.bidiWarning = "Safari WebDriver did not return a BiDi WebSocket URL; console events are unavailable; network evidence will use Performance Resource Timing when available.";
       }
       await this.navigate(options.url, context);
-      this.baseOrigin = new URL(options.url).origin;
+      await this.enforceOwnedTopLevelState(context);
       this.lastKnownTitle = await this.readTitle(context);
       this.lastKnownDom = await this.readDom(context);
-      this.browserVersionValue = null;
+      this.browserVersionValue = created.browserVersion ?? null;
       return await this.target(context);
     } catch (error) {
       await this.close();
@@ -134,6 +142,7 @@ export class SafariAdapter implements BrowserAdapter {
     this.bidiWarning = null;
     this.performanceNetworkFallbackUsed = false;
     this.browserVersionValue = null;
+    this.selectedWindowHandle = null;
     this.consoleEntries.length = 0;
     this.networkEntries.clear();
     if (this.driverProcess) {
@@ -154,6 +163,7 @@ export class SafariAdapter implements BrowserAdapter {
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
     this.requireClient();
+    await this.enforceOwnedTopLevelState(context);
     switch (action.kind) {
       case "navigate":
         assertAllowedUrl(action.url, this.allowRemote);
@@ -168,6 +178,26 @@ export class SafariAdapter implements BrowserAdapter {
         if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
         await this.fill(action.locator.value, action.value, context);
         break;
+      case "press":
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.press(action.locator.value, action.key, context);
+        break;
+      case "select":
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.select(action.locator.value, action.value, context);
+        break;
+      case "check":
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.setChecked(action.locator.value, action.checked, context);
+        break;
+      case "hover":
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.hover(action.locator.value, context);
+        break;
+      case "scroll":
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        await this.scroll(action.locator.value, context);
+        break;
       case "wait":
         if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
         await this.waitForProbe(action, context);
@@ -176,7 +206,7 @@ export class SafariAdapter implements BrowserAdapter {
         await this.command("/refresh", "POST", undefined, context);
         break;
     }
-    const url = await this.currentUrl(context);
+    const url = await this.enforceOwnedTopLevelState(context);
     const title = await this.readTitle(context);
     return { kind: action.kind, url: safeUrl(url), title };
   }
@@ -188,6 +218,7 @@ export class SafariAdapter implements BrowserAdapter {
     if (unique.length > MAX_PROPERTIES_PER_PROBE) throw new WebDebugError("PROBE_PROPERTIES_LIMIT", `A locator probe may request at most ${MAX_PROPERTIES_PER_PROBE} properties.`);
     if (locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only; computed semantic locators are unavailable.");
     if (!locator.value || locator.value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LOCATOR_INVALID", `Locator values are limited to ${MAX_LOCATOR_CHARS} characters.`);
+    await this.enforceOwnedTopLevelState(context);
     const values = await this.executeSync<Record<string, unknown>>(
       `const css = arguments[0];
        const elements = Array.from(document.querySelectorAll(css));
@@ -233,6 +264,7 @@ export class SafariAdapter implements BrowserAdapter {
 
   async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
     assertContext(context);
+    await this.enforceOwnedTopLevelState(context);
     const warnings = [
       "Safari WebDriver does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
       "Safari WebDriver computed accessibility diagnostics and semantic locator suggestions are unavailable; use exact CSS locators and live CSS probes.",
@@ -344,12 +376,15 @@ export class SafariAdapter implements BrowserAdapter {
         "Safari WebDriver cannot prove that an expression is side-effect free; set allowSideEffects=true explicitly.",
       );
     }
+    await this.enforceOwnedTopLevelState(context);
     const result = await this.executeAsync(expression, context);
     if (!isRecord(result) || result.ok !== true) {
       throw new WebDebugError("EVALUATION_FAILED", boundText(isRecord(result) && typeof result.error === "string" ? result.error : "Safari evaluation failed.", 500));
     }
+    const value = redactValue(result.value);
+    if (Buffer.byteLength(JSON.stringify(value)) > MAX_RESULT_BYTES) throw new WebDebugError("EVALUATION_RESULT_LIMIT", `Evaluation result exceeded the ${MAX_RESULT_BYTES}-byte limit.`);
     return {
-      value: redactValue(result.value),
+      value,
       type: result.value === null ? "object" : typeof result.value,
       description: null,
     };
@@ -359,7 +394,11 @@ export class SafariAdapter implements BrowserAdapter {
     const params = event.params ?? {};
     if (event.method === "log.entryAdded") {
       const callFrame = params.stackTrace?.callFrames?.[0];
-      const text = typeof params.text === "string" ? params.text : JSON.stringify(params.args ?? "");
+      let text = typeof params.text === "string" ? params.text : "";
+      if (!text) {
+        try { text = JSON.stringify(redactValue(params.args ?? "")); }
+        catch { text = "[UNSERIALIZABLE_BIDI_ARGUMENTS]"; }
+      }
       this.consoleEntries.push({
         level: mapBidiLogLevel(params.level),
         text: boundText(text ?? "", 2_000),
@@ -493,6 +532,69 @@ export class SafariAdapter implements BrowserAdapter {
     await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] }, context);
   }
 
+  private async press(css: string, key: Extract<BrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(css, context);
+    const value = webdriverKey(key);
+    await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [value] }, context);
+  }
+
+  private async select(css: string, value: string, context: OperationContext = {}): Promise<void> {
+    const changed = await this.executeSync<boolean>(
+      `const element = document.querySelector(arguments[0]);
+       if (!(element instanceof HTMLSelectElement)) return false;
+       const option = Array.from(element.options).find((candidate) => candidate.value === arguments[1]);
+       if (!option) return false;
+       element.value = option.value;
+       element.dispatchEvent(new Event("input", { bubbles: true }));
+       element.dispatchEvent(new Event("change", { bubbles: true }));
+       return true;`,
+      [css, value],
+      context,
+    );
+    if (!changed) throw new WebDebugError("SELECT_OPTION_NOT_FOUND", "Safari could not select the exact option value.");
+  }
+
+  private async setChecked(css: string, checked: boolean, context: OperationContext = {}): Promise<void> {
+    const changed = await this.executeSync<boolean>(
+      `const element = document.querySelector(arguments[0]);
+       if (!(element instanceof HTMLInputElement) || (element.type !== "checkbox" && element.type !== "radio")) return false;
+       if (element.checked !== arguments[1]) element.click();
+       return element.checked === arguments[1];`,
+      [css, checked],
+      context,
+    );
+    if (!changed) throw new WebDebugError("CHECK_STATE_UNAVAILABLE", "Safari could not apply the requested checked state.");
+  }
+
+  private async hover(css: string, context: OperationContext = {}): Promise<void> {
+    const element = await this.findElement(css, context);
+    const origin = { "element-6066-11e4-a52e-4f735466cecf": element };
+    try {
+      await this.command("/actions", "POST", {
+        actions: [{
+          type: "pointer",
+          id: "web-debug-mouse",
+          parameters: { pointerType: "mouse" },
+          actions: [{ type: "pointerMove", duration: 0, origin, x: 0, y: 0 }],
+        }],
+      }, context);
+    } finally {
+      await this.command("/actions", "DELETE", undefined, context).catch(() => undefined);
+    }
+  }
+
+  private async scroll(css: string, context: OperationContext = {}): Promise<void> {
+    const found = await this.executeSync<boolean>(
+      `const element = document.querySelector(arguments[0]);
+       if (!element) return false;
+       element.scrollIntoView({ block: "center", inline: "nearest" });
+       return true;`,
+      [css],
+      context,
+    );
+    if (!found) throw new WebDebugError("ELEMENT_NOT_FOUND", "Safari could not resolve the CSS locator for scrolling.");
+  }
+
   private async findElement(css: string, context: OperationContext = {}): Promise<string> {
     const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: css }, context);
     const elementId = value["element-6066-11e4-a52e-4f735466cecf"] ?? value.ELEMENT;
@@ -563,8 +665,33 @@ export class SafariAdapter implements BrowserAdapter {
   }
 
   private assertSameOrigin(url: string): void {
-    if (this.baseOrigin && new URL(url).origin !== this.baseOrigin) {
-      throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the session origin.");
+    if (this.baseOrigin) assertTopLevelOrigin(url, this.baseOrigin);
+  }
+
+  private async enforceOwnedTopLevelState(context: OperationContext = {}): Promise<string> {
+    try {
+      const handles = await this.command<string[]>("/window/handles", "GET", undefined, context);
+      const selected = this.selectedWindowHandle;
+      if (!selected || !Array.isArray(handles) || !handles.includes(selected)) {
+        throw navigationOriginError("The selected Safari window is no longer available.");
+      }
+      const secondaryHandles = handles.filter((handle) => handle !== selected);
+      if (secondaryHandles.length > 0) {
+        for (const handle of secondaryHandles.slice(0, 8)) {
+          await this.command("/window", "POST", { handle }, context).catch(() => undefined);
+          await this.command("/window", "DELETE", undefined, context).catch(() => undefined);
+        }
+        await this.command("/window", "POST", { handle: selected }, context).catch(() => undefined);
+        throw navigationOriginError("Secondary Safari windows are outside the selected single-window session boundary.");
+      }
+      const url = await this.currentUrl(context);
+      this.assertSameOrigin(url);
+      return url;
+    } catch (error) {
+      if (error instanceof WebDebugError && error.code === "NAVIGATION_ORIGIN_BLOCKED") {
+        await this.close().catch(() => undefined);
+      }
+      throw error;
     }
   }
 
@@ -619,6 +746,7 @@ class WebDriverClient {
     this.sessionId = sessionId;
     return {
       id: sessionId,
+      ...(typeof capabilities.browserVersion === "string" ? { browserVersion: boundText(capabilities.browserVersion, 100) } : {}),
       ...(typeof capabilities.webSocketUrl === "string"
         ? { webSocketUrl: capabilities.webSocketUrl }
         : typeof value.webSocketUrl === "string" ? { webSocketUrl: value.webSocketUrl } : {}),
@@ -647,11 +775,13 @@ class WebDriverClient {
     try {
       const response = await fetch(`${this.endpoint}${path}`, {
         method,
+        redirect: "manual",
         headers: body === undefined ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/json" },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: controller.signal,
       });
-      const text = await response.text();
+      const responseLimit = path.endsWith("/screenshot") ? MAX_SCREENSHOT_RESPONSE_BYTES : MAX_WEBDRIVER_RESPONSE_BYTES;
+      const text = await readResponseTextBounded(response, responseLimit, "Safari WebDriver response", controller.signal);
       let parsed: unknown = null;
       try {
         parsed = text ? JSON.parse(text) : {};
@@ -679,7 +809,7 @@ class SafariBidiClient {
     private readonly socket: WebSocket,
     private readonly onEvent: (event: BidiEvent) => void,
   ) {
-    this.socket.onmessage = (event) => this.handleMessage(event);
+    this.socket.onmessage = (event) => { void this.handleMessage(event); };
     this.socket.onerror = () => this.rejectPending(new Error("Safari WebDriver BiDi socket error."));
     this.socket.onclose = () => this.rejectPending(new Error("Safari WebDriver BiDi socket closed."));
   }
@@ -750,8 +880,13 @@ class SafariBidiClient {
     return result;
   }
 
-  private handleMessage(event: MessageEvent): void {
-    const raw = typeof event.data === "string" ? event.data : String(event.data);
+  private async handleMessage(event: MessageEvent): Promise<void> {
+    const raw = await boundedBidiMessageText(event.data);
+    if (raw === null) {
+      this.rejectPending(new Error("Safari WebDriver BiDi message exceeded the bounded input limit."));
+      if (this.socket.readyState === 1 || this.socket.readyState === 0) this.socket.close();
+      return;
+    }
     let message: unknown;
     try {
       message = JSON.parse(raw);
@@ -792,6 +927,7 @@ function boundedTimeout(timeoutMs: number | undefined): number {
 
 
 function assertAllowedUrl(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "Browser URLs are limited to 2,048 characters.");
   let url: URL;
   try {
     url = new URL(raw);
@@ -807,6 +943,7 @@ function assertAllowedUrl(raw: string, allowRemote: boolean): void {
 }
 
 function assertAllowedEndpoint(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("WEBDRIVER_ENDPOINT_LIMIT", "Safari WebDriver endpoints are limited to 2,048 characters.");
   let url: URL;
   try {
     url = new URL(raw);
@@ -819,6 +956,38 @@ function assertAllowedEndpoint(raw: string, allowRemote: boolean): void {
   if (!allowRemote && !isLoopback(url.hostname)) {
     throw new WebDebugError("REMOTE_WEBDRIVER_BLOCKED", "Remote Safari WebDriver endpoints are blocked by default; set allowRemote explicitly.");
   }
+}
+
+function assertAllowedBidiEndpoint(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("BIDI_ENDPOINT_LIMIT", "Safari BiDi endpoints are limited to 2,048 characters.");
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new WebDebugError("BIDI_ENDPOINT_INVALID", "Safari WebDriver returned an invalid BiDi WebSocket endpoint.");
+  }
+  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
+    throw new WebDebugError("BIDI_ENDPOINT_PROTOCOL_BLOCKED", "Safari BiDi endpoints must use ws or wss.");
+  }
+  if (!allowRemote && !isLoopback(url.hostname)) {
+    throw new WebDebugError("REMOTE_BIDI_BLOCKED", "Remote Safari BiDi endpoints are blocked by default; set allowRemote explicitly.");
+  }
+}
+
+async function boundedBidiMessageText(data: unknown): Promise<string | null> {
+  if (typeof data === "string") return Buffer.byteLength(data) <= MAX_BIDI_MESSAGE_BYTES ? data : null;
+  if (data instanceof ArrayBuffer) return data.byteLength <= MAX_BIDI_MESSAGE_BYTES ? new TextDecoder().decode(data) : null;
+  if (ArrayBuffer.isView(data)) {
+    return data.byteLength <= MAX_BIDI_MESSAGE_BYTES
+      ? new TextDecoder().decode(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
+      : null;
+  }
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    if (data.size > MAX_BIDI_MESSAGE_BYTES) return null;
+    const text = await data.text();
+    return Buffer.byteLength(text) <= MAX_BIDI_MESSAGE_BYTES ? text : null;
+  }
+  return null;
 }
 
 function isLoopback(hostname: string): boolean {
@@ -852,6 +1021,22 @@ function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
     default:
       return "log";
   }
+}
+
+function webdriverKey(key: Extract<BrowserAction, { kind: "press" }>["key"]): string {
+  const keys: Record<Extract<BrowserAction, { kind: "press" }>["key"], string> = {
+    Enter: "\uE007",
+    Escape: "\uE00C",
+    Tab: "\uE004",
+    ArrowUp: "\uE013",
+    ArrowDown: "\uE015",
+    ArrowLeft: "\uE012",
+    ArrowRight: "\uE014",
+    Backspace: "\uE003",
+    Delete: "\uE017",
+    Space: "\uE00D",
+  };
+  return keys[key];
 }
 
 function assertContext(context: OperationContext): void {

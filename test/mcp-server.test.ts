@@ -4,10 +4,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 
-import type { ActionResult, BrowserAction, BrowserLocator, BrowserSnapshot, BrowserTarget, DebuggerBreakpoint, DebuggerSnapshot, EvaluationResult, OperationContext, LocatorProperty, LocatorProbeResult } from "../src/domain/types.js";
-import type { BrowserAdapter, BrowserStartOptions, SnapshotOptions } from "../src/adapters/browser.js";
+import type { ActionResult, BrowserAction, BrowserLocator, BrowserSnapshot, BrowserTarget, DebuggerBreakpoint, DebuggerSnapshot, OperationContext, LocatorProperty, LocatorProbeResult } from "../src/domain/types.js";
+import type { BrowserAdapter, BrowserStartOptions, EvaluationResult, SnapshotOptions } from "../src/adapters/browser.js";
 import { SessionManager } from "../src/core/session-manager.js";
-import { createServer } from "../src/index.js";
+import { createServer, WEB_DEBUG_TOOL_ANNOTATIONS } from "../src/index.js";
 
 class McpScriptedAdapter implements BrowserAdapter {
   hangActions = false;
@@ -54,7 +54,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   async snapshot(_options: SnapshotOptions): Promise<BrowserSnapshot> {
     this.snapshots += 1;
     const bodyText = this.snapshots <= 2 ? "Bug" : "Fixed";
-    const result = {
+    const result: BrowserSnapshot = {
       url: this.target.url,
       title: this.target.title,
       viewport: this.target.viewport,
@@ -115,6 +115,10 @@ describe("MCP server contract", () => {
       "web_session_start",
       "web_session_status",
     ]);
+    for (const tool of listed.tools) {
+      expect(tool.annotations).toEqual(WEB_DEBUG_TOOL_ANNOTATIONS[tool.name as keyof typeof WEB_DEBUG_TOOL_ANNOTATIONS]);
+      expect(tool.outputSchema).toMatchObject({ type: "object", properties: expect.objectContaining({ ok: expect.anything(), artifacts: expect.anything(), warnings: expect.anything() }) });
+    }
     const replayTool = listed.tools.find((tool) => tool.name === "web_replay_seek");
     expect(replayTool?.description).toContain("mutate live state");
     expect(replayTool?.annotations).toMatchObject({ readOnlyHint: false, idempotentHint: false });
@@ -124,28 +128,34 @@ describe("MCP server contract", () => {
     const reproTool = listed.tools.find((tool) => tool.name === "web_repro_record");
     expect(reproTool?.annotations).toMatchObject({ readOnlyHint: false, idempotentHint: false });
     expect(reproTool?.inputSchema.properties).toEqual(expect.objectContaining({ sessionId: expect.anything(), failureSignature: expect.anything(), acceptanceChecks: expect.anything() }));
+    const actionTool = listed.tools.find((tool) => tool.name === "web_browser_action");
+    const actionSchema = JSON.stringify(actionTool?.inputSchema);
+    for (const kind of ["press", "select", "check", "hover", "scroll"]) expect(actionSchema).toContain(`\"${kind}\"`);
 
-    const result = await client.callTool({
+    const result = asCallResult(await client.callTool({
       name: "web_project_detect",
       arguments: { projectRoot: resolve("fixtures/vanilla") },
-    });
+    }));
     expect(result.isError).not.toBe(true);
+    expect(structuredData(result)).toMatchObject({ frameworks: ["vanilla"] });
     const text = result.content?.find((item) => item.type === "text");
     expect(text && "text" in text ? text.text : "").toContain('"vanilla"');
 
-    const legacy = await client.callTool({
+    const legacy = asCallResult(await client.callTool({
       name: "web_repro_record",
       arguments: { name: "legacy", url: "http://127.0.0.1:4173/", actions: [], checks: [] },
-    });
+    }));
     expect(legacy.isError).toBe(true);
-    expect(legacy.content?.find((item) => item.type === "text" && item.text.includes("Unrecognized key: \"checks\""))).toBeTruthy();
+    expect(legacy.structuredContent).toBeUndefined();
+    expect(legacy.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.includes("Unrecognized key: \"checks\""))).toBeTruthy();
 
-    const bareWait = await client.callTool({
+    const bareWait = asCallResult(await client.callTool({
       name: "web_browser_action",
       arguments: { sessionId: "00000000-0000-0000-0000-000000000000", action: { kind: "wait", timeoutMs: 10 } },
-    });
+    }));
     expect(bareWait.isError).toBe(true);
-    expect(bareWait.content?.find((item) => item.type === "text" && item.text.includes("Invalid arguments"))).toBeTruthy();
+    expect(bareWait.structuredContent).toBeUndefined();
+    expect(bareWait.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.includes("Invalid arguments"))).toBeTruthy();
 
     await client.close();
     await server.close();
@@ -159,10 +169,18 @@ describe("MCP server contract", () => {
     const client = new Client({ name: "mcp-scenario-client", version: "0.1.0" });
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
-    const startResult = await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/" } });
-    const session = JSON.parse(startResult.content?.find((item) => item.type === "text")?.text ?? "{}");
+    const oversizedStart = asCallResult(await client.callTool({
+      name: "web_session_start",
+      arguments: { projectRoot: resolve("fixtures/vanilla"), url: `http://127.0.0.1:4173/?q=${"x".repeat(3_000)}` },
+    }));
+    expect(oversizedStart.isError).toBe(true);
+    expect(manager.list()).toEqual([]);
+
+    const startResult = asCallResult(await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/" } }));
+    const session = structuredData(startResult) as { id: string };
     const secret = "mcp-secret-value";
-    const recordResult = await client.callTool({
+    const recordProgress: Array<{ progress: number; total?: number; message?: string }> = [];
+    const recordResult = asCallResult(await client.callTool({
       name: "web_repro_record",
       arguments: {
         sessionId: session.id,
@@ -173,27 +191,39 @@ describe("MCP server contract", () => {
         acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
         buildReference: { source: "caller", value: "build-before" },
       },
-    });
+    }, undefined, { onprogress: (event) => { recordProgress.push(event); } }));
     expect(recordResult.isError).not.toBe(true);
-    const scenario = JSON.parse(recordResult.content?.find((item) => item.type === "text")?.text ?? "{}");
+    const scenario = structuredData(recordResult) as Record<string, any>;
+    expect(scenario.schemaVersion).toBe(4);
     expect(scenario.baseline.status).toBe("reproduced");
     expect(scenario.url).toBe("http://127.0.0.1:4173/");
     expect(scenario).not.toHaveProperty("riskSignals");
     expect(scenario).not.toHaveProperty("representativeEvidence");
     expect(JSON.stringify(scenario)).not.toContain(secret);
+    expect(recordProgress.map((event) => event.progress)).toEqual([0, 1, 2, 11]);
+    expect(recordProgress.every((event) => event.total === 11)).toBe(true);
 
-    const verifyResult = await client.callTool({ name: "web_fix_verify", arguments: { sessionId: session.id, scenarioId: scenario.id, buildReference: { source: "caller", value: "build-after" } } });
+    const verifyProgress: Array<{ progress: number; total?: number; message?: string }> = [];
+    const verifyResult = asCallResult(await client.callTool(
+      { name: "web_fix_verify", arguments: { sessionId: session.id, scenarioId: scenario.id, buildReference: { source: "caller", value: "build-after" } } },
+      undefined,
+      { onprogress: (event) => { verifyProgress.push(event); } },
+    ));
     expect(verifyResult.isError).not.toBe(true);
-    const verification = JSON.parse(verifyResult.content?.find((item) => item.type === "text")?.text ?? "{}");
+    const verification = structuredData(verifyResult) as Record<string, any>;
+    expect(verification.schemaVersion).toBe(4);
     expect(verification.outcome).toBe("verified");
     expect(verification.level).toBe("quick");
     expect(verification).not.toHaveProperty("passed");
     expect(verification).not.toHaveProperty("effectiveLevel");
     expect(verification).not.toHaveProperty("representativeEvidence");
     expect(verification).not.toHaveProperty("escalationReasons");
+    expect(verification).not.toHaveProperty("terminationReason");
+    expect((verification.scenario as Record<string, unknown>).baseline).not.toHaveProperty("terminationReason");
     expect(JSON.stringify(verification)).not.toContain(secret);
+    expect(verifyProgress.map((event) => event.progress)).toEqual([0, 1, 2, 11]);
 
-    const legacyBuildReference = await client.callTool({
+    const legacyBuildReference = asCallResult(await client.callTool({
       name: "web_repro_record",
       arguments: {
         sessionId: session.id,
@@ -204,7 +234,7 @@ describe("MCP server contract", () => {
         acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }],
         buildReference: "legacy-build",
       },
-    });
+    }));
     expect(legacyBuildReference.isError).toBe(true);
 
     adapter.hangActions = true;
@@ -230,3 +260,20 @@ describe("MCP server contract", () => {
     await server.close();
   });
 });
+
+interface McpCallResult {
+  isError?: boolean;
+  content: Array<{ type: string; text?: string }>;
+  structuredContent?: Record<string, unknown>;
+}
+
+function asCallResult(result: unknown): McpCallResult {
+  if (!result || typeof result !== "object" || !Array.isArray((result as { content?: unknown }).content)) throw new Error("Expected an immediate MCP tool result.");
+  return result as McpCallResult;
+}
+
+function structuredData(result: unknown): unknown {
+  const callResult = asCallResult(result);
+  expect(callResult.structuredContent).toMatchObject({ ok: true, artifacts: expect.any(Array), warnings: expect.any(Array) });
+  return callResult.structuredContent?.data;
+}

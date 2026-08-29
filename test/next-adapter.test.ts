@@ -146,10 +146,10 @@ describe("Next MCP adapter", () => {
   });
 });
 
-function stubNextFetch(logFilePath = "/fixture/next/.next/dev/logs/next-development.log", requestInsights = { error: "Request Insights is not enabled." }) {
-  const calls = [];
-  vi.stubGlobal("fetch", vi.fn(async (_input, init) => {
-    const request = JSON.parse(init.body);
+function stubNextFetch(logFilePath: string = "/fixture/next/.next/dev/logs/next-development.log", requestInsights: unknown = { error: "Request Insights is not enabled." }): string[] {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+    const request = JSON.parse(String(init?.body ?? "{}")) as { method: string; id: number; params: { name: string } };
     calls.push(request.method === "tools/list" ? "tools/list" : request.params.name);
     const body = request.method === "tools/list"
       ? { result: { tools: ["get_project_metadata", "get_errors", "get_routes", "get_logs", "get_server_action_by_id", "get_compilation_issues", "get_page_metadata", "get_request_insights", "compile_route"].map((name) => ({ name })) } }
@@ -162,8 +162,8 @@ function stubNextFetch(logFilePath = "/fixture/next/.next/dev/logs/next-developm
   return calls;
 }
 
-function toolText(name, logFilePath, requestInsights) {
-  const values = {
+function toolText(name: string, logFilePath: string, requestInsights: unknown): string {
+  const values: Record<string, unknown> = {
     get_project_metadata: { projectPath: "/fixture/next", devServerUrl: "http://127.0.0.1:4175" },
     get_errors: { error: "No browser sessions connected." },
     get_routes: { appRouter: ["/", "/api/health"] },

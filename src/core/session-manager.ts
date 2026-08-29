@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 
 import { ChromiumAdapter } from "../adapters/chromium.js";
 import type { BrowserAdapter, BrowserAdapterFactory, BrowserStartOptions } from "../adapters/browser.js";
@@ -65,6 +65,7 @@ import {
   MAX_MATRIX_EXECUTION_UNITS_PER_PHASE,
   MAX_EVIDENCE_BUNDLE_BYTES,
   MAX_RESULT_BYTES as DOMAIN_MAX_RESULT_BYTES,
+  BROWSER_PRESS_KEYS,
 } from "../domain/types.js";
 import { detectProject } from "./capabilities.js";
 import { WebDebugError, errorMessage } from "./errors.js";
@@ -72,6 +73,7 @@ import { composeEvidence } from "./evidence.js";
 import { boundText, redactText, redactValue, safeUrl } from "./redaction.js";
 import { loadAuthStorageState } from "./auth-state.js";
 import { observationDigest } from "./aggregation.js";
+import { enforceSessionArtifactPolicy } from "./artifact-store.js";
 
 export interface StartSessionInput {
   projectRoot: string;
@@ -165,6 +167,7 @@ interface PhaseResult {
 }
 
 const MAX_SESSIONS = 8;
+const MAX_CLOSED_SESSION_TOMBSTONES = 32;
 const MAX_SCENARIOS_PER_SESSION = 10;
 const MAX_ATTEMPTS_PER_PHASE = 5;
 const MAX_REPLAY_FRAMES = 8;
@@ -173,9 +176,11 @@ const MAX_RESULT_BYTES = DOMAIN_MAX_RESULT_BYTES;
 const CLEANUP_TIMEOUT_MS = 5_000;
 const OPTIONAL_ENRICHMENT_BUDGET_MS = 2_000;
 const OPTIONAL_ENRICHMENT_CLEANUP_MS = 250;
+const ARTIFACT_DELETE_TIMEOUT_MS = 2_000;
 
 export class SessionManager {
   private readonly sessions = new Map<string, ManagedSession>();
+  private readonly closedSessions = new Map<string, DebugSessionSummary>();
   private readonly now: () => number;
   private readonly timestamp: () => string;
   private readonly cleanupTimeoutMs: number;
@@ -232,6 +237,7 @@ export class SessionManager {
       warnings: [...descriptor.warnings],
       tls,
       authFixture: authState ? "seeded-disposable" : "none",
+      artifactState: "retained",
     };
     const managed: ManagedSession = {
       descriptor,
@@ -286,14 +292,21 @@ export class SessionManager {
   }
 
   list(): DebugSessionSummary[] { return [...this.sessions.values()].map((session) => cloneSummary(session.summary, sessionSecrets(session))); }
-  status(sessionId: string): DebugSessionSummary { const session = this.requireSession(sessionId); return cloneSummary(session.summary, sessionSecrets(session)); }
+  status(sessionId: string): DebugSessionSummary {
+    const session = this.sessions.get(sessionId);
+    if (session) return cloneSummary(session.summary, sessionSecrets(session));
+    const closed = this.closedSessions.get(sessionId);
+    if (closed) return cloneSummary(closed);
+    throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
+  }
 
   async act(sessionId: string, action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     const session = this.requireSession(sessionId);
     try {
       return await this.withLease(session, context, (operation) => this.actInternal(session, action, operation, true));
     } catch (error) {
-      throw sanitizeError(error, action.kind === "fill" ? [action.value] : sessionSecrets(session));
+      const secret = actionSecret(action);
+      throw sanitizeError(error, secret ? [secret] : sessionSecrets(session));
     }
   }
 
@@ -311,7 +324,10 @@ export class SessionManager {
     if (session.unusable) throw new WebDebugError("SESSION_UNUSABLE", `Debug session is unusable after an unsettled adapter operation: ${session.summary.id}`);
     if (!session.nextAdapter) throw new WebDebugError("NEXT_UNAVAILABLE", "The selected project does not expose a Next.js runtime adapter.");
     try {
-      return await this.callAdapter(() => session.nextAdapter!.inspect(session.summary.url, inspection), context);
+      return await this.withLease(session, context, (operation) => this.callAdapter(
+        () => session.nextAdapter!.inspect(session.summary.url, inspection, operation),
+        operation,
+      ));
     } catch (error) {
       throw sanitizeError(error, sessionSecrets(session));
     }
@@ -369,7 +385,7 @@ export class SessionManager {
       const risks = mergeRisks(input.risks);
       const requestedLevel = effectiveRequestedLevel(input.requestedLevel, risks);
       const scenario = createPrivateScenario({
-        schemaVersion: 3,
+        schemaVersion: 4,
         id: randomUUID(),
         sessionId: input.sessionId,
         name: input.name.trim(),
@@ -403,7 +419,6 @@ export class SessionManager {
         warnings: baseline.warnings,
         ...(baseline.viewportConsensus ? { viewportConsensus: baseline.viewportConsensus } : {}),
         termination: baseline.termination,
-        terminationReason: baseline.termination,
       };
       if (operation.signal?.aborted || session.closing) return publicScenario(scenario);
       session.scenarios.set(scenario.id, scenario);
@@ -441,16 +456,25 @@ export class SessionManager {
     });
   }
 
-  async close(sessionId: string): Promise<DebugSessionSummary> {
+  async close(sessionId: string, artifactPolicy: "retain" | "delete" = "retain"): Promise<DebugSessionSummary> {
     const session = this.sessions.get(sessionId);
-    if (!session) throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
-    if (session.summary.status === "closed") return cloneSummary(session.summary);
+    if (!session) {
+      const closed = this.closedSessions.get(sessionId);
+      if (!closed) throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
+      if (artifactPolicy === "delete" && closed.artifactState !== "deleted") {
+        const updated = cloneSummary(closed);
+        await this.deleteSessionArtifacts(updated);
+        this.closedSessions.set(sessionId, updated);
+        return cloneSummary(updated);
+      }
+      return cloneSummary(closed);
+    }
     if (session.closePromise) return session.closePromise;
-    session.closePromise = this.closeInternal(session);
+    session.closePromise = this.closeInternal(session, artifactPolicy);
     return session.closePromise;
   }
 
-  private async closeInternal(session: ManagedSession): Promise<DebugSessionSummary> {
+  private async closeInternal(session: ManagedSession, artifactPolicy: "retain" | "delete"): Promise<DebugSessionSummary> {
     if (session.closing) return cloneSummary(session.summary);
     session.closing = true;
     const cleanupStarted = Date.now();
@@ -476,11 +500,23 @@ export class SessionManager {
     session.summary.url = safeSummary.url;
     session.summary.warnings = safeSummary.warnings;
     session.summary.target = safeSummary.target;
+    session.startOptions.authState = undefined;
+    session.startOptions.url = "";
+    session.startOptions.cdpEndpoint = undefined;
+    session.startOptions.webdriverEndpoint = undefined;
+    session.startOptions.executablePath = undefined;
+    session.startOptions.targetId = undefined;
+    session.selectedTargetId = null;
     session.redactionSecrets.clear();
-    return safeSummary;
+    const tombstone = closedSessionSummary(safeSummary);
+    if (artifactPolicy === "delete") await this.deleteSessionArtifacts(tombstone);
+    else await this.deleteEmptySessionArtifacts(tombstone);
+    this.sessions.delete(session.summary.id);
+    this.rememberClosed(tombstone);
+    return cloneSummary(tombstone);
   }
 
-  async closeAll(): Promise<void> { await Promise.all([...this.sessions.values()].map((session) => this.close(session.summary.id).catch(() => undefined))); }
+  async closeAll(artifactPolicy: "retain" | "delete" = "retain"): Promise<void> { await Promise.all([...this.sessions.values()].map((session) => this.close(session.summary.id, artifactPolicy).catch(() => undefined))); }
 
   private async runBaselinePhase(session: ManagedSession, scenario: PrivateReproScenario, context: OperationContext): Promise<PhaseResult> {
     const level = scenario.requestedLevel;
@@ -499,8 +535,11 @@ export class SessionManager {
     while (attempts.length < MAX_ATTEMPTS_PER_PHASE) {
       const profile = profileFor(effectiveLevel);
       if (attempts.length >= profile.maxAttempts || remaining(phaseContext) <= 0) { termination = remaining(phaseContext) <= 0 ? "budget-exhausted" : "attempt-ceiling"; break; }
-      const attempt = await this.runAttempt(session, scenario, "baseline", attempts.length + 1, phaseContext);
+      const ordinal = attempts.length + 1;
+      await reportScenarioProgress(phaseContext, { phase: "baseline", event: "attempt-start", level: effectiveLevel, ordinal });
+      const attempt = await this.runAttempt(session, scenario, "baseline", ordinal, phaseContext);
       attempts.push(attempt.summary);
+      await reportScenarioProgress(phaseContext, { phase: "baseline", event: "attempt-end", level: effectiveLevel, ordinal, termination: attempt.summary.termination });
       if (attempt.evidence && (!evidence || attempt.match === true)) evidence = attempt.evidence;
       if (attempt.match !== undefined) { decisiveCount += 1; if (attempt.match) matchCount += 1; }
       if (attempt.match === true && !evidence && scenario.viewports.length === 1) {
@@ -564,8 +603,11 @@ export class SessionManager {
     let flaky = false;
     let termination = remaining(phaseContext) <= 0 ? "budget-exhausted" : "attempt-ceiling";
     while (attempts.length < profileFor(effectiveLevel).maxAttempts && remaining(phaseContext) > 0) {
-      const attempt = await this.runAttempt(session, scenario, "post-fix", attempts.length + 1, phaseContext);
+      const ordinal = attempts.length + 1;
+      await reportScenarioProgress(phaseContext, { phase: "post-fix", event: "attempt-start", level: effectiveLevel, ordinal });
+      const attempt = await this.runAttempt(session, scenario, "post-fix", ordinal, phaseContext);
       attempts.push(attempt.summary);
+      await reportScenarioProgress(phaseContext, { phase: "post-fix", event: "attempt-end", level: effectiveLevel, ordinal, termination: attempt.summary.termination });
       if (attempt.evidence && (!evidence || attempt.passed === false)) evidence = attempt.evidence;
       if (attempt.summary.conflict) flaky = true;
       if (attempt.passed === true) {
@@ -812,13 +854,16 @@ export class SessionManager {
         const preferredViewport = phase === "baseline" ? scenario.failureViewports?.[0] ?? viewports[0]?.name : viewports[0]?.name;
         const shouldCaptureRepresentative = decisive && (representativeEvidence === null || viewport.name === preferredViewport && representativeViewportName !== preferredViewport);
         if (shouldCaptureRepresentative) {
+          const suppressInputScreenshot = actionSecrets(scenario.privateActions).length > 0;
           const fullBrowser = await this.callAdapter(() => candidate.snapshot({
             artifactDir: session.summary.artifactDir,
-            captureScreenshot: session.authFixture !== "seeded-disposable",
+            captureScreenshot: session.authFixture !== "seeded-disposable" && !suppressInputScreenshot,
             checksOnly: false,
             accessibility: true,
-            suppressScreenshot: session.authFixture === "seeded-disposable",
+            suppressScreenshot: session.authFixture === "seeded-disposable" || suppressInputScreenshot,
           }, { ...context, attemptId }), context);
+          await this.applySessionArtifactPolicy(session, fullBrowser, session.authFixture === "seeded-disposable" || suppressInputScreenshot);
+          if (suppressInputScreenshot && session.authFixture !== "seeded-disposable") fullBrowser.warnings.push("Screenshot suppressed because the scenario contains private fill/select input values; pixels are not claimed redacted.");
           const authoritative = phase === "baseline"
             ? await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(candidate, entry, fullBrowser, { ...context, attemptId }, entry.expected)))
             : await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature.map((entry) => ({ ...entry }))].map((check) => evaluateCheckLive(candidate, check, fullBrowser, { ...context, attemptId }, "expected" in check ? check.expected as CheckExpectation : undefined)));
@@ -975,7 +1020,11 @@ export class SessionManager {
   }
 
   private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean): Promise<EvidenceBundle> {
-    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: session.authFixture === "seeded-disposable" ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot: session.authFixture === "seeded-disposable" }, context), context);
+    const suppressInputScreenshot = sessionSecrets(session).length > 0;
+    const suppressScreenshot = session.authFixture === "seeded-disposable" || suppressInputScreenshot;
+    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot }, context), context);
+    await this.applySessionArtifactPolicy(session, browser, suppressScreenshot);
+    if (captureScreenshot && suppressInputScreenshot && session.authFixture !== "seeded-disposable") browser.warnings.push("Screenshot suppressed because the session contains private fill/select input values; pixels are not claimed redacted.");
     let next = null;
     if (session.nextAdapter) {
       const optional = optionalContext(context);
@@ -1015,9 +1064,17 @@ export class SessionManager {
     return boundEvidence(evidence);
   }
 
+  private async applySessionArtifactPolicy(session: ManagedSession, browser: BrowserSnapshot, suppressScreenshot: boolean): Promise<void> {
+    if (!browser.screenshotPath) return;
+    const artifactPolicy = await enforceSessionArtifactPolicy(session.summary.artifactDir, browser.screenshotPath, !suppressScreenshot);
+    browser.screenshotPath = suppressScreenshot ? null : artifactPolicy.screenshotPath;
+    browser.warnings.push(...artifactPolicy.warnings);
+  }
+
   private async actInternal(session: ManagedSession, action: BrowserAction, context: OperationContext, recordReplay: boolean): Promise<ActionResult> {
     validateAction(action);
-    if (action.kind === "fill" && action.value.length > 0) session.redactionSecrets.add(action.value);
+    const secret = actionSecret(action);
+    if (secret) session.redactionSecrets.add(secret);
     if (action.kind === "navigate") {
       assertAllowedTargetUrl(action.url, session.summary.target?.remote ?? false);
       assertScenarioOrigin(session, action.url);
@@ -1031,13 +1088,19 @@ export class SessionManager {
   }
 
   private async restoreReplayFrame(session: ManagedSession, targetFrame: ReplayFrame, context: OperationContext): Promise<void> {
-    if (session.redactionSecrets.size > 0) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This session includes a sanitized fill action; restore it by rerunning the original scenario with its input supplied explicitly.");
+    if (session.redactionSecrets.size > 0) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This session includes a sanitized input action; restore it by rerunning the original scenario with its input supplied explicitly.");
     if (targetFrame.attemptId) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "Verification replay retains a capture-only frame; restore it by rerunning the original scenario.");
     const actions = session.replayFrames.filter((frame) => frame.index <= targetFrame.index && frame.action).map((frame) => frame.action as BrowserAction);
-    if (actions.some((action) => action.kind === "fill")) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This replay includes a sanitized fill action; restore it by rerunning the original scenario with its input supplied explicitly.");
+    if (actions.some(isSensitiveInputAction)) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This replay includes a sanitized input action; restore it by rerunning the original scenario with its input supplied explicitly.");
     if (actions.some((action) => action.kind === "navigate" && action.url.includes("[REDACTED"))) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This replay includes a redacted navigation URL and cannot be restored safely.");
     const firstAction = actions[0];
-    if (!firstAction || firstAction.kind !== "navigate") await this.actInternal(session, { kind: "navigate", url: targetFrame.url }, context, false);
+    if (!firstAction || firstAction.kind !== "navigate") {
+      const oldestFrame = session.replayFrames[0];
+      if (session.replayTruncated || !oldestFrame || oldestFrame.index !== 0) {
+        throw new WebDebugError("REPLAY_START_UNAVAILABLE", "The retained replay no longer includes a trustworthy session-start boundary.");
+      }
+      await this.actInternal(session, { kind: "navigate", url: session.startOptions.url }, context, false);
+    }
     for (const action of actions) await this.actInternal(session, action, context, false);
   }
 
@@ -1080,10 +1143,19 @@ export class SessionManager {
       clock: this.now,
       abort: () => controller.abort(),
       pending,
+      progress: context.progress,
     };
     const promise = Promise.resolve().then(() => operation(operationContext));
     session.lease = { controller, promise };
     try { return await promise; }
+    catch (error) {
+      if (error instanceof WebDebugError && error.code === "NAVIGATION_ORIGIN_BLOCKED") {
+        session.unusable = true;
+        session.summary.status = "failed";
+        session.summary.warnings = mergeWarnings(session.summary.warnings, ["The selected browser left its top-level origin boundary; the session is unusable."]);
+      }
+      throw error;
+    }
     finally {
       context.signal?.removeEventListener("abort", onAbort);
       const interrupted = operationContext.signal?.aborted === true;
@@ -1158,7 +1230,7 @@ export class SessionManager {
     const emptyRate = emptyRateSummary();
     const evidence = { baseline: scenario.baseline.evidence, postFix: null };
     return boundVerificationResult(scrubVerificationResult({
-      schemaVersion: 3,
+      schemaVersion: 4,
       outcome: "inconclusive",
       level: scenario.baseline.level,
       requestedLevel: scenario.requestedLevel,
@@ -1178,7 +1250,6 @@ export class SessionManager {
       persistence: "in-memory",
       warnings: mergeWarnings([...this.requireSession(scenario.sessionId).summary.warnings, ...scenario.baseline.warnings], [warning]),
       termination,
-      terminationReason: termination,
       truncation: { result: false, attempts: false, evidence: false, warnings: false },
     }, scenario.privateActions));
   }
@@ -1186,7 +1257,7 @@ export class SessionManager {
   private createVerificationResult(scenario: PrivateReproScenario, fingerprint: EnvironmentFingerprint, buildReference: BuildReference, postFix: PhaseResult, outcome: VerificationOutcome, flaky: boolean, level: VerificationLevel): VerificationResult {
     const evidence = { baseline: scenario.baseline.evidence, postFix: postFix.evidence };
     return {
-      schemaVersion: 3,
+      schemaVersion: 4,
       outcome,
       level,
       requestedLevel: scenario.requestedLevel,
@@ -1206,26 +1277,65 @@ export class SessionManager {
       persistence: "in-memory",
       warnings: mergeWarnings([...this.requireSession(scenario.sessionId).summary.warnings, ...scenario.baseline.warnings], postFix.warnings),
       termination: postFix.termination,
-      terminationReason: postFix.termination,
       truncation: { result: false, attempts: false, evidence: false, warnings: false },
     };
   }
 
   private requireSession(sessionId: string): ManagedSession {
     const session = this.sessions.get(sessionId);
-    if (!session) throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
-    if (session.summary.status === "closed") throw new WebDebugError("SESSION_CLOSED", `Debug session is closed: ${sessionId}`);
+    if (!session) {
+      if (this.closedSessions.has(sessionId)) throw new WebDebugError("SESSION_CLOSED", `Debug session is closed: ${sessionId}`);
+      throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
+    }
     return session;
   }
   private async closeAdapterBounded(adapter: BrowserAdapter, timeoutMs: number): Promise<boolean> {
     return waitForCleanup(Promise.resolve().then(() => adapter.close()), timeoutMs);
   }
   private activeSessionCount(): number { return [...this.sessions.values()].filter(({ summary }) => summary.status !== "closed").length; }
+  private rememberClosed(summary: DebugSessionSummary): void {
+    this.closedSessions.delete(summary.id);
+    this.closedSessions.set(summary.id, cloneSummary(summary));
+    while (this.closedSessions.size > MAX_CLOSED_SESSION_TOMBSTONES) {
+      const oldest = this.closedSessions.keys().next().value as string | undefined;
+      if (!oldest) break;
+      this.closedSessions.delete(oldest);
+    }
+  }
+  private async deleteSessionArtifacts(summary: DebugSessionSummary): Promise<void> {
+    const expectedPrefix = join(tmpdir(), "web-debug-mcp-");
+    if (!summary.artifactDir.startsWith(expectedPrefix)) {
+      summary.warnings = mergeWarnings(summary.warnings, ["Artifact deletion was refused because the session path was outside the owned temporary prefix."]);
+      return;
+    }
+    let deletionError: unknown;
+    const deletion = rm(summary.artifactDir, { recursive: true, force: true }).catch((error) => { deletionError = error; });
+    const completed = await waitForCleanup(deletion, ARTIFACT_DELETE_TIMEOUT_MS);
+    if (!completed) {
+      summary.warnings = mergeWarnings(summary.warnings, ["Session artifact deletion exceeded its two-second bound; the exact cleanup may finish later."]);
+      return;
+    }
+    if (deletionError === undefined) {
+      summary.artifactState = "deleted";
+      summary.warnings = mergeWarnings(summary.warnings, ["The exact session artifact directory was deleted when the session closed."]);
+    } else {
+      summary.warnings = mergeWarnings(summary.warnings, [`Session artifact deletion failed: ${boundText(errorMessage(deletionError), 500)}`]);
+    }
+  }
+  private async deleteEmptySessionArtifacts(summary: DebugSessionSummary): Promise<void> {
+    try {
+      const entries = await readdir(summary.artifactDir);
+      if (entries.length === 0) await this.deleteSessionArtifacts(summary);
+    } catch {
+      // A missing directory is already clean; a non-readable retained
+      // directory remains visible through the tombstone for explicit review.
+    }
+  }
 }
 
 function createPrivateScenario(input: Omit<PrivateReproScenario, "actions" | "baseline" | "persistence" | "privateUrl"> & { privateActions: BrowserAction[]; serverStateReset?: ServerStateResetContract }): PrivateReproScenario {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: input.id,
     sessionId: input.sessionId,
     name: input.name,
@@ -1323,9 +1433,8 @@ function normalizeViewports(viewports?: ViewportContract[], fallback?: ViewportS
   if (viewports.length > MAX_VIEWPORTS) throw new WebDebugError("VIEWPORT_LIMIT", `At most ${MAX_VIEWPORTS} viewports are allowed.`);
   const names = new Set<string>();
   return viewports.map((raw) => {
-    const candidate = raw as ViewportContract & { size?: ViewportSize; viewport?: ViewportSize };
-    const width = candidate.width ?? candidate.size?.width ?? candidate.viewport?.width;
-    const height = candidate.height ?? candidate.size?.height ?? candidate.viewport?.height;
+    const width = raw.width;
+    const height = raw.height;
     if (!raw || typeof raw.name !== "string" || raw.name.length === 0 || raw.name.length > MAX_VIEWPORT_NAME_CHARS || names.has(raw.name) || !Number.isInteger(width) || !Number.isInteger(height) || width < 320 || width > 3_840 || height < 240 || height > 2_160) throw new WebDebugError("VIEWPORT_INVALID", "Viewport names and dimensions must be unique and bounded.");
     names.add(raw.name);
     return { name: raw.name, width, height };
@@ -1357,8 +1466,11 @@ function validateScenarioInput(input: RecordScenarioInput): void {
 }
 function validateAction(action: BrowserAction): void {
   const normalized = normalizeAction(action);
-  if (normalized.kind === "click" || normalized.kind === "fill" || normalized.kind === "wait") validateLocatorCore(normalized.locator);
+  if ("locator" in normalized) validateLocatorCore(normalized.locator);
   if (normalized.kind === "wait" && (!normalized.locator || !normalized.property || normalized.expected === undefined)) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a locator, property, and expected value.");
+  if (normalized.kind === "fill" && (typeof normalized.value !== "string" || normalized.value.length > 10_000)) throw new WebDebugError("FILL_VALUE_INVALID", "Fill values are limited to 10,000 characters.");
+  if (normalized.kind === "select" && (!normalized.value || normalized.value.length > MAX_LOCATOR_CHARS)) throw new WebDebugError("SELECT_VALUE_INVALID", `Select values are limited to ${MAX_LOCATOR_CHARS} characters.`);
+  if (normalized.kind === "press" && !BROWSER_PRESS_KEYS.includes(normalized.key)) throw new WebDebugError("PRESS_KEY_INVALID", "The key is outside the bounded browser press allowlist.");
 }
 function validateCheck(check: ScenarioCheck): void {
   const normalized = normalizeCheck(check);
@@ -1375,10 +1487,12 @@ function validateLocatorCore(locator: BrowserLocator): void {
   if (locator.kind === "role" && locator.name !== undefined && (typeof locator.name !== "string" || locator.name.length > MAX_ACCESSIBLE_NAME_CHARS)) throw new WebDebugError("LOCATOR_INVALID", `Accessible names are limited to ${MAX_ACCESSIBLE_NAME_CHARS} characters.`);
 }
 function assertScenarioOrigin(session: ManagedSession, url: string): void {
+  if (url.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "Scenario URLs are limited to 2,048 characters.");
   try { if (new URL(url).origin !== new URL(session.summary.url).origin) throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Scenario URL must stay on the session origin."); }
   catch (error) { if (error instanceof WebDebugError) throw error; throw new WebDebugError("URL_INVALID", "Scenario URL is invalid."); }
 }
 function assertAllowedTargetUrl(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "Browser URLs are limited to 2,048 characters.");
   let parsed: URL;
   try { parsed = new URL(raw); } catch { throw new WebDebugError("URL_INVALID", "Browser URL is invalid."); }
   if (!['http:', 'https:'].includes(parsed.protocol)) throw new WebDebugError("URL_PROTOCOL_BLOCKED", "Only http and https browser targets are supported.");
@@ -1448,7 +1562,7 @@ function isCancellationError(error: unknown, context: OperationContext): boolean
 
 function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset"> & { checkpoints?: ScenarioCheckpoint[]; viewports?: ViewportContract[]; failureViewports?: string[]; tls: "strict" | "allow-insecure-loopback"; authFixture: "seeded-disposable" | "none" }): string {
   const canonical = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     url: canonicalUrl(input.url),
     actions: input.actions.map((action) => sanitizeReplayAction(action)),
     failureSignature: cloneSignature(input.failureSignature),
@@ -1513,6 +1627,7 @@ function boundedContext(context: OperationContext, deadline: number): OperationC
     clock: context.clock,
     abort: context.abort,
     pending: context.pending,
+    progress: context.progress,
   };
 }
 function optionalContext(parent: OperationContext): { context: OperationContext; pending: Set<Promise<void>>; dispose: () => void } {
@@ -1535,6 +1650,9 @@ function optionalContext(parent: OperationContext): { context: OperationContext;
   };
 }
 function throwIfCancelled(context: OperationContext): void { if (context.signal?.aborted) throw new WebDebugError("REQUEST_CANCELLED", "The request was cancelled."); if (context.deadline !== undefined && context.deadline <= (context.clock?.() ?? performance.now())) throw new WebDebugError("VERIFICATION_DEADLINE_EXCEEDED", "The bounded operation deadline was exhausted."); }
+async function reportScenarioProgress(context: OperationContext, event: Parameters<NonNullable<OperationContext["progress"]>>[0]): Promise<void> {
+  await context.progress?.(event).catch(() => undefined);
+}
 function phaseResult(level: VerificationLevel, status: BaselineStatus | undefined, attempts: AttemptSummary[], evidence: EvidenceBundle | null, observedRate: RateSummary, warnings: string[], termination: string, flaky: boolean): PhaseResult {
   const viewportConsensus = deriveViewportConsensus(attempts);
   return { level, ...(status ? { status } : {}), attempts: attempts.slice(0, MAX_ATTEMPTS_PER_PHASE), evidence: evidence, observedRate, warnings: warnings.slice(0, 20), termination, flaky, ...(viewportConsensus ? { viewportConsensus } : {}) };
@@ -1563,9 +1681,9 @@ function cloneChecks(checks: ScenarioCheck[]): ScenarioCheck[] { return checks.m
 function cloneSignature(signature: FailureSignatureEntry[]): FailureSignatureEntry[] { return signature.map((entry) => ({ ...entry })); }
 function sanitizeReplayAction(action: BrowserAction | null): BrowserAction | null {
   if (!action) return null;
-  if (action.kind === "fill") {
+  if (isSensitiveInputAction(action)) {
     const marker = "[REDACTED_REPLAY_INPUT]";
-    return { ...action, value: marker.includes(action.value) ? redactionMarker(action.value, [action.value]) : marker };
+    return { ...action, value: marker.includes(action.value) ? redactionMarker(action.value, [action.value]) : marker } as BrowserAction;
   }
   if (action.kind === "navigate") return { ...action, url: safeUrl(action.url) };
   return { ...action };
@@ -1576,7 +1694,12 @@ function resetReplayForAttempt(session: ManagedSession): void {
 }
 function resetFacts(target: BrowserTarget | null, first: boolean, forcedMode?: AttemptSummary["reset"]["mode"]): AttemptSummary["reset"] { const mode = forcedMode ?? (target?.browser === "safari" ? "webdriver-target" : target?.isolated ? "fresh-launch" : target ? "attached-target" : "none"); const isolated = target?.isolated ?? false; return { mode, isolated, browserProfile: isolated ? "fresh" : first ? "unavailable" : "retained", storage: isolated ? "fresh" : "unavailable", cache: isolated ? "fresh" : "unavailable", serviceWorkers: isolated ? "fresh" : "unavailable", serverState: "not-reset" }; }
 function isolationResult(target: BrowserTarget | null, reset: "fresh" | "retained" | "insufficient") { const isolation = target?.isolation ?? { browserProcess: Boolean(target?.isolated), context: Boolean(target?.isolated), profile: Boolean(target?.isolated), storage: Boolean(target?.isolated), cache: Boolean(target?.isolated), serviceWorkers: Boolean(target?.isolated), navigation: Boolean(target?.isolated), serverState: false }; return { ...isolation, reset }; }
-function normalizeTarget(target: BrowserTarget, browser: "chromium" | "safari", options: BrowserStartOptions): BrowserTarget { const mode = target.mode ?? (browser === "safari" ? "webdriver" : options.cdpEndpoint ? "attach" : "launch"); const isolated = target.isolated && mode === "launch"; return { ...target, browser: target.browser ?? browser, url: safeUrl(target.url), title: boundText(target.title, 300), mode, isolated, isolation: target.isolation ?? { browserProcess: isolated, context: isolated, profile: isolated, storage: isolated, cache: isolated, serviceWorkers: isolated, navigation: isolated, serverState: false } }; }
+function normalizeTarget(target: BrowserTarget, browser: "chromium" | "safari", options: BrowserStartOptions): BrowserTarget {
+  if (target.url.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "The final browser target URL exceeded 2,048 characters.");
+  const mode = target.mode ?? (browser === "safari" ? "webdriver" : options.cdpEndpoint ? "attach" : "launch");
+  const isolated = target.isolated && mode === "launch";
+  return { ...target, browser: target.browser ?? browser, url: safeUrl(target.url), title: boundText(target.title, 300), mode, isolated, isolation: target.isolation ?? { browserProcess: isolated, context: isolated, profile: isolated, storage: isolated, cache: isolated, serviceWorkers: isolated, navigation: isolated, serverState: false } };
+}
 function cloneSummary(summary: DebugSessionSummary, secrets: string[] = []): DebugSessionSummary {
   const cloned = cloneJson({ ...summary, warnings: [...summary.warnings], target: summary.target ? { ...summary.target, isolation: summary.target.isolation ? { ...summary.target.isolation } : undefined } : null }) as DebugSessionSummary;
   if (secrets.length === 0) return cloned;
@@ -1599,7 +1722,7 @@ function sanitizeError(error: unknown, secrets: string[] = []): unknown {
 }
 function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
   const bounded = cloneJson(evidence) as EvidenceBundle;
-  let optionalTruncated = false;
+  let optionalTruncated = JSON.stringify(bounded).includes("[TRUNCATED");
   bounded.browser.dom.bodyText = boundText(bounded.browser.dom.bodyText, 4_000);
   bounded.browser.dom.elements = bounded.browser.dom.elements.slice(0, 50);
   bounded.browser.console = bounded.browser.console.slice(0, 100).map((entry) => ({ ...entry, text: boundText(entry.text, 2_000) }));
@@ -1667,12 +1790,12 @@ function pruneRequestInsights(value: unknown): unknown {
   }) };
 }
 function scrubChecks(checks: CheckObservation[], actions: BrowserAction[]): CheckObservation[] {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   if (secrets.length === 0) return checks;
   return checks.map((check) => replaceSecrets(check, secrets) as CheckObservation);
 }
 function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]): EvidenceBundle {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   if (secrets.length === 0) return evidence;
   const sanitized = replaceSecrets(evidence, secrets) as EvidenceBundle;
   const rawScreenshotPath = evidence.browser.screenshotPath;
@@ -1693,14 +1816,14 @@ function sessionActions(session: ManagedSession): BrowserAction[] {
   ];
 }
 function sessionSecrets(session: ManagedSession): string[] {
-  return [...new Set(sessionActions(session).flatMap((action) => action.kind === "fill" && action.value.length > 0 ? [action.value] : []))];
+  return [...new Set(actionSecrets(sessionActions(session)))];
 }
 function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: BrowserAction[]): BrowserSnapshot {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   return secrets.length === 0 ? browser : replaceSecrets(browser, secrets) as BrowserSnapshot;
 }
 function scrubVerificationResult(result: VerificationResult, actions: BrowserAction[]): VerificationResult {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   if (secrets.length === 0) return result;
   const sanitized = cloneJson(result) as VerificationResult;
   sanitized.scenario = scrubPublicScenario(sanitized.scenario, actions);
@@ -1719,7 +1842,7 @@ function scrubVerificationResult(result: VerificationResult, actions: BrowserAct
   return sanitized;
 }
 function scrubPublicScenario(scenario: PublicReproScenario, actions: BrowserAction[]): PublicReproScenario {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   if (secrets.length === 0) return scenario;
   const sanitized = cloneJson(scenario) as PublicReproScenario;
   sanitized.name = scrubText(sanitized.name, secrets);
@@ -1802,7 +1925,6 @@ function boundVerificationResult(result: VerificationResult): VerificationResult
     value.postFix.attempts = [];
     value.outcome = "inconclusive";
     value.termination = "RESULT_LIMIT_EXCEEDED";
-    value.terminationReason = "RESULT_LIMIT_EXCEEDED";
     value.warnings = ["Verification result was deterministically truncated to 256 KiB."];
   }
   return value;
@@ -1839,7 +1961,39 @@ function replayResult(sessionId: string, frame: ReplayFrame, restored: boolean, 
   return cloneJson({ sessionId, frame: safeFrame, restored, availableFrames: session.replayFrames.length, oldestFrameIndex: session.replayFrames[0]?.index ?? frame.index, newestFrameIndex: session.replayFrames.at(-1)?.index ?? frame.index }) as ReplaySeekResult;
 }
 function scrubReplayFrame(frame: ReplayFrame, actions: BrowserAction[]): ReplayFrame {
-  const secrets = actions.filter((action): action is Extract<BrowserAction, { kind: "fill" }> => action.kind === "fill" && action.value.length > 0).map((action) => action.value);
+  const secrets = actionSecrets(actions);
   return secrets.length === 0 ? frame : replaceSecrets(frame, secrets) as ReplayFrame;
 }
+function isSensitiveInputAction(action: BrowserAction): action is Extract<BrowserAction, { kind: "fill" | "select" }> {
+  return action.kind === "fill" || action.kind === "select";
+}
+function actionSecret(action: BrowserAction): string | null {
+  return isSensitiveInputAction(action) && action.value.length > 0 ? action.value : null;
+}
+function actionSecrets(actions: BrowserAction[]): string[] {
+  return actions.flatMap((action) => {
+    const secret = actionSecret(action);
+    return secret ? [secret] : [];
+  });
+}
 function cloneJson<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T; }
+
+function closedSessionSummary(summary: DebugSessionSummary): DebugSessionSummary {
+  let url = summary.url;
+  try {
+    const parsed = new URL(url);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    url = parsed.toString();
+  } catch {
+    url = "[CLOSED]";
+  }
+  return {
+    ...cloneSummary(summary),
+    url,
+    status: "closed",
+    target: null,
+  };
+}

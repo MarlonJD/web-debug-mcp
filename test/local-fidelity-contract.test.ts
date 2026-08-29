@@ -129,7 +129,7 @@ describe("0.3.x local fidelity contracts", () => {
     });
     expect(changedScope.contractHash).not.toBe(scenario.contractHash);
     const verification = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
-    expect(verification.schemaVersion).toBe(3);
+    expect(verification.schemaVersion).toBe(4);
     expect(verification.evidence.postFix?.schemaVersion).toBe(2);
     const evidence = await manager.capture(session.id, false);
     expect(evidence.schemaVersion).toBe(2);

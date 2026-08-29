@@ -13,7 +13,7 @@ project detect → isolated browser session → reproduce → capture evidence
               → record the flow → fix → replay the same flow → verify
 ```
 
-The result is not “more logs.” It is a redacted, bounded evidence bundle with a retained replay timeline, framework context where available, and explicit tri-state checks. Recorded flows first prove a session-bound pre-fix failure signature, then `web_fix_verify` reports `verified`, `failed`, or `inconclusive` with adaptive level, rates, attempt summaries, and representative evidence.
+The result is not “more logs.” It is a redacted, bounded structured MCP result with a retained replay timeline, framework context where available, explicit tri-state checks, and an opaque screenshot resource when capture succeeds. Recorded flows first prove a session-bound pre-fix failure signature, then `web_fix_verify` reports `verified`, `failed`, or `inconclusive` with adaptive level, rates, attempt summaries, progress when requested, and representative evidence.
 
 ## Examples
 
@@ -81,6 +81,6 @@ npm run demo:compare -- --scenario=complex-async-fix --runs=3
 npm run demo:compare -- --scenario=visual-layout-fix --runs=3
 ```
 
-The output reports median/p90 machine timings, evidence coverage, screenshots, buggy reproduction, root-cause evidence, and fixed-flow verification. It does not claim a human diagnosis time or that the MCP is always faster for a trivial DOM change.
+The output reports median/p90 machine timings, evidence coverage, screenshots, buggy reproduction, root-cause evidence, and fixed-flow verification. `npm run eval:catalog` separately emits the three frozen agent prompts, while `npm run eval:grade -- <result.json>` scores a reviewed run record. Neither command claims a human diagnosis time or that the MCP is always faster for a trivial DOM change.
 
 For the raw timing methodology and Sol/Luna QA notes, see [`docs/demos/comparison.md`](demos/comparison.md).

@@ -8,7 +8,7 @@ Durable cross-session and CI regression coverage belongs in the repository's nat
 
 ## Rationale
 
-- Private executable actions may contain form values and exact query strings that public results must redact.
+- Private executable actions may contain fill/select values and exact query strings that public results must redact.
 - Sanitized actions cannot always be replayed, so a public artifact would not be equivalent to the live private scenario.
 - Safe cross-process reuse would require import authority, secret placeholders, schema migration, stable build identity, and recovery semantics.
 - Repository-native runners already own durable test discovery, isolation, CI execution, reporting, and exit codes.

@@ -39,17 +39,22 @@ try {
   leakServer.on("upgrade", (socket) => { leakUpgrades += 1; socket.destroy(); });
   await new Promise((resolve, reject) => { leakServer.once("error", reject); leakServer.listen(leakPort, "127.0.0.1", resolve); });
   server = createHttpsServer(tlsFiles, (request, response) => {
+    if (request.url === "/redirect") {
+      response.writeHead(302, { location: `https://127.0.0.1:${leakPort}/redirected` }).end();
+      return;
+    }
     if (request.url === "/sw.js") {
       response.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
       response.end("self.addEventListener('fetch', () => undefined);");
       return;
     }
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.writeHead(200, { "content-type": "text/html; charset=utf-8", "referrer-policy": "no-referrer" });
     response.end(`<!doctype html><main>
       <h1>DM</h1>
       <p id="role-label">DM</p>
       <p id="selected-count">2</p>
       <button id="review" aria-label="Review Inspector team">Review assignment (2)</button>
+      <button id="popup">Open external popup</button>
       <button id="confirm" aria-label="Confirm Inspector team" disabled>Assign Inspectors</button>
       <output id="confirmation" aria-label="Inspector assignment state">Ready</output>
       <p id="guard">pending</p>
@@ -74,8 +79,8 @@ try {
           document.querySelector('#role-label').textContent = 'Lead Inspector';
           document.querySelector('#confirm').disabled = false;
           document.querySelector('#confirmation').textContent = ${fixed ? "'Healthy'" : "innerWidth < 500 ? 'Mobile bug' : 'Healthy'"};
-          window.open('https://127.0.0.1:${leakPort}/popup', '_blank');
         });
+        document.querySelector('#popup').addEventListener('click', () => window.open('https://127.0.0.1:${leakPort}/popup', '_blank', 'noopener'));
       </script>
     </main>`);
   });
@@ -84,6 +89,17 @@ try {
   manager = new SessionManager();
   let strictRejected = false;
   try { await manager.start({ projectRoot: root, url, executablePath: browserPath, headless: true }); } catch { strictRejected = true; }
+  let redirectRejected = false;
+  try {
+    await manager.start({ projectRoot: root, url: `${url}redirect`, executablePath: browserPath, headless: true, tls: "allow-insecure-loopback" });
+  } catch (error) {
+    redirectRejected = error?.code === "NAVIGATION_ORIGIN_BLOCKED" || error?.code === "APPROVED_ORIGIN_BLOCKED";
+  }
+  const popupSession = await manager.start({ projectRoot: root, url, executablePath: browserPath, headless: true, tls: "allow-insecure-loopback" });
+  let popupRejected = false;
+  try { await manager.act(popupSession.id, { kind: "click", locator: { kind: "css", value: "#popup" } }); }
+  catch (error) { popupRejected = error?.code === "NAVIGATION_ORIGIN_BLOCKED"; }
+  await manager.close(popupSession.id, "delete");
   const session = await manager.start({ projectRoot: root, url, executablePath: browserPath, headless: true, tls: "allow-insecure-loopback", authFixture: { kind: "playwrightStorageState", path: authPath } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "#guard" }, property: "text", expected: "blocked:blocked", timeoutMs: 5_000 });
   const serviceWorkerCount = await manager.evaluate(session.id, "navigator.serviceWorker.getRegistrations().then((items) => items.length)", true);
@@ -127,12 +143,13 @@ try {
   const implicitStatus = axNodes.some((node) => node.role === "status" && node.role !== "region");
   const originGuard = leakRequests === 0 && leakUpgrades === 0 && serviceWorkerCount.value === 0;
   const output = {
-    passed: strictRejected && session.authFixture === "seeded-disposable" && session.tls === "allow-insecure-loopback"
+    passed: strictRejected && redirectRejected && session.authFixture === "seeded-disposable" && session.tls === "allow-insecure-loopback"
       && evidence.browser.screenshotPath === null && evidence.browser.accessibility !== null && computedName && implicitStatus
-      && emittedLocatorRoundTrip && originGuard && scenario.baseline.status === "reproduced" && Boolean(scenario.baseline.evidence)
+      && emittedLocatorRoundTrip && popupRejected && originGuard && scenario.baseline.status === "reproduced" && Boolean(scenario.baseline.evidence)
       && verification.outcome === "verified" && Boolean(verification.evidence.postFix),
     assertions: {
       strictRejected,
+      redirectRejected,
       seededMode: session.authFixture === "seeded-disposable",
       tlsMode: session.tls === "allow-insecure-loopback",
       screenshotSuppressed: evidence.browser.screenshotPath === null,
@@ -140,6 +157,7 @@ try {
       computedName,
       implicitStatus,
       emittedLocatorRoundTrip,
+      popupRejected,
       originGuard,
       checkpoints: scenario.checkpoints.length === 1,
       matrixBaseline: scenario.baseline.status === "reproduced",

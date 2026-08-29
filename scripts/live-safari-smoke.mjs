@@ -1,24 +1,27 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 import { SessionManager } from "../dist/core/session-manager.js";
+import { stopOwnedProcess, waitForHttpReady } from "./lib/managed-process.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const fixtureRoot = join(repositoryRoot, "fixtures/vanilla");
 const serverScript = join(repositoryRoot, "scripts/serve-fixture.mjs");
 const port = Number(process.env.WEB_DEBUG_SAFARI_FIXTURE_PORT ?? 4176);
 const url = `http://127.0.0.1:${port}/`;
+const browserVersion = execFileSync("/usr/bin/safaridriver", ["--version"], { encoding: "utf8" }).trim();
 
 const fixture = spawn(process.execPath, [serverScript], {
   cwd: repositoryRoot,
   env: { ...process.env, WEB_DEBUG_FIXTURE_PORT: String(port) },
   stdio: ["ignore", "inherit", "inherit"],
+  detached: process.platform !== "win32",
 });
 const manager = new SessionManager();
 
 try {
-  await waitForUrl(url, fixture);
+  await waitForHttpReady(url, fixture, { label: "Safari vanilla fixture", timeoutMs: 15_000 });
   const session = await manager.start({
     projectRoot: fixtureRoot,
     url,
@@ -53,6 +56,7 @@ try {
     status,
     ...(reason ? { reason } : {}),
     assertions,
+    browserVersion,
     target: session.target,
     warnings: evidence.warnings,
     networkCount: evidence.network.length,
@@ -71,23 +75,6 @@ try {
   }, null, 2)}\n`);
   process.exitCode = 2;
 } finally {
-  await manager.closeAll();
-  fixture.kill("SIGTERM");
-}
-
-async function waitForUrl(targetUrl, child) {
-  const deadline = Date.now() + 15_000;
-  let lastError = "not attempted";
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`Vanilla fixture exited with code ${child.exitCode}.`);
-    try {
-      const response = await fetch(targetUrl);
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  throw new Error(`Safari fixture did not become ready: ${lastError}`);
+  await manager.closeAll("delete");
+  await stopOwnedProcess(fixture, { label: "Safari vanilla fixture", processGroup: true });
 }

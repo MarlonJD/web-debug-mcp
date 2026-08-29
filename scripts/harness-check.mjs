@@ -1,5 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const failures = [];
@@ -34,13 +36,20 @@ const requiredFiles = [
   "docs/agent-harness/verification-matrix.md",
   "docs/agent-harness/operating-loop.md",
   "docs/agent-harness/entropy-cleanup-checklist.md",
+  "docs/agent-harness/certification.json",
+  "docs/agent-harness/certification.md",
+  "docs/agent-harness/coverage-matrix.md",
   "docs/exec-plans/index.md",
   "docs/exec-plans/completed/web-debug-mcp-mvp.md",
   "docs/exec-plans/plan-template.md",
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
+  "docs/demos/agent-evaluation.md",
+  "docs/COMPATIBILITY.md",
+  "docs/compatibility-evidence.json",
   "docs/examples-evidence.md",
   "docs/design-docs/scenario-persistence-boundary.md",
+  "docs/product-specs/web-debug-contract.md",
   ".agents/plugins/marketplace.json",
   ".claude-plugin/marketplace.json",
   "plugins/web-debug/.codex-plugin/plugin.json",
@@ -54,6 +63,12 @@ const requiredFiles = [
   "src/core/aggregation.ts",
   "src/core/process-registry.ts",
   "src/core/redaction.ts",
+  "src/core/http.ts",
+  "src/core/origin-policy.ts",
+  "src/core/version.ts",
+  "src/core/artifact-store.ts",
+  "src/core/mcp-response.ts",
+  "src/core/doctor.ts",
   "src/adapters/chromium.ts",
   "fixtures/vanilla/index.html",
   "fixtures/vanilla/app.js",
@@ -83,6 +98,9 @@ const requiredFiles = [
   "scripts/live-safari-smoke.mjs",
   "scripts/live-local-fidelity-smoke.mjs",
   "scripts/demo-compare.mjs",
+  "scripts/agent-eval.mjs",
+  "scripts/lib/managed-process.mjs",
+  "scripts/lib/managed-process.d.mts",
   "scripts/serve-complex-vite.mjs",
   "scripts/serve-next.mjs",
   "src/adapters/next.ts",
@@ -95,14 +113,32 @@ const requiredFiles = [
   "test/chromium-policy.test.ts",
   "test/vite-adapter.test.ts",
   "test/complex-fixture-contract.test.ts",
+  "test/http.test.ts",
+  "test/mcp-response.test.ts",
+  "test/mcp-artifact.test.ts",
+  "test/mcp-routing.test.ts",
+  "test/redirect-policy.test.ts",
+  "test/doctor.test.ts",
+  "test/release-identity.test.ts",
+  "test/managed-process.test.ts",
+  "test/eval-contract.test.ts",
+  "test/compatibility.test.ts",
+  "tsconfig.test.json",
 ];
 for (const relativePath of requiredFiles) read(relativePath);
+const execPlanIndex = read("docs/exec-plans/index.md");
+const registeredPlans = [...execPlanIndex.matchAll(/\]\(((?:active|completed)\/[^)]+\.md)\)/g)].map((match) => match[1]);
+check(registeredPlans.length > 0, "ExecPlan registry must link at least one active or completed plan");
+for (const registeredPlan of new Set(registeredPlans)) read(`docs/exec-plans/${registeredPlan}`);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "smoke:local-fidelity", "demo:compare"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "smoke:local-fidelity", "demo:compare", "eval:catalog", "eval:grade"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
-check(packageJson.version === "0.3.3", "package.json must expose the 0.3.3 release version");
+const sourceVersion = packageJson.version;
+const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
+check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
+check(packageJson.webDebug?.releaseStatus === "source-next" && /^\d+\.\d+\.\d+$/.test(releasedPluginVersion ?? "") && releasedPluginVersion !== sourceVersion, "source-next metadata must name a distinct released plugin runtime");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -130,18 +166,18 @@ check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to i
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
-check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes("web-debug-mcp@0.3.3"), "Codex plugin must resolve the immutable 0.3.3 npm package");
+check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes(`web-debug-mcp@${releasedPluginVersion}`), "Codex plugin must resolve the immutable released runtime named by package metadata");
 check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
-check(pluginManifest.version?.startsWith("0.3.3+codex."), "Codex plugin manifest must expose a timestamped 0.3.3 build");
-check(marketplaceEntry?.version === "0.3.3", "Codex marketplace metadata must match the 0.3.3 plugin release");
+check(pluginManifest.version?.startsWith(`${releasedPluginVersion}+codex.`), "Codex plugin manifest must expose a timestamped build for the released runtime");
+check(marketplaceEntry?.version === releasedPluginVersion, "Codex marketplace metadata must match the released plugin runtime");
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
 check(marketplaceEntry?.policy?.installation === "AVAILABLE" && marketplaceEntry?.policy?.authentication === "ON_INSTALL", "Plugin marketplace policy must allow explicit installation");
 check(marketplaceEntry?.category === "Developer Tools", "Plugin marketplace category must match the plugin metadata");
-check(claudeManifest.name === "web-debug" && claudeManifest.version === "0.3.3", "Claude Code plugin manifest must expose the web-debug identity and version");
+check(claudeManifest.name === "web-debug" && claudeManifest.version === releasedPluginVersion, "Claude Code plugin manifest must expose the web-debug identity and released runtime version");
 check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest must expose the Web Debug display name");
 check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
-check(claudeMarketplaceEntry?.version === "0.3.3" && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the plugin release");
+check(claudeMarketplaceEntry?.version === releasedPluginVersion && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the released plugin runtime");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
 
@@ -191,13 +227,20 @@ check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"),
 check(sessionSource.includes("owned adapter was made unusable before lease release"), "Cancelled adapter work must poison the session before releasing its lease");
 check(sessionSource.includes("resetReplayForAttempt") && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
 check(mcpSource.includes("locatorSchema") && mcpSource.includes("checkpoints") && mcpSource.includes("failureViewports"), "MCP schemas must expose the exact locator/checkpoint/matrix contract");
-check(mcpSource.includes('{ name: "web-debug-mcp", version: "0.3.3" }'), "MCP server metadata must expose the 0.3.3 release version");
+check(mcpSource.includes("PACKAGE_NAME") && mcpSource.includes("PACKAGE_VERSION"), "MCP server metadata must derive from package metadata");
+check(read("src/core/process-registry.ts").includes("PACKAGE_VERSION") && !read("src/core/process-registry.ts").includes('version: "0.3.1"'), "Process records and cleanup reports must derive from package metadata");
+check(mcpSource.includes("WEB_DEBUG_TOOL_ANNOTATIONS") && mcpSource.includes("web_issue_capture: { readOnlyHint: false"), "MCP tool effects must use the canonical annotation table");
+check(mcpSource.includes("outputSchema: toolOutputSchema") && mcpSource.includes("runWithProgress") && mcpSource.includes("ResourceTemplate"), "MCP tools must expose structured output, progress, and screenshot resources");
+check(read("bin/web-debug-mcp.mjs").includes('args[0] === "doctor"'), "Package binary must expose the bounded doctor command");
+check(read("scripts/live-smoke.mjs").includes("stopOwnedProcess") && read("scripts/live-next-smoke.mjs").includes("waitForHttpReady"), "Live smokes must use bounded readiness and awaited teardown helpers");
+check(read("docs/COMPATIBILITY.md").includes("Verified locally") && read("docs/demos/agent-evaluation.md").includes("npm run eval:catalog") && read("docs/demos/agent-evaluation.md").includes("npm run eval:grade"), "Compatibility and agent task-evaluation contracts must remain discoverable");
 check(chromiumSource.includes("async probe") && chromiumSource.includes("ignoreHTTPSErrors") && chromiumSource.includes("routeWebSocket"), "Chromium adapter must expose live probes and guarded elevated context controls");
 check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.includes("acceptInsecureCerts: false"), "Safari adapter must retain CSS-only semantic limits and strict TLS")
 check(sessionSource.includes("MAX_DECISIVE_OBSERVATIONS") && sessionSource.includes("runMatrixAttempt"), "Session manager must enforce aggregate observations and ephemeral matrix candidates");
 check(read("src/core/auth-state.ts").includes("fstat") || read("src/core/auth-state.ts").includes("handle.stat"), "Auth fixture validation must re-stat one open descriptor");
 check(read("src/core/process-registry.ts").includes("REGISTRY_RECORD_CAP") && read("src/core/process-registry.ts").includes("identityMatches"), "Process cleanup must be registry and identity backed");
 check(!sessionSource.includes("Object.defineProperty"), "Verification output must not use a compatibility alias hack");
+check(!sessionSource.includes("terminationReason") && !mcpSource.includes("size: viewportSchema") && !mcpSource.includes("name: z.string().min(1).max(40), viewport: viewportSchema"), "Public contracts must not retain legacy aliases or alternate viewport shapes");
 check(!sessionSource.includes("copyToSafeArtifactPath") && !sessionSource.includes("copyFileSync"), "Redaction must not copy screenshots outside the owning session artifact directory");
 check(mcpSource.includes("deadline: now + MCP_OPERATION_BUDGET_MS"), "MCP handlers must propagate an absolute bounded deadline");
 check(chromiumSource.includes("options.checksOnly") && chromiumSource.includes("optional enrichment timed out"), "Chromium checks-only and optional-enrichment budgets must be explicit");
@@ -208,7 +251,7 @@ check(read("README.md").includes("codex mcp add"), "README must document Codex M
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
-check(read("README.md").includes("web-debug-mcp@0.3.3") && !read("README.md").includes("#main"), "README MCP runtime must use the immutable 0.3.3 npm version");
+check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("#main"), "README must distinguish the source-next identity from the immutable released runtime");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
 check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");
@@ -229,6 +272,51 @@ for (const [authority, relativePath] of Object.entries(config.authorities ?? {})
   check(typeof relativePath === "string" && existsSync(join(root, relativePath)), `harness authority ${authority} does not resolve: ${relativePath}`);
 }
 
+const certificationText = read("docs/agent-harness/certification.json");
+const coverageText = read("docs/agent-harness/coverage-matrix.md");
+let certification = {};
+try { certification = JSON.parse(certificationText); } catch { check(false, "certification manifest must be valid JSON"); }
+const coverageSha256 = createHash("sha256").update(coverageText).digest("hex");
+check(certification.schema_version === 2 && certification.claim === "harness-ready", "historical certification manifest must retain the v2 harness-ready shape");
+check(typeof certification.repository_commit === "string" && /^[0-9a-f]{40}$/.test(certification.repository_commit), "certification source commit must be a full Git SHA");
+check(typeof certification.coverage_sha256 === "string" && /^[0-9a-f]{64}$/.test(certification.coverage_sha256), "certification coverage hash must be a SHA-256 value");
+let sourceExists = false;
+let directChild = false;
+let workingTreeClean = false;
+try {
+  execFileSync("git", ["cat-file", "-e", `${certification.repository_commit}^{commit}`], { cwd: root, stdio: "ignore" });
+  sourceExists = true;
+  const headParent = execFileSync("git", ["rev-parse", "HEAD^"], { cwd: root, encoding: "utf8" }).trim();
+  directChild = headParent === certification.repository_commit;
+  workingTreeClean = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd: root, encoding: "utf8" }).trim().length === 0;
+} catch { /* structural checks below report the stale state */ }
+check(sourceExists, "certification source commit must exist in local Git history");
+const evidenceLinks = [...coverageText.matchAll(/\(evidence\/([^)]+\.json)\)/g)].map((match) => match[1]);
+check(evidenceLinks.length >= 31 && new Set(evidenceLinks).size === evidenceLinks.length, "coverage matrix must link each canonical evidence row exactly once");
+for (const evidenceName of evidenceLinks) {
+  const evidenceText = read(`docs/agent-harness/evidence/${evidenceName}`);
+  let evidence = {};
+  try { evidence = JSON.parse(evidenceText); } catch { check(false, `evidence must be valid JSON: ${evidenceName}`); }
+  check(evidence.schema_version === 2, `evidence must use schema v2: ${evidenceName}`);
+  check(evidence.repository_commit === certification.repository_commit, `evidence source commit must match certification: ${evidenceName}`);
+  check(Array.isArray(evidence.capabilities) && evidence.capabilities.length > 0, `evidence must name at least one capability: ${evidenceName}`);
+  check(evidence.result === "passed" || evidence.result === "not-applicable", `evidence result must be passed or not-applicable: ${evidenceName}`);
+  check(typeof evidence.signature === "string" && /^[0-9a-f]{64}$/.test(evidence.signature), `evidence signature must be structurally valid: ${evidenceName}`);
+}
+const expiresAt = Date.parse(certification.expires_at ?? "");
+const certificationStructurallyFresh = sourceExists
+  && directChild
+  && workingTreeClean
+  && certification.coverage_sha256 === coverageSha256
+  && Number.isFinite(expiresAt)
+  && expiresAt > Date.now();
+const certificationStatus = certificationStructurallyFresh ? "fresh-structure-candidate" : "stale-candidate";
+if (!certificationStructurallyFresh) {
+  check(read("README.md").includes("historical certification window") && read("README.md").includes("does not claim a current `CERT000`"), "README must disclose a stale historical certification window");
+  check(read("docs/agent-harness/certification.md").includes("historical certification window is stale"), "Certification procedure must disclose current staleness");
+  check(read("docs/exec-plans/tech-debt-tracker.md").includes("DEBT-003") && read("docs/exec-plans/tech-debt-tracker.md").includes("reopened"), "Stale certification must remain reopened technical debt");
+}
+
 const managedDocs = ["AGENTS.md", "ARCHITECTURE.md", "README.md", "docs/SECURITY.md", "docs/RELIABILITY.md"];
 for (const relativePath of managedDocs) {
   const content = read(relativePath);
@@ -241,5 +329,5 @@ if (failures.length > 0) {
   for (const failure of failures) process.stderr.write(`- ${failure}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write(`harness-check: PASS (${checks} checks)\n`);
+  process.stdout.write(`harness-check: PASS (${checks} checks; certification: ${certificationStatus})\n`);
 }

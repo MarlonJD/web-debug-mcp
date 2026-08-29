@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "scope": "source-next-release-pending",
+  "observedAt": "2026-08-29T20:20:00Z",
+  "baseCommit": "4f35b4140b3609691c588294908c78a19e9a4806",
+  "sourceVersion": "0.4.0-next.0",
+  "runtime": {
+    "node": "24.18.0",
+    "mcpSdk": "1.30.0",
+    "chromium": "151.0.7922.174",
+    "safari": "26.5.2",
+    "react": "19.2.8",
+    "vite": "7.3.6",
+    "next": "16.3.3"
+  },
+  "checks": [
+    { "command": "npm test", "status": "passed", "signal": "106/106 tests" },
+    { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
+    { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
+    { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
+    { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari WebDriver DOM/action/screenshot, BiDi console, and disclosed performance network fallback" },
+    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" }
+  ],
+  "limits": [
+    "This evidence applies to the dirty source-next working tree based on baseCommit, not the published npm/plugin 0.3.3 runtime.",
+    "Approved external CDP, release publication, HMAC certification, provider authority, production, and other runtime versions remain unverified."
+  ]
+}

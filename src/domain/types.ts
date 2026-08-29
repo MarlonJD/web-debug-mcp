@@ -10,7 +10,7 @@ export const MAX_ACCESSIBLE_NAME_CHARS = 300;
 export const MAX_SCENARIO_NAME_CHARS = 200;
 export const MAX_CHECKPOINT_NAME_CHARS = 80;
 export const MAX_VIEWPORT_NAME_CHARS = 40;
-export const MAX_PROPERTIES_PER_PROBE = 6;
+export const MAX_PROPERTIES_PER_PROBE = 5;
 export const MAX_CHECKPOINTS = 16;
 export const MAX_CHECKPOINT_PROBES_TOTAL = 32;
 export const MAX_PROBES_PER_CHECKPOINT = 8;
@@ -143,12 +143,32 @@ export interface DebugSessionSummary {
   /** Public mode metadata; paths and parsed auth values stay private. */
   tls?: "strict" | "allow-insecure-loopback";
   authFixture?: "seeded-disposable" | "none";
+  artifactState?: "retained" | "deleted";
 }
+
+export const BROWSER_PRESS_KEYS = [
+  "Enter",
+  "Escape",
+  "Tab",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Backspace",
+  "Delete",
+  "Space",
+] as const;
+export type BrowserPressKey = typeof BROWSER_PRESS_KEYS[number];
 
 export type BrowserAction =
   | { kind: "navigate"; url: string }
   | { kind: "click"; locator: BrowserLocator }
   | { kind: "fill"; locator: BrowserLocator; value: string }
+  | { kind: "press"; locator: BrowserLocator; key: BrowserPressKey }
+  | { kind: "select"; locator: BrowserLocator; value: string }
+  | { kind: "check"; locator: BrowserLocator; checked: boolean }
+  | { kind: "hover"; locator: BrowserLocator }
+  | { kind: "scroll"; locator: BrowserLocator }
   | { kind: "wait"; locator: BrowserLocator; property: LocatorProperty; expected: LocatorProbeValue; timeoutMs?: number }
   | { kind: "reload" };
 
@@ -163,6 +183,16 @@ export interface OperationContext {
   abort?: () => void;
   /** Internal set used to keep late adapter work attached to its lease. */
   pending?: Set<Promise<void>>;
+  /** Optional bounded progress sink used only for adaptive scenario phases. */
+  progress?: (event: ScenarioProgressEvent) => Promise<void>;
+}
+
+export interface ScenarioProgressEvent {
+  phase: "baseline" | "post-fix";
+  event: "attempt-start" | "attempt-end";
+  level: VerificationLevel;
+  ordinal: number;
+  termination?: AttemptTermination | string;
 }
 
 export interface ActionResult {
@@ -622,12 +652,11 @@ export interface ScenarioBaseline {
   warnings: string[];
   viewportConsensus?: Record<string, string>;
   termination: string;
-  terminationReason?: string;
   truncation?: { attempts?: boolean; evidence?: boolean; result?: boolean };
 }
 
 export interface PublicReproScenario {
-  schemaVersion: 3;
+  schemaVersion: 4;
   id: string;
   sessionId: string;
   name: string;
@@ -737,7 +766,7 @@ export interface RateSummary {
 }
 
 export interface VerificationResult {
-  schemaVersion: 3;
+  schemaVersion: 4;
   outcome: VerificationOutcome;
   level: VerificationLevel;
   requestedLevel: VerificationLevel;
@@ -780,7 +809,6 @@ export interface VerificationResult {
   persistence: "in-memory";
   warnings: string[];
   termination: string;
-  terminationReason?: string;
   truncation: {
     result: boolean;
     attempts: boolean;

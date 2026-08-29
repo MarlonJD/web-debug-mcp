@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { chromium } from "playwright-core";
 
 import { SessionManager } from "../dist/core/session-manager.js";
+import { stopOwnedProcess, waitForHttpReady } from "./lib/managed-process.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const browserPath = process.env.WEB_DEBUG_CHROME_EXECUTABLE_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -271,12 +272,13 @@ async function runScenario(definition, runs, artifactDir) {
     cwd: repositoryRoot,
     env: { ...process.env, [definition.portEnv]: String(definition.port) },
     stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
   });
   const serverOutput = collectProcessOutput(child);
   const url = `http://127.0.0.1:${definition.port}${definition.urlPath}`;
 
   try {
-    await waitForUrl(url, child);
+    await waitForHttpReady(url, child, { label: `${definition.id} fixture`, timeoutMs: 30_000 });
     const actionId = definition.id === "next-server-action"
       ? await waitForServerActionId(definition.projectRoot, child)
       : null;
@@ -314,7 +316,7 @@ async function runScenario(definition, runs, artifactDir) {
     const output = serverOutput.text().slice(-1_000);
     throw new Error(`${definition.id} demo failed: ${error instanceof Error ? error.message : String(error)}${output ? `\nFixture output:\n${output}` : ""}`);
   } finally {
-    await stopProcess(child);
+    await stopOwnedProcess(child, { label: `${definition.id} fixture`, processGroup: true, gracefulMs: 3_000 });
   }
 }
 
@@ -328,13 +330,14 @@ async function runRepairScenario(definition, runs, artifactDir) {
       [definition.rootEnv]: runtime.root,
     },
     stdio: ["ignore", "pipe", "pipe"],
+    detached: process.platform !== "win32",
   });
   const serverOutput = collectProcessOutput(child);
   const url = `http://127.0.0.1:${definition.port}${definition.urlPath}`;
   const records = [];
 
   try {
-    await waitForUrl(url, child);
+    await waitForHttpReady(url, child, { label: `${definition.id} fixture`, timeoutMs: 30_000 });
     for (let index = 0; index < runs; index += 1) {
       await writeRepairVariant(runtime, "buggy");
       await waitForRepairVariant(definition, url, "buggy", child);
@@ -406,7 +409,7 @@ async function runRepairScenario(definition, runs, artifactDir) {
     const output = serverOutput.text().slice(-1_000);
     throw new Error(`${definition.id} demo failed: ${error instanceof Error ? error.message : String(error)}${output ? `\nFixture output:\n${output}` : ""}`);
   } finally {
-    await stopProcess(child);
+    await stopOwnedProcess(child, { label: `${definition.id} fixture`, processGroup: true, gracefulMs: 3_000 });
     for (const [key, repairContext] of repairContexts) {
       if (key.startsWith(`${definition.id}:`)) {
         repairContexts.delete(key);
@@ -824,6 +827,12 @@ function compareRepair(definition, baselineRuns, mcpRuns) {
     bugReproduced: baselineRuns.every((run) => run.bugReproduced) && mcpRuns.every((run) => run.diagnosis.bugObserved),
     rootCauseEvidence: mcpRuns.every((run) => run.diagnosis.rootCauseEvidence),
     fixVerified: mcpRuns.every((run) => run.fix.passed),
+    fixDiagnostics: mcpRuns.flatMap((run) => run.fix.views.map((view) => ({
+      viewport: view.viewport.label ?? `${view.viewport.width}x${view.viewport.height}`,
+      outcome: view.outcome,
+      verification: view.verification,
+      checks: view.checks.map((check) => ({ kind: check.kind, state: check.state, warning: check.warning })).slice(0, 12),
+    }))).slice(0, 10),
     medianDiagnosisDeltaMs: round(mcpDiagnosisTotal - baselineTotal),
     medianDiagnosisRatio: baselineTotal > 0 ? round(mcpDiagnosisTotal / baselineTotal, 2) : null,
     visual: definition.id === "visual-layout-fix"
@@ -845,7 +854,7 @@ function assertRepairComparison(definition, comparison) {
   if (!comparison.fixVerified) failures.push("fixed verification");
   if (comparison.visual && !comparison.visual.desktopAfterCovered) failures.push("desktop visual verification");
   if (comparison.visual && !comparison.visual.mobileAfterContained) failures.push("mobile visual verification");
-  if (failures.length > 0) throw new Error(`${definition.id} repair contract failed: ${failures.join(", ")}.`);
+  if (failures.length > 0) throw new Error(`${definition.id} repair contract failed: ${failures.join(", ")}. ${JSON.stringify(comparison.fixDiagnostics)}`);
   return comparison;
 }
 
@@ -1260,23 +1269,6 @@ function resolveRawLocator(page, locator) {
   return page.getByTestId(locator.value);
 }
 
-async function waitForUrl(url, child) {
-  const deadline = Date.now() + 30_000;
-  let lastError = "not attempted";
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`Fixture server exited with code ${child.exitCode}.`);
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  throw new Error(`Fixture did not become ready: ${lastError}`);
-}
-
 async function waitForServerActionId(projectRoot, child) {
   const manifestPath = join(projectRoot, ".next", "dev", "server", "server-reference-manifest.json");
   const deadline = Date.now() + 30_000;
@@ -1304,21 +1296,6 @@ function collectProcessOutput(child) {
   child.stdout.on("data", append);
   child.stderr.on("data", append);
   return { text: () => output };
-}
-
-async function stopProcess(child) {
-  if (child.exitCode !== null) return;
-  await new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      child.kill("SIGKILL");
-      resolve();
-    }, 3_000);
-    child.once("exit", () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    child.kill("SIGTERM");
-  });
 }
 
 function parseOptions(args) {

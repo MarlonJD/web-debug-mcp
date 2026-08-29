@@ -3,6 +3,7 @@ import { open, realpath } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
+import { MAX_FRAMEWORK_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
 import type { NetworkEntry, NextInspection, NextInspectionResult, NextRequestTrace, NextSnapshot, OperationContext } from "../domain/types.js";
 
 interface RpcResponse {
@@ -30,6 +31,13 @@ const MAX_LOG_LINES = 200;
 const MAX_LOG_CHARS = 32_000;
 
 export class NextAdapter {
+  async listTools(baseUrl: string, context: OperationContext = {}): Promise<string[]> {
+    const endpoint = new URL("/_next/mcp", baseUrl).toString();
+    const client = new NextMcpClient(endpoint);
+    const listed = await client.request("tools/list", {}, context);
+    return extractToolNames(listed.result);
+  }
+
   async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = [], context: OperationContext = {}): Promise<NextSnapshot | null> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
@@ -288,6 +296,7 @@ class NextMcpClient {
     try {
       const response = await fetch(this.endpoint, {
         method: "POST",
+        redirect: "manual",
         headers: {
           accept: "application/json, text/event-stream",
           "content-type": "application/json",
@@ -298,7 +307,7 @@ class NextMcpClient {
       });
       const responseSessionId = response.headers.get("mcp-session-id");
       if (responseSessionId) this.sessionId = responseSessionId;
-      const body = await response.text();
+      const body = await readResponseTextBounded(response, MAX_FRAMEWORK_RESPONSE_BYTES, "Next MCP endpoint response", controller.signal);
       if (!response.ok) {
         throw new Error(`Next MCP endpoint returned HTTP ${response.status}: ${boundText(body, 500)}`);
       }

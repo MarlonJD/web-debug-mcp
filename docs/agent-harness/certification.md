@@ -2,6 +2,8 @@
 
 This repository adopts the harness-engineering v2 certification contract for the local developer tool. The bounded claim is `harness-ready`; it is not a production-readiness or provider-authentication claim.
 
+The checked-in historical certification window is stale and is retained as immutable evidence of its original source/attestation interval. Its expiry and coverage hash do not cover current work. The native gate checks structure, ancestry, hash, expiry, and worktree drift but never authenticates the HMAC; even a structurally fresh window is only `fresh-structure-candidate`. Until the external-key formal verifier passes, no current `CERT000` is claimed.
+
 ## Ownership and commands
 
 - Owner: Platform Engineering

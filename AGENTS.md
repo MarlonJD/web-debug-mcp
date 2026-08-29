@@ -30,6 +30,9 @@ Use this file as the short route into the project contract. Keep detailed ration
 | Type check | `npm run typecheck` | TypeScript exits 0 with no diagnostics |
 | Build | `npm run build` | `dist/` is emitted successfully |
 | Harness check | `npm run harness:check` | Project contract check prints `harness-check: PASS` |
+| Doctor | `npm run build && node bin/web-debug-mcp.mjs doctor --project-root <app> --url <loopback-url> --executable-path <browser>` | Bounded JSON reports exact pass/warn/fail/skipped readiness without launching a browser |
+| Agent eval catalog | `npm run eval:catalog` | Bounded JSON lists three frozen repair prompts and graders without calling a model |
+| Agent eval grading | `npm run eval:grade -- <result.json>` | Bounded JSON deterministically scores reviewed run records and exits non-zero on failure |
 | Fixture runtime | `npm run serve:fixture` | Server reports a loopback URL and stops on SIGINT/SIGTERM |
 | Live browser smoke | `npm run smoke:live` | JSON reports `passed: true` for vanilla CDP breakpoint evidence and local-target policy |
 | React/Vite smoke | `npm run smoke:react-vite` | JSON reports `passed: true` for React state, render-cause/commit evidence, Vite transform diff, replay timeline/seek, source, and module evidence |

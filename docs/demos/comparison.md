@@ -9,6 +9,8 @@ The baseline is deliberately MCP-free. It represents the browser, source, manife
 
 The runner calls `SessionManager` directly because it is the deterministic core behind the public MCP facade. The sequence is the same public workflow—detect/start, bounded actions, evidence capture, recorded scenario, and verification—without making the benchmark dependent on a particular MCP client or its transport overhead.
 
+Fixture readiness and teardown use the same bounded process helper as live smokes: early exit is an error, SIGTERM is awaited, and SIGKILL escalation applies only to the command-owned child.
+
 ## Run it
 
 The command requires the repository dependencies and an explicit Chromium executable. It runs all scenarios three times by default:
@@ -106,6 +108,6 @@ Human diagnosis time still needs a separate usability study with a fixed task sc
 
 ## Model comparison
 
-The repository does not call language models itself. To compare agent behavior, run the same repair prompt against isolated fixture copies and record the model name, reasoning setting, wall time, tool calls, patch result, root-cause result, and `web_fix_verify` result separately from the browser timings. The current requested arms are `gpt-5.6-sol` with `xhigh` and `gpt-5.6-luna` with `max`; do not mix their results with the technical baseline above.
+The repository does not call language models itself. `npm run eval:catalog` emits the frozen repair prompts, graders, and required run fields; `npm run eval:grade -- <result.json>` scores a bounded reviewed run record. To compare agent behavior, run each prompt against isolated fixture copies and record the model name, reasoning setting, wall time, tool calls, token counts, patch result, root-cause result, and `web_fix_verify` result separately from the browser timings. Do not mix those results with the technical baseline above.
 
 In the final one-run QA sweep for this repository, both arms passed the deterministic gates and all three repair contracts. Sol `xhigh` completed the valid command sweep in about 30.77 seconds; Luna `max` completed it in about 30.82 seconds after one transient port-collision retry. Their repair measurements were close and not directionally consistent: Sol was lower on the filter diagnosis and visual fix verification, while Luna was lower on the async diagnosis and visual diagnosis. This is an engineering QA comparison, not a statistically powered model benchmark; correctness, semantic repair status, and source-snapshot integrity matter more than these single-run milliseconds.

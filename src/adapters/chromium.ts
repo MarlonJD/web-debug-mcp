@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { chromium } from "playwright-core";
@@ -7,6 +7,7 @@ import type {
   BrowserContext,
   CDPSession,
   ConsoleMessage,
+  Frame,
   Page,
   Request,
   Response,
@@ -38,8 +39,10 @@ import {
   MAX_LOCATOR_CHARS,
   MAX_ACCESSIBLE_NAME_CHARS,
   MAX_PROPERTIES_PER_PROBE,
+  MAX_RESULT_BYTES,
 } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
+import { assertTopLevelOrigin, navigationOriginError, originOf } from "../core/origin-policy.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { ReactAdapter } from "./react.js";
 import { REACT_DEBUG_BRIDGE_SCRIPT } from "./react-bridge.js";
@@ -91,6 +94,13 @@ interface PropertiesResult {
   result?: PropertyDescriptor[];
 }
 
+interface FetchRequestPausedEvent {
+  requestId: string;
+  request: { url: string };
+  frameId: string;
+  resourceType: string;
+}
+
 export class ChromiumAdapter implements BrowserAdapter {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
@@ -116,12 +126,20 @@ export class ChromiumAdapter implements BrowserAdapter {
   private version: string | null = null;
   private authSeeded = false;
   private guardedOrigin: string | null = null;
+  private navigationViolation: WebDebugError | null = null;
+  private fetchRequestHandler: ((event: FetchRequestPausedEvent) => void) | null = null;
+  private popupRouteHandler: ((route: import("playwright-core").Route, request: Request) => Promise<void>) | null = null;
+  private popupHandler: ((popup: Page) => void) | null = null;
+  private mainFrameNavigationHandler: ((frame: Frame) => void) | null = null;
+  private bridgeScriptIdentifier: string | null = null;
+  private mainFrameId: string | null = null;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
     this.allowRemote = options.allowRemote ?? false;
     assertAllowedUrl(options.url, this.allowRemote);
-    const requestedOrigin = new URL(options.url).origin;
+    const requestedOrigin = originOf(options.url);
+    this.baseOrigin = requestedOrigin;
     const elevated = options.tls === "allow-insecure-loopback" || options.authState !== undefined || options.authFixture === "seeded-disposable";
     if (elevated) {
       if (options.cdpEndpoint) throw new WebDebugError("ELEVATED_MODE_REQUIRES_LAUNCH", "TLS bypass and disposable auth require an isolated Chromium launch.");
@@ -196,9 +214,25 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.page = await this.context.newPage();
     }
 
-    await this.context.addInitScript({ content: REACT_DEBUG_BRIDGE_SCRIPT });
     this.installObservers(this.page);
     this.cdp = await this.context.newCDPSession(this.page);
+    await this.cdp.send("Page.enable");
+    try {
+      const [targetInfo, frameTree] = await Promise.all([
+        this.cdp.send("Target.getTargetInfo") as Promise<{ targetInfo?: { targetId?: string } }>,
+        this.cdp.send("Page.getFrameTree") as Promise<{ frameTree?: { frame?: { id?: string } } }>,
+      ]);
+      this.targetId = targetInfo.targetInfo?.targetId ?? null;
+      this.mainFrameId = frameTree.frameTree?.frame?.id ?? null;
+    } catch {
+      this.targetId = null;
+      this.mainFrameId = null;
+    }
+    await this.installProtocolGuards(this.page, this.context, requestedOrigin);
+    const bridgeRegistration = await this.cdp.send("Page.addScriptToEvaluateOnNewDocument", {
+      source: REACT_DEBUG_BRIDGE_SCRIPT,
+    }) as { identifier?: string };
+    this.bridgeScriptIdentifier = bridgeRegistration.identifier ?? null;
     this.cdp.on("Debugger.paused", (event) => {
       this.pausedEvent = event as PausedEvent;
       for (const resolvePause of this.pauseWaiters) resolvePause();
@@ -217,25 +251,16 @@ export class ChromiumAdapter implements BrowserAdapter {
     try {
       await withContext(this.page.goto(options.url, { waitUntil: "domcontentloaded" }), context);
     } catch (error) {
+      if (this.navigationViolation) throw this.consumeNavigationViolation();
       if (this.guardedOrigin && !(error instanceof WebDebugError)) throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The navigation target is outside the one approved origin.");
       throw error;
     }
-    const finalOrigin = new URL(this.page.url()).origin;
-    if (this.guardedOrigin && finalOrigin !== this.guardedOrigin) {
-      throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The page navigated outside the one approved origin.");
-    }
-    this.baseOrigin = this.guardedOrigin ?? finalOrigin;
+    if (this.navigationViolation) throw this.consumeNavigationViolation();
+    this.assertFinalOrigin(this.page.url());
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
     this.lastKnownReact = await this.reactAdapter.snapshot(this.page).catch(() => null);
     this.version = this.browser.version();
-    try {
-      const targetInfo = await this.cdp.send("Target.getTargetInfo") as { targetInfo?: { targetId?: string } };
-      this.targetId = targetInfo.targetInfo?.targetId ?? null;
-    } catch {
-      this.targetId = null;
-    }
-
     return this.target();
   }
 
@@ -243,6 +268,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     assertContext(context);
     validateLocator(locator);
     if (this.pausedEvent) throw new WebDebugError("LOCATOR_PROBE_UNAVAILABLE", "Live locator probes are unavailable while JavaScript is paused.");
+    this.assertSelectedTopLevelState();
     const unique = [...new Set(properties)];
     if (unique.length === 0) throw new WebDebugError("PROBE_PROPERTIES_REQUIRED", "A locator probe must request at least one property.");
     if (unique.length > MAX_PROPERTIES_PER_PROBE) throw new WebDebugError("PROBE_PROPERTIES_LIMIT", `A locator probe may request at most ${MAX_PROPERTIES_PER_PROBE} properties.`);
@@ -264,6 +290,16 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   async close(_context: OperationContext = {}): Promise<void> {
+    if (this.context && this.popupRouteHandler && typeof (this.context as BrowserContext & { unroute?: unknown }).unroute === "function") {
+      await this.context.unroute("**/*", this.popupRouteHandler).catch(() => undefined);
+    }
+    if (this.page && this.popupHandler && typeof (this.page as Page & { off?: unknown }).off === "function") this.page.off("popup", this.popupHandler);
+    if (this.page && this.mainFrameNavigationHandler && typeof (this.page as Page & { off?: unknown }).off === "function") this.page.off("framenavigated", this.mainFrameNavigationHandler);
+    if (this.cdp) {
+      if (this.fetchRequestHandler) this.cdp.off("Fetch.requestPaused", this.fetchRequestHandler);
+      await this.cdp.send("Fetch.disable").catch(() => undefined);
+      if (this.bridgeScriptIdentifier) await this.cdp.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: this.bridgeScriptIdentifier }).catch(() => undefined);
+    }
     try {
       await this.cdp?.detach();
     } catch {
@@ -281,6 +317,14 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.version = null;
     this.authSeeded = false;
     this.guardedOrigin = null;
+    this.baseOrigin = null;
+    this.navigationViolation = null;
+    this.fetchRequestHandler = null;
+    this.popupRouteHandler = null;
+    this.popupHandler = null;
+    this.mainFrameNavigationHandler = null;
+    this.bridgeScriptIdentifier = null;
+    this.mainFrameId = null;
   }
 
   async resetObservers(_context: OperationContext = {}): Promise<void> {
@@ -300,34 +344,51 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (this.pausedEvent) {
       throw new WebDebugError("DEBUGGER_PAUSED", "Browser actions require a resumed JavaScript target.");
     }
-    switch (action.kind) {
-      case "navigate":
-        assertAllowedUrl(action.url, this.allowRemote);
-        if (this.baseOrigin && new URL(action.url).origin !== this.baseOrigin) {
-          throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the session origin.");
-        }
-        try {
+    this.assertSelectedTopLevelState();
+    try {
+      switch (action.kind) {
+        case "navigate":
+          assertAllowedUrl(action.url, this.allowRemote);
+          if (this.baseOrigin) assertTopLevelOrigin(action.url, this.baseOrigin);
           await this.runUntilCompleteOrPaused(() => page.goto(action.url, { waitUntil: "domcontentloaded" }).then(() => undefined), context);
-        } catch (error) {
-          if (this.guardedOrigin && !isWithinOrigin(action.url, this.guardedOrigin)) throw new WebDebugError("APPROVED_ORIGIN_BLOCKED", "The navigation target is outside the one approved origin.");
-          throw error;
-        }
-        this.assertFinalOrigin(page.url());
-        break;
-      case "click":
-        await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).click(), context);
-        break;
-      case "fill":
-        await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).fill(action.value), context);
-        break;
-      case "wait":
-        await this.waitForProbe(action, context);
-        break;
-      case "reload":
-        await this.runUntilCompleteOrPaused(() => page.reload({ waitUntil: "domcontentloaded" }).then(() => undefined), context);
-        this.assertFinalOrigin(page.url());
-        break;
+          break;
+        case "click":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).click(), context);
+          break;
+        case "fill":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).fill(action.value), context);
+          break;
+        case "press":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).press(action.key), context);
+          break;
+        case "select":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).selectOption({ value: action.value }).then(() => undefined), context);
+          break;
+        case "check":
+          await this.runUntilCompleteOrPaused(() => (action.checked
+            ? this.resolveLocator(action.locator).check()
+            : this.resolveLocator(action.locator).uncheck()), context);
+          break;
+        case "hover":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).hover(), context);
+          break;
+        case "scroll":
+          await this.runUntilCompleteOrPaused(() => this.resolveLocator(action.locator).scrollIntoViewIfNeeded(), context);
+          break;
+        case "wait":
+          await this.waitForProbe(action, context);
+          break;
+        case "reload":
+          await this.runUntilCompleteOrPaused(() => page.reload({ waitUntil: "domcontentloaded" }).then(() => undefined), context);
+          break;
+      }
+    } catch (error) {
+      if (this.navigationViolation) throw this.consumeNavigationViolation();
+      throw error;
     }
+    await Promise.resolve();
+    if (this.navigationViolation) throw this.consumeNavigationViolation();
+    this.assertFinalOrigin(page.url());
     const title = this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page);
     return { kind: action.kind, url: safeUrl(page.url()), title };
   }
@@ -335,6 +396,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
     assertContext(context);
     const page = this.requirePage();
+    this.assertSelectedTopLevelState();
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
     let react = options.checksOnly ? null : this.lastKnownReact;
@@ -355,7 +417,7 @@ export class ChromiumAdapter implements BrowserAdapter {
           warnings.push("React snapshot skipped because the shared deadline left no optional-enrichment budget.");
         } else {
           const outcome = await withTimeout(
-            Promise.resolve().then(() => this.reactAdapter.snapshot(page)).then((value) => ({ ok: true as const, value })).catch((error) => ({ ok: false as const, error })),
+            trackPending(Promise.resolve().then(() => this.reactAdapter.snapshot(page)).then((value) => ({ ok: true as const, value })).catch((error) => ({ ok: false as const, error })), context),
             optionalBudget,
           );
           if (outcome === null) {
@@ -378,25 +440,37 @@ export class ChromiumAdapter implements BrowserAdapter {
       if (optionalBudget === 0) {
         warnings.push("Screenshot skipped because the shared deadline left no optional-enrichment budget.");
       } else {
+        const path = join(options.artifactDir, `screenshot-${Date.now()}.png`);
+        let retainScreenshot = true;
         try {
-          const path = join(options.artifactDir, `screenshot-${Date.now()}.png`);
-          const captured = await withTimeout((async () => {
+          const capturePromise = trackPending((async () => {
             await mkdir(options.artifactDir, { recursive: true });
             if (this.pausedEvent && this.cdp) {
               const cdpCapture = await withTimeout(
-                this.cdp.send("Page.captureScreenshot", { format: "png" }) as Promise<{ data?: string }>,
+                trackPending(this.cdp.send("Page.captureScreenshot", { format: "png" }) as Promise<{ data?: string }>, context),
                 optionalBudget,
               );
               if (!cdpCapture?.data) throw new Error("CDP returned no screenshot data");
               await writeFile(path, Buffer.from(cdpCapture.data, "base64"));
             } else {
-              await page.screenshot({ path });
+              await page.screenshot({ path, timeout: optionalBudget });
+            }
+            if (!retainScreenshot) {
+              await unlink(path).catch(() => undefined);
+              return null;
             }
             return path;
-          })(), optionalBudget);
+          })(), context);
+          const captured = await withTimeout(capturePromise, optionalBudget);
           if (captured) screenshotPath = captured;
-          else warnings.push("Screenshot unavailable: optional enrichment timed out.");
+          else {
+            retainScreenshot = false;
+            await unlink(path).catch(() => undefined);
+            warnings.push("Screenshot unavailable: optional enrichment timed out.");
+          }
         } catch (error) {
+          retainScreenshot = false;
+          await unlink(path).catch(() => undefined);
           warnings.push(`Screenshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
           screenshotPath = null;
         }
@@ -428,7 +502,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         reason: this.pausedEvent?.reason ?? null,
         callFrames: [],
         breakpoints: [...this.breakpoints],
-      } : await this.debuggerSnapshot(),
+      } : await this.debuggerSnapshot(context),
       react,
       next: null,
       vite: null,
@@ -446,20 +520,6 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   private async installGuards(context: BrowserContext, approvedOrigin: string): Promise<void> {
     this.guardedOrigin = approvedOrigin;
-    if (typeof (context as BrowserContext & { route?: unknown }).route !== "function") throw new WebDebugError("APPROVED_ORIGIN_GUARD_UNAVAILABLE", "Chromium transport could not install the approved-origin request guard before page creation.");
-    await context.route("**/*", async (route) => {
-      const requestUrl = route.request().url();
-      try {
-        const parsed = new URL(requestUrl);
-        if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.origin === approvedOrigin) {
-          await route.continue();
-        } else {
-          await route.abort("blockedbyclient");
-        }
-      } catch {
-        await route.abort("blockedbyclient");
-      }
-    });
     const candidate = context as BrowserContext & { routeWebSocket?: (url: string, handler: (socket: any) => void) => Promise<void> | void };
     if (typeof candidate.routeWebSocket === "function") {
       const approved = new URL(approvedOrigin);
@@ -479,14 +539,90 @@ export class ChromiumAdapter implements BrowserAdapter {
     });
   }
 
+  private async installProtocolGuards(page: Page, context: BrowserContext, expectedOrigin: string): Promise<void> {
+    if (!this.cdp || !this.mainFrameId || !this.targetId) {
+      throw new WebDebugError("NAVIGATION_GUARD_UNAVAILABLE", "Chromium could not identify the selected target and main frame before navigation.");
+    }
+    this.fetchRequestHandler = (event) => {
+      void this.handlePausedRequest(event, expectedOrigin).catch(() => {
+        if (event.resourceType === "Document" && event.frameId === this.mainFrameId) this.navigationViolation = navigationOriginError();
+        void this.cdp?.send("Fetch.failRequest", { requestId: event.requestId, errorReason: "BlockedByClient" }).catch(() => undefined);
+      });
+    };
+    this.cdp.on("Fetch.requestPaused", this.fetchRequestHandler);
+    const patterns = this.guardedOrigin
+      ? [{ urlPattern: "*", requestStage: "Request" as const }]
+      : [{ urlPattern: "*", resourceType: "Document" as const, requestStage: "Request" as const }];
+    await this.cdp.send("Fetch.enable", { patterns }).catch((error) => {
+      throw new WebDebugError("NAVIGATION_GUARD_UNAVAILABLE", "Chromium could not enable selected-target request interception.", redactValue(error));
+    });
+
+    this.popupRouteHandler = async (route, request) => {
+      let frame: Frame | null = null;
+      try { frame = request.frame(); } catch { /* popup first request has no frame yet */ }
+      if (frame) {
+        const requestPage = frame.page();
+        if (requestPage === page) { await route.fallback(); return; }
+        let opener: Page | null = null;
+        try { opener = await requestPage.opener(); } catch { /* unrelated page */ }
+        if (opener !== page) { await route.fallback(); return; }
+      } else {
+        if (request.resourceType() !== "document") {
+          await route.fallback();
+          return;
+        }
+      }
+      this.navigationViolation = navigationOriginError("Secondary pages are outside the selected single-page session boundary.");
+      await route.abort("blockedbyclient").catch(() => undefined);
+    };
+    await context.route("**/*", this.popupRouteHandler).catch((error) => {
+      throw new WebDebugError("NAVIGATION_GUARD_UNAVAILABLE", "Chromium could not install the popup-first-request route guard.", redactValue(error));
+    });
+    this.popupHandler = (popup) => {
+      this.navigationViolation = navigationOriginError("Secondary pages are outside the selected single-page session boundary.");
+      void popup.close().catch(() => undefined);
+    };
+    page.on("popup", this.popupHandler);
+    this.mainFrameNavigationHandler = (frame) => {
+      if (frame !== page.mainFrame() || !this.baseOrigin) return;
+      try { assertTopLevelOrigin(frame.url(), this.baseOrigin); }
+      catch { this.navigationViolation = navigationOriginError(); }
+    };
+    page.on("framenavigated", this.mainFrameNavigationHandler);
+  }
+
+  private async handlePausedRequest(event: FetchRequestPausedEvent, expectedOrigin: string): Promise<void> {
+    const cdp = this.cdp;
+    if (!cdp) return;
+    const isTopLevelDocument = event.resourceType === "Document" && event.frameId === this.mainFrameId;
+    const mustStayOnOrigin = Boolean(this.guardedOrigin) || isTopLevelDocument;
+    if (!mustStayOnOrigin) {
+      await cdp.send("Fetch.continueRequest", { requestId: event.requestId }).catch(() => undefined);
+      return;
+    }
+    try {
+      assertTopLevelOrigin(event.request.url, this.guardedOrigin ?? expectedOrigin);
+      await cdp.send("Fetch.continueRequest", { requestId: event.requestId });
+    } catch {
+      if (isTopLevelDocument) this.navigationViolation = navigationOriginError();
+      await cdp.send("Fetch.failRequest", { requestId: event.requestId, errorReason: "BlockedByClient" }).catch(() => undefined);
+    }
+  }
+
   private assertFinalOrigin(rawUrl: string): void {
     if (!this.baseOrigin) return;
-    try {
-      if (new URL(rawUrl).origin !== this.baseOrigin) throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the approved session origin.");
-    } catch (error) {
-      if (error instanceof WebDebugError) throw error;
-      throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "Navigation must stay on the approved session origin.");
-    }
+    assertTopLevelOrigin(rawUrl, this.baseOrigin);
+  }
+
+  private assertSelectedTopLevelState(): void {
+    if (this.navigationViolation) throw this.consumeNavigationViolation();
+    this.assertFinalOrigin(this.requirePage().url());
+  }
+
+  private consumeNavigationViolation(): WebDebugError {
+    const error = this.navigationViolation ?? navigationOriginError();
+    this.navigationViolation = null;
+    return error;
   }
 
   private resolveLocator(locator: BrowserLocator): import("playwright-core").Locator {
@@ -517,7 +653,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   private async collectAccessibility(context: OperationContext, warnings: string[]): Promise<AccessibilityDiagnostics | null> {
     if (!this.cdp) return null;
     try {
-      const raw = await withTimeout(this.cdp.send("Accessibility.getFullAXTree") as Promise<{ nodes?: unknown[] }>, optionalBudgetMs(context, 750));
+      const raw = await withTimeout(trackPending(this.cdp.send("Accessibility.getFullAXTree") as Promise<{ nodes?: unknown[] }>, context), optionalBudgetMs(context, 750));
       if (!raw) { warnings.push("Accessibility diagnostics unavailable: optional enrichment timed out."); return null; }
       const nodes = Array.isArray(raw.nodes) ? raw.nodes : [];
       const normalized: AccessibilityNode[] = nodes.slice(0, MAX_AX_NODES).flatMap((rawNode, index) => normalizeAxNode(rawNode, index));
@@ -554,6 +690,7 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
     assertContext(context);
+    this.assertSelectedTopLevelState();
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!Number.isInteger(input.line) || input.line < 1) {
       throw new WebDebugError("BREAKPOINT_LINE_INVALID", "Breakpoint line must be a positive integer.");
@@ -577,6 +714,7 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   async control(action: "resume" | "stepOver" | "stepInto" | "stepOut", context: OperationContext = {}): Promise<DebuggerSnapshot> {
     assertContext(context);
+    this.assertSelectedTopLevelState();
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!this.pausedEvent && action !== "resume") {
       throw new WebDebugError("DEBUGGER_NOT_PAUSED", "Step control requires a paused JavaScript target.");
@@ -586,25 +724,37 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (action === "stepOver") await withContext(this.cdp.send("Debugger.stepOver"), context);
     if (action === "stepInto") await withContext(this.cdp.send("Debugger.stepInto"), context);
     if (action === "stepOut") await withContext(this.cdp.send("Debugger.stepOut"), context);
-    return this.debuggerSnapshot();
+    return this.debuggerSnapshot(context);
   }
 
   async evaluate(expression: string, allowSideEffects: boolean, context: OperationContext = {}): Promise<EvaluationResult> {
     assertContext(context);
+    this.assertSelectedTopLevelState();
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
     if (!expression.trim()) throw new WebDebugError("EXPRESSION_EMPTY", "Evaluation expression cannot be empty.");
 
-    const response = await withTimeout(this.cdp.send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-      throwOnSideEffect: !allowSideEffects,
-      userGesture: false,
-    }) as Promise<{
-      result?: RemoteObject;
-      exceptionDetails?: { text?: string; exception?: RemoteObject };
-    }>, context.deadline === undefined ? 3_000 : Math.min(3_000, Math.max(1, context.deadline - performance.now())));
-    if (!response) throw new WebDebugError("EVALUATION_TIMEOUT", "Expression evaluation exceeded the 3 second bound.");
+    const localEvaluationDeadline = performance.now() + 3_000;
+    const evaluationDeadline = Math.min(context.deadline ?? Number.POSITIVE_INFINITY, localEvaluationDeadline);
+    const localEvaluationTimeoutOwnsDeadline = context.deadline === undefined || localEvaluationDeadline < context.deadline;
+    let response: { result?: RemoteObject; exceptionDetails?: { text?: string; exception?: RemoteObject } };
+    try {
+      response = await withContext(this.cdp.send("Runtime.evaluate", {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+        throwOnSideEffect: !allowSideEffects,
+        userGesture: false,
+      }) as Promise<{
+        result?: RemoteObject;
+        exceptionDetails?: { text?: string; exception?: RemoteObject };
+      }>, { ...context, deadline: evaluationDeadline });
+    } catch (error) {
+      if (error instanceof WebDebugError && error.code === "VERIFICATION_DEADLINE_EXCEEDED" && localEvaluationTimeoutOwnsDeadline && !context.signal?.aborted) {
+        throw new WebDebugError("EVALUATION_TIMEOUT", "Expression evaluation exceeded the 3 second bound.");
+      }
+      if (error instanceof WebDebugError) throw error;
+      throw new WebDebugError("EVALUATION_FAILED", "The expression could not be evaluated.", redactValue(error));
+    }
     if (response.exceptionDetails) {
       throw new WebDebugError(
         "EVALUATION_FAILED",
@@ -612,14 +762,16 @@ export class ChromiumAdapter implements BrowserAdapter {
         redactValue(response.exceptionDetails.exception),
       );
     }
+    const value = redactValue(remoteObjectValue(response.result));
+    if (Buffer.byteLength(JSON.stringify(value)) > MAX_RESULT_BYTES) throw new WebDebugError("EVALUATION_RESULT_LIMIT", `Evaluation result exceeded the ${MAX_RESULT_BYTES}-byte limit.`);
     return {
-      value: redactValue(remoteObjectValue(response.result)),
+      value,
       type: response.result?.type ?? null,
       description: response.result?.description ? boundText(response.result.description, 500) : null,
     };
   }
 
-  private async debuggerSnapshot(): Promise<DebuggerSnapshot> {
+  private async debuggerSnapshot(context: OperationContext): Promise<DebuggerSnapshot> {
     const pausedEvent = this.pausedEvent;
     if (!pausedEvent) {
       return { paused: false, reason: null, callFrames: [], breakpoints: [...this.breakpoints] };
@@ -634,7 +786,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         line: (frame.location?.lineNumber ?? 0) + 1,
         column: (frame.location?.columnNumber ?? 0) + 1,
         scopeNames: (frame.scopeChain ?? []).slice(0, 6).map((scope) => scope.name ?? "scope"),
-        locals: await this.localsForFrame(frame),
+        locals: await this.localsForFrame(frame, context),
       });
     }
     return {
@@ -645,18 +797,18 @@ export class ChromiumAdapter implements BrowserAdapter {
     };
   }
 
-  private async localsForFrame(frame: PausedCallFrame): Promise<Record<string, unknown>> {
+  private async localsForFrame(frame: PausedCallFrame, context: OperationContext): Promise<Record<string, unknown>> {
     if (!this.cdp) return {};
     const locals: Record<string, unknown> = {};
     for (const scope of (frame.scopeChain ?? []).slice(0, 3)) {
       const objectId = scope.object?.objectId;
       if (!objectId) continue;
       try {
-        const properties = await withTimeout(this.cdp.send("Runtime.getProperties", {
+        const properties = await withTimeout(trackPending(this.cdp.send("Runtime.getProperties", {
           objectId,
           ownProperties: true,
           generatePreview: true,
-        }) as Promise<PropertiesResult>, 500);
+        }) as Promise<PropertiesResult>, context), 500);
         if (!properties) {
           locals[`${scope.name ?? "scope"}.__unavailable`] = "[UNAVAILABLE]";
           continue;
@@ -664,14 +816,14 @@ export class ChromiumAdapter implements BrowserAdapter {
         for (const property of (properties.result ?? []).slice(0, 20)) {
           if (!property.name) continue;
           const evaluated = frame.callFrameId
-            ? await withTimeout(this.cdp.send("Debugger.evaluateOnCallFrame", {
+            ? await withTimeout(trackPending(this.cdp.send("Debugger.evaluateOnCallFrame", {
                 callFrameId: frame.callFrameId,
                 expression: property.name,
                 includeCommandLineAPI: false,
                 returnByValue: true,
                 silent: true,
                 throwOnSideEffect: true,
-              }) as Promise<{ result?: RemoteObject }>, 500)
+              }) as Promise<{ result?: RemoteObject }>, context), 500)
             : null;
           locals[`${scope.name ?? "scope"}.${property.name}`] = redactValue(
             remoteObjectValue(evaluated?.result ?? property.value),
@@ -919,6 +1071,7 @@ function optionalBudgetMs(context: OperationContext, maximumMs: number): number 
 }
 
 function assertAllowedUrl(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "Browser URLs are limited to 2,048 characters.");
   let url: URL;
   try {
     url = new URL(raw);
@@ -937,6 +1090,7 @@ function assertAllowedUrl(raw: string, allowRemote: boolean): void {
 }
 
 function assertAllowedCdpEndpoint(raw: string, allowRemote: boolean): void {
+  if (raw.length > 2_048) throw new WebDebugError("CDP_ENDPOINT_LIMIT", "CDP endpoints are limited to 2,048 characters.");
   let url: URL;
   try {
     url = new URL(raw);
@@ -959,10 +1113,6 @@ function isLoopback(hostname: string): boolean {
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
 }
 
-function isWithinOrigin(rawUrl: string, origin: string): boolean {
-  try { return new URL(rawUrl).origin === origin; } catch { return false; }
-}
-
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<null>((resolve) => {
@@ -973,4 +1123,12 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+function trackPending<T>(promise: Promise<T>, context: OperationContext): Promise<T> {
+  if (!context.pending) return promise;
+  const settled = promise.then(() => undefined, () => undefined);
+  context.pending.add(settled);
+  void settled.then(() => context.pending?.delete(settled));
+  return promise;
 }

@@ -6,6 +6,8 @@ import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
 
+import { PACKAGE_VERSION } from "./version.js";
+
 const execFileAsync = promisify(execFile);
 export const REGISTRY_DIRECTORY_CAP = 128;
 export const REGISTRY_RECORD_CAP = 64;
@@ -109,7 +111,7 @@ export class ProcessRegistry {
     this.now = options.now ?? (() => Date.now());
     this.timestamp = options.timestamp ?? (() => new Date().toISOString());
     this.platform = options.platform ?? process.platform;
-    this.packageVersion = options.packageVersion ?? "0.3.1";
+    this.packageVersion = options.packageVersion ?? PACKAGE_VERSION;
     this.packageEntry = resolve(options.packageEntry ?? process.argv[1] ?? "");
     this.executable = resolve(options.executable ?? process.execPath);
     this.identity = options.identity ?? {
@@ -290,7 +292,7 @@ export class ProcessRegistry {
 export async function cleanupRegistry(options: { directory?: string; allIdle?: boolean; now?: () => number; platform?: NodeJS.Platform } = {}): Promise<CleanupReport> {
   const directory = options.directory ?? defaultRegistryDirectory();
   const platform = options.platform ?? process.platform;
-  const report: CleanupReport = { schemaVersion: 1, version: "0.3.1", scanned: 0, terminated: 0, skippedActive: 0, removedStaleRecords: 0, failed: 0, terminatedDetails: [], skippedActiveDetails: [], removedStaleRecordDetails: [], failedDetails: [], truncated: false };
+  const report: CleanupReport = { schemaVersion: 1, version: PACKAGE_VERSION, scanned: 0, terminated: 0, skippedActive: 0, removedStaleRecords: 0, failed: 0, terminatedDetails: [], skippedActiveDetails: [], removedStaleRecordDetails: [], failedDetails: [], truncated: false };
   const uid = typeof process.getuid === "function" ? process.getuid() : null;
   const directoryInfo = await lstat(directory).catch(() => null);
   if (!directoryInfo) return report;

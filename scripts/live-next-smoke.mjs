@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 import { SessionManager } from "../dist/core/session-manager.js";
+import { stopOwnedProcess, waitForHttpReady } from "./lib/managed-process.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const fixtureRoot = join(repositoryRoot, "fixtures/next");
@@ -21,12 +22,13 @@ const next = spawn(process.execPath, [serverScript], {
   cwd: repositoryRoot,
   env: { ...process.env, WEB_DEBUG_NEXT_PORT: String(port) },
   stdio: ["ignore", "inherit", "inherit"],
+  detached: process.platform !== "win32",
 });
 const manager = new SessionManager();
 let session;
 
 try {
-  await waitForUrl(url, next);
+  await waitForHttpReady(url, next, { label: "Next fixture", timeoutMs: 20_000, pollMs: 200 });
   session = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
   const actionId = await waitForServerActionId(fixtureRoot, next);
   const routeInspection = await manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" });
@@ -88,8 +90,8 @@ try {
   }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;
 } finally {
-  await manager.closeAll();
-  next.kill("SIGTERM");
+  await manager.closeAll("delete");
+  await stopOwnedProcess(next, { label: "Next fixture", processGroup: true });
 }
 
 function hasRoute(value, expected) {
@@ -99,23 +101,6 @@ function hasRoute(value, expected) {
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-async function waitForUrl(targetUrl, child) {
-  const deadline = Date.now() + 20_000;
-  let lastError = "not attempted";
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`Next fixture exited with code ${child.exitCode}.`);
-    try {
-      const response = await fetch(targetUrl);
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`Next fixture did not become ready: ${lastError}`);
 }
 
 async function waitForServerActionId(projectRoot, child) {

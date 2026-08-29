@@ -1,4 +1,5 @@
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
+import { MAX_FRAMEWORK_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
 import type { OperationContext, ViteSnapshot } from "../domain/types.js";
 import { performance } from "node:perf_hooks";
 
@@ -12,10 +13,11 @@ export class ViteAdapter {
     try {
       const response = await fetch(endpoint, {
         headers: { accept: "application/json" },
+        redirect: "manual",
         signal: controller.signal,
       });
       if (response.status === 404) return null;
-      const body = await response.text();
+      const body = await readResponseTextBounded(response, MAX_FRAMEWORK_RESPONSE_BYTES, "Vite debug endpoint response", controller.signal);
       if (!response.ok) throw new Error(`Vite debug endpoint returned HTTP ${response.status}: ${boundText(body, 500)}`);
       const parsed: unknown = JSON.parse(body);
       if (!isRecord(parsed) || parsed.detected !== true) return null;

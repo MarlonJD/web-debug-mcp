@@ -1,6 +1,10 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.3.3",
+  "version": "0.4.0-next.0",
+  "webDebug": {
+    "releaseStatus": "source-next",
+    "releasedPluginRuntimeVersion": "0.3.3"
+  },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
   "license": "GPL-3.0-or-later",
@@ -54,11 +58,14 @@
     "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
     "smoke:local-fidelity": "npm run build && node scripts/live-local-fidelity-smoke.mjs",
     "demo:compare": "npm run build --silent && node scripts/demo-compare.mjs",
+    "eval:catalog": "node scripts/agent-eval.mjs --catalog",
+    "eval:grade": "node scripts/agent-eval.mjs --grade",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",
     "serve:fixture": "node scripts/serve-fixture.mjs",
+    "pretest": "npm run build --silent",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

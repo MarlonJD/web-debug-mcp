@@ -4,6 +4,8 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
+> **Source-next `0.4.0-next.0` / release pending (2026-08-29):** this working tree contains the unreleased schema-4 contract, structured MCP output/resources/progress, `doctor`, deterministic action expansion, origin/lifecycle hardening, and artifact quotas described below. The published npm package and bundled plugin remain immutable `0.3.3` and do not gain these features until a separately authorized release. Build this checkout to exercise source-next behavior; the install commands below intentionally continue to install the released `0.3.3` contract.
+
 ## Install as an MCP server
 
 The core package is a standalone MCP server. The repository also includes an optional Web Debug plugin for Codex and ChatGPT: the MCP server provides callable debugging tools, while the bundled skill provides workflow guidance. Claude Code and other MCP clients can continue using the standalone server.
@@ -61,7 +63,7 @@ Codex starts web-debug-mcp over local stdio on demand
 web_project_detect → reproduce → web_issue_capture → fix verification
 ~~~
 
-The stdio binary also exposes the package-only cleanup command `web-debug-mcp cleanup [--all-idle]`. It emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
+The source-checkout stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP/WebDriver endpoints, optional loopback URL, Safari BiDi WebSocket availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes. The installed `0.3.3` plugin retains its released command contract.
 
 ### Install from the Codex CLI
 
@@ -122,6 +124,8 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
+This command loads the repository's plugin metadata and skill, but its bundled `.mcp.json` intentionally still starts released `web-debug-mcp@0.3.3`; it does not exercise source-next.
+
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
@@ -168,17 +172,20 @@ The project deliberately keeps one public MCP catalog. React, Vite, Next, Chromi
 
 MCP is the transport and tool contract between an agent such as Codex and this debugging process. The server exposes typed, discoverable operations instead of asking the agent to parse terminal output or drive an unstructured DevTools UI.
 
-The public tools cover:
+The source-next public tools cover:
 
 - project capability detection;
 - explicit Chromium or Safari session start and status;
 - bounded browser actions: navigate, click, fill, exact-locator probe waits, and reload;
+- deterministic locator actions for keyboard press, select, checked state, hover, and scroll-into-view;
 - issue capture with DOM, console, network, screenshot, debugger, framework, and replay evidence;
 - Chromium breakpoints, pause control, and guarded JavaScript evaluation;
 - Next route compilation and Server Action lookup;
 - replay frame inspection and safe-action restore;
 - reproducible flow recording and post-change verification;
 - session cleanup.
+
+Every tool advertises an MCP output schema and, after input-schema validation succeeds, returns one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
 
 The MCP boundary is intentionally small. Framework-specific protocol details stay inside adapters, while session ownership, same-origin navigation, bounds, redaction, and recovery stay centralized.
 
@@ -208,11 +215,13 @@ The difference is both the target and the integration model:
 - Isolated loopback-only TLS opt-in with an approved origin, project-contained disposable Playwright auth state, named checkpoints, and bounded desktop/mobile viewport matrices.
 - Computed Chromium accessibility diagnostics with live-validated `uniqueAtCapture` suggestions; Safari stays CSS-only and reports these advanced capabilities as unavailable.
 - Auth-seeded sessions suppress screenshots because screenshot pixels cannot be truthfully redacted.
+- Sessions or scenarios containing private fill/select values also suppress screenshots; structured values are redacted, but pixels are never claimed scrubbed.
 - Safari actions, DOM, screenshots, and explicit JavaScript evaluation through W3C WebDriver.
 - WebDriver BiDi console and network subscriptions where the installed Safari exposes them.
 - A disclosed, bounded Performance Resource Timing fallback for Safari versions that do not emit network events.
 - JavaScript breakpoints, pause reasons, call frames, scope values, and guarded evaluation in Chromium.
 - Same-origin navigation and bounded console/network metadata with redaction.
+- Top-level redirects, clicks, reloads, and secondary pages stay on the selected origin. Chromium combines selected-target CDP interception with a context-wide frame-less-document fallback and revalidates every final state; in attach mode that fallback disables HTTP cache for sibling pages until close. Safari WebDriver verifies and quarantines escaped state immediately after navigation because its compatibility transport has no reliable pre-request interception.
 
 ### React profiler and render-cause evidence
 
@@ -252,11 +261,11 @@ The suite observes and explains a Server Action request. It does not invoke arbi
 
 ### Replay and adaptive verification
 
-Every manual action and representative capture can produce one of up to eight bounded replay frames. Verification attempts retain one capture-only frame with an `attemptId`; `web_replay_seek` can inspect it but restore remains fail-closed. Ordinary manual frames can use `restore: true` to reissue only safe retained navigation, click, observable wait, and reload actions. Form values are sanitized before storage; frames containing sanitized inputs or redacted navigation URLs fail closed during restore.
+Every manual action and representative capture can produce one of up to eight bounded replay frames. Verification attempts retain one capture-only frame with an `attemptId`; `web_replay_seek` can inspect it but restore remains fail-closed. Ordinary manual frames can use `restore: true` to reissue retained navigation, click, press, check, hover, scroll, observable wait, and reload actions only while the trustworthy session-start boundary is still retained. Fill and select values are sanitized before storage; truncated starts, sanitized inputs, or redacted navigation URLs fail closed during restore.
 
-Recorded scenarios execute a bounded pre-fix baseline before they are stored. The contract separates a named `failureSignature` from `acceptanceChecks` and optional `regressionChecks`; `web_fix_verify` returns exactly `verified`, `failed`, or `inconclusive`, never an ambiguous boolean. Quick verification uses one attempt (15 seconds); declared asynchronous, timing, concurrency, browser-state, or server-state risk starts at standard (up to three attempts/60 seconds), and prior flakiness starts strict (up to five attempts/120 seconds). Retryable startup/readiness signals and conflicting baseline observations are recorded as escalation reasons. The MCP plugin allows 150 seconds so strict verification and bounded cleanup can finish.
+Recorded scenarios execute a bounded pre-fix baseline before they are stored. The contract separates a named `failureSignature` from `acceptanceChecks` and optional `regressionChecks`; `web_fix_verify` returns exactly `verified`, `failed`, or `inconclusive`, never an ambiguous boolean. Quick verification uses one attempt (15 seconds); declared asynchronous, timing, concurrency, browser-state, or server-state risk starts at standard (up to three attempts/60 seconds), and prior flakiness starts strict (up to five attempts/120 seconds). Retryable startup/readiness signals and conflicting baseline observations are recorded as escalation reasons. The MCP plugin allows 150 seconds so strict verification and bounded cleanup can finish, while requested progress reports phase start, attempt boundaries, and phase completion on a fixed monotonic scale.
 
-Scenarios are session-owned and in-memory. The private executable URL retains its exact query for replay, while the public scenario URL is query-free; public actions replace fill values with a redaction marker, contract hashes contain only the sanitized contract, and build references are explicitly untrusted caller labels. Each result reports environment/target provenance, rates over decisive observations, per-attempt summaries, reset/isolation truth, cancellation or deadline state, and one bounded representative evidence bundle per phase. A full representative recapture is authoritative: drift or unavailable evidence is `inconclusive`, never `verified`. A scenario is not reusable across sessions, and closing a session purges private actions and retained evidence.
+Scenarios are session-owned and in-memory. The private executable URL retains its exact query for replay, while the public scenario URL is query-free; public actions replace fill/select values with a redaction marker, contract hashes contain only the sanitized contract, and build references are explicitly untrusted caller labels. Each result reports environment/target provenance, rates over decisive observations, per-attempt summaries, reset/isolation truth, cancellation or deadline state, and one bounded representative evidence bundle per phase. A full representative recapture is authoritative: drift or unavailable evidence is `inconclusive`, never `verified`. A scenario is not reusable across sessions, and closing destroys private actions, auth/start settings, target identity, secrets, and retained evidence before keeping only a bounded sanitized tombstone.
 
 Scenario recording is intentionally not a test-definition generator. The project does not export or import YAML/JSON scenario files and does not provide a standalone or CI scenario runner. When a reproduced regression needs durable cross-session or CI coverage, encode it in the repository's native test suite; use this MCP workflow for browser-grounded reproduction, diagnosis, and same-session fix verification.
 
@@ -281,6 +290,8 @@ The MCP flow is session-bound and explicit:
 ```
 
 Wait actions must name an exact locator, probe property, and expected value; elapsed-only sleeps are rejected.
+
+The action set is intentionally deterministic: `press` accepts a fixed navigation/editing key allowlist, `select` chooses one exact option value, `check` declares the desired boolean state, and `scroll` brings one exact locator into view. Fill and select values remain private to the live session and are never restorable from public replay.
 
 ## Why use it?
 
@@ -321,6 +332,13 @@ npm run build
 npm run harness:check
 ```
 
+Check first-run readiness without starting a browser:
+
+```bash
+npm run build
+node bin/web-debug-mcp.mjs doctor --project-root fixtures/react-vite --url http://127.0.0.1:4174/ --executable-path "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
+
 For a live Chromium smoke, provide an explicit browser executable:
 
 ```bash
@@ -349,6 +367,15 @@ Run the MCP server after building:
 node dist/index.js
 ```
 
+To exercise source-next through an MCP client, register that built file directly under a distinct name and do not enable the released plugin in the same client session:
+
+```bash
+codex mcp add web-debug-mcp-source-next -- node /absolute/path/to/web-debug-mcp/dist/index.js
+claude mcp add --transport stdio --scope project web-debug-mcp-source-next -- node /absolute/path/to/web-debug-mcp/dist/index.js
+```
+
+Replace the placeholder with this checkout's absolute path, then verify the prerelease `serverInfo.version` is `0.4.0-next.0`. The released plugin remains the correct path for stable `0.3.3` behavior.
+
 Then use the MCP client workflow:
 
 1. Call `web_project_detect`.
@@ -358,7 +385,7 @@ Then use the MCP client workflow:
 5. Use `web_next_inspect` for a Next route or Server Action when applicable.
 6. Record and rerun a flow with `web_repro_record` and `web_fix_verify`.
 7. Inspect or safely restore a retained frame with `web_replay_seek`.
-8. Close the session with `web_session_close`.
+8. Close the session with `web_session_close`. Use `artifactPolicy: "delete"` to remove only that exact session artifact directory; the default `retain` keeps non-empty evidence available for inspection and removes an empty directory.
 
 For Vite, install the development-only plugin in `vite.config.ts`:
 
@@ -377,11 +404,12 @@ Do not enable that plugin in a production server.
 - A local process communicating over MCP stdio.
 - Explicit browser target selection; no arbitrary browser or target discovery.
 - Structured evidence with bounded arrays and text, redaction markers, and capability warnings.
+- MCP-native structured results, bounded text previews, progress notifications, and opaque screenshot resources.
 - Nullable framework fields when a development runtime does not expose a signal.
 - Chromium debugger depth and Safari WebDriver/BiDi coverage that differ by browser capability.
-- Temporary screenshot artifacts outside the project directory.
+- Temporary screenshot artifacts outside the project directory with explicit retain/delete close policy.
 - Safe replay that reissues a limited action set, not a magical snapshot restore.
-- A repository-local `harness-ready` certification that proves one source/attestation window and local evidence integrity, not production deployment or provider authentication.
+- A native harness status that distinguishes passing source checks from a historical, possibly stale certification window; neither proves production deployment or provider authentication.
 
 ## What not to expect
 
@@ -404,11 +432,12 @@ Remote CDP or WebDriver attachment requires explicit opt-in and an approved targ
 ## Safety defaults
 
 - Browser URLs are loopback-only unless `allowRemote` is explicitly enabled.
-- Browser navigation remains on the session origin.
+- Top-level browser navigation remains on the session origin across initial redirects, actions, reloads, and secondary pages; cross-origin subresources remain available in ordinary sessions.
 - External attachments are marked non-isolated.
 - Console text, URLs, debugger locals, evaluated values, framework data, and replay frames are bounded and redacted.
 - Raw response bodies, cookies, authorization values, and browser storage are not collected by the core adapter.
 - Evaluation rejects side effects unless `allowSideEffects: true` is explicitly supplied.
+- Framework HTTP bodies, WebDriver responses, evaluated values, error details, structured data, and complete MCP results have byte budgets; overflow fails with a stable error instead of partial success.
 - The Vite plugin is development-only and local by design.
 
 ## Safari 27 note
@@ -417,9 +446,11 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-The repository-local evidence sweep covers deterministic tests, TypeScript type checking, build, native harness checks, adaptive scenario bounds, and proportional Chromium, React/Vite, Next, Safari, replay, and repair smokes when those runtimes are available. Repository-local harness certification currently returns `CERT000` for its bounded source/attestation window. Provider-backed production attestation and an approved external remote-browser run are separate authority gates.
+The repository-local evidence sweep covers deterministic tests, source and test TypeScript checking, build, native harness checks, adaptive scenario bounds, and proportional Chromium, React/Vite, Next, Safari, replay, and repair smokes when those runtimes are available. The checked-in HMAC evidence is a historical certification window whose source, coverage hash, and expiry no longer match current work; this repository does not claim a current `CERT000`. The native harness reports that state as `certification: stale-candidate`. Fresh HMAC attestation, provider-backed production authority, and an approved external remote-browser run remain separate gates.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [source-next product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
+
+Exact locally verified source-next versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits the three frozen agent repair contracts documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
 
 ## License
 

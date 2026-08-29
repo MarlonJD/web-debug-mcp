@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 import { SessionManager } from "../dist/core/session-manager.js";
+import { stopOwnedProcess, waitForHttpReady } from "./lib/managed-process.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const fixtureRoot = join(repositoryRoot, "fixtures/react-vite");
@@ -25,6 +26,7 @@ const vite = spawn(process.execPath, [serverScript], {
   cwd: repositoryRoot,
   env: { ...process.env, WEB_DEBUG_REACT_VITE_PORT: String(port) },
   stdio: ["ignore", "inherit", "inherit"],
+  detached: process.platform !== "win32",
 });
 const manager = new SessionManager();
 let verificationSession;
@@ -34,7 +36,7 @@ let appMutated = false;
 let hmrEvidence = null;
 
 try {
-  await waitForUrl(url, vite);
+  await waitForHttpReady(url, vite, { label: "React/Vite fixture", timeoutMs: 15_000 });
 
   verificationSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
   await manager.act(verificationSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
@@ -116,8 +118,9 @@ try {
   if (!passed) process.exitCode = 1;
 } finally {
   if (appMutated && originalApp !== null) await writeFile(appPath, originalApp);
-  await manager.closeAll();
-  vite.kill("SIGTERM");
+  await manager.closeAll("delete");
+  await stopOwnedProcess(vite, { label: "React/Vite fixture", processGroup: true });
+  await rm(artifactDir, { recursive: true, force: true });
 }
 
 function findComponent(nodes, name) {
@@ -160,21 +163,4 @@ async function waitForViteTransformDiff(targetUrl) {
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`Vite transform diff did not become ready: ${lastError}`);
-}
-
-async function waitForUrl(targetUrl, child) {
-  const deadline = Date.now() + 15_000;
-  let lastError = "not attempted";
-  while (Date.now() < deadline) {
-    if (child.exitCode !== null) throw new Error(`React/Vite fixture exited with code ${child.exitCode}.`);
-    try {
-      const response = await fetch(targetUrl);
-      if (response.ok) return;
-      lastError = `HTTP ${response.status}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  throw new Error(`React/Vite fixture did not become ready: ${lastError}`);
 }
