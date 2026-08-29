@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Version `0.4.0` is the schema-4 release with structured MCP output/resources/progress, `doctor`, deterministic action expansion, fixed-origin and lifecycle hardening, and bounded screenshot retention.
+Version `0.4.0` remains the immutable published/plugin runtime. This checkout is source-only `0.5.0-next.0`: it adds evidence schema 3 with bounded Angular 21 and Vue 3 Chromium development-runtime snapshots while scenario/verification stays schema 4. It is release pending and is not installed by the released `0.4.0` plugin.
 
 ## Install as an MCP server
 
@@ -145,6 +145,8 @@ Use it when a local web application is running and the task needs browser-ground
 
 - reproducing a DOM, console, network, screenshot, or JavaScript-debugger issue;
 - understanding React state, commits, render causes, or bounded flamegraph data;
+- inspecting bounded Angular development component/state changes through documented debug globals;
+- inspecting bounded Vue 3 development component/props/state updates through a safely chained DevTools hook;
 - investigating Vite module/HMR/transform behavior;
 - inspecting Next.js routes, logs, request traces, or Server Actions;
 - replaying and verifying a browser flow after a frontend fix.
@@ -166,7 +168,7 @@ Web debugging is usually split across several disconnected surfaces:
 
 An agent can edit code without having a reliable, structured account of what happened in the running app. `web-debug-mcp` closes that gap. It turns a reproduction into bounded evidence that an agent can inspect, compare, and use for fix verification.
 
-The project deliberately keeps one public MCP catalog. React, Vite, Next, Chromium, and Safari are internal adapters behind the same session and evidence contract, so adding framework context does not create a collection of overlapping MCP servers.
+The project deliberately keeps one public MCP catalog. React, Angular, Vue, Vite, Next, Chromium, and Safari are internal adapters behind the same session and evidence contract, so adding framework context does not create overlapping MCP servers.
 
 ## What MCP adds here
 
@@ -197,7 +199,7 @@ The MCP boundary is intentionally small. Framework-specific protocol details sta
 | --- | --- | --- | --- |
 | `build-macos-apps` skills | macOS apps, Swift, Xcode, AppKit, SwiftUI | Build, run, package, and debug native macOS software | Xcode/SwiftPM builds, app launch state, macOS logs, window behavior, signing and packaging evidence |
 | `build-ios-apps` skills | iOS apps and Simulator | Build, launch, inspect, test, and profile native iOS software | Simulator UI, `adb`/Xcode-style logs, ETTrace, memgraphs, App Intents, SwiftUI behavior |
-| `web-debug-mcp` | Local web apps in Chromium or Safari | Reproduce browser behavior and join browser evidence with React, Vite, and Next runtime context | DOM, console, network metadata, CDP pauses, React commits/flamegraph summaries, Vite transforms/source maps, Next traces/Server Actions, screenshots, replay frames |
+| `web-debug-mcp` | Local web apps in Chromium or Safari | Reproduce browser behavior and join browser evidence with bounded framework/runtime context | DOM, console, network metadata, CDP pauses, React commits, Angular DOM-host state, Vue component updates, Vite transforms, Next traces, screenshots, replay frames |
 
 The difference is both the target and the integration model:
 
@@ -234,6 +236,14 @@ The injected development bridge observes React’s DevTools hook and returns:
 - a flat, depth-aware flamegraph view with actual, self, and tree duration summaries.
 
 This is useful for locating re-render hotspots and distinguishing a state update from a prop or parent-driven render without exposing raw Fiber objects.
+
+### Angular development evidence
+
+For detected Angular projects, Chromium injects a target-scoped read-only bridge before navigation. Development builds with documented `window.ng` globals return a bounded DOM-hosted component tree, own data properties, sample counts, and changed state keys. The bridge excludes accessors, methods, signals, injectors, and private Ivy fields. Angular CLI's encapsulated Vite server is not the Web Debug Vite endpoint, so Angular-only projects do not claim Vite module/HMR provenance.
+
+### Vue 3 development evidence
+
+For detected Vue projects, Chromium injects a target-scoped bridge that observes the exact Vue 3 DevTools hook contract while preserving an existing hook. It returns bounded application/component trees, props, descriptor-backed state, source-file hints, update counts, and changed keys. It never falls back to DOM-private `__vue*` properties. Vue/Vite projects can additionally install `webDebugVitePlugin()` for the existing module/HMR provenance.
 
 ### Vite provenance
 
@@ -314,6 +324,8 @@ The examples show the practical difference: a raw browser path can reproduce a s
 ## Useful application areas
 
 - React UI bugs, stale state, unexpected renders, and component performance investigations;
+- Angular development component/state regressions where a DOM-hosted tree is sufficient;
+- Vue 3 development component, props, state, and update regressions;
 - Vite HMR failures, transform regressions, importer/module-graph problems, and source-map questions;
 - Next.js App Router, route compilation, RSC, request-insight, and Server Action debugging;
 - browser console or network regressions tied to a reproducible interaction;
@@ -349,6 +361,8 @@ For the framework fixtures:
 
 ```bash
 npm run smoke:react-vite
+npm run smoke:vue-vite
+npm run smoke:angular
 npm run smoke:next
 npm run smoke:safari
 ```
@@ -374,7 +388,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.4.0`. The released plugin remains the recommended single-install path.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.5.0-next.0`. The released plugin remains on immutable `0.4.0`; the source checkout is only for local candidate verification.
 
 Then use the MCP client workflow:
 
@@ -446,7 +460,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-The `0.4.0` evidence sweep covers 106 deterministic tests, source/test TypeScript checking, build, native and zero-error formal harnesses, plugin validation, five live browser/framework smokes, the six-scenario comparison demo, exact tarball/public-registry handshakes, npm/GitHub release equality, and the installed Codex plugin. A direct-child HMAC overlay provides bounded repository-local `harness-ready` integrity and the external-key verifier returns `CERT000`; the native gate reports only `fresh-structure-candidate` because it intentionally does not authenticate the key. This is not provider-backed production authority, and no approved external remote-browser run is claimed.
+The immutable `0.4.0` release evidence remains recorded in its completed release plan. Source-only `0.5.0-next.0` is verified locally with 117 deterministic tests plus Angular 21.2.22 and Vue 3.5.42 live Chromium smokes; existing browser/framework smokes remain separate regression gates. The checked-in historical certification window belongs to the earlier attested source and is stale after these source changes; this checkout does not claim a current `CERT000`. Local compatibility evidence is not release, plugin, HMAC-certification, provider, or production authority, and no approved external remote-browser run is claimed.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 

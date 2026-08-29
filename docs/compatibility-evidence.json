@@ -1,9 +1,13 @@
 {
-  "schemaVersion": 1,
-  "scope": "0.4.0-release",
-  "observedAt": "2026-08-29T20:47:00Z",
-  "baseCommit": "94328c05af5f2263a2f64edec1b3267e44aae915",
-  "sourceVersion": "0.4.0",
+  "schemaVersion": 2,
+  "scope": "0.5.0-next.0-local",
+  "observedAt": "2026-08-30T00:30:00+03:00",
+  "sourceVersion": "0.5.0-next.0",
+  "releaseBaseline": {
+    "version": "0.4.0",
+    "commit": "94328c05af5f2263a2f64edec1b3267e44aae915",
+    "archiveShasum": "c7daee55f175d113503d4e662ea8bc418da149ea"
+  },
   "runtime": {
     "node": "24.18.0",
     "mcpSdk": "1.30.0",
@@ -11,18 +15,26 @@
     "safari": "26.5.2",
     "react": "19.2.8",
     "vite": "7.3.6",
-    "next": "16.3.3"
+    "next": "16.3.3",
+    "angular": "21.2.22",
+    "vue": "3.5.42",
+    "vitePluginVue": "6.0.8",
+    "vitest": "4.1.11",
+    "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "106/106 tests" },
+    { "command": "npm test", "status": "passed", "signal": "117/117 deterministic tests including Angular/Vue bridge and fixture contracts" },
     { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
     { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
     { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
+    { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR transform diff" },
+    { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 development DOM-host component/state/change evidence with no Vite provenance claim" },
     { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari WebDriver DOM/action/screenshot, BiDi console, and disclosed performance network fallback" },
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" }
   ],
   "limits": [
-    "This evidence applies to the exact 0.4.0 release source; public npm, GitHub, and Codex identities were verified separately and recorded in the release plan.",
-    "Approved external CDP, release publication, HMAC certification, provider authority, production, and other runtime versions remain unverified."
+    "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
+    "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, publication, plugin promotion, provider authority, and production remain candidate-only or unavailable.",
+    "The immutable 0.4.0 npm/GitHub/Codex release evidence remains separate; these source-next checks do not refresh HMAC certification."
   ]
 }

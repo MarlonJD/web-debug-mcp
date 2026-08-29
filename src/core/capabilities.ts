@@ -9,6 +9,7 @@ const CONFIG_MARKERS = [
   "vite.config.mjs",
   "vite.config.ts",
   "vite.config.mts",
+  "angular.json",
   "next.config.js",
   "next.config.mjs",
   "next.config.ts",
@@ -34,11 +35,15 @@ export function detectProject(projectRoot: string): ProjectDescriptor {
   const isNext = dependencies.has("next") || markers.some((marker) => marker.startsWith("next."));
   const isVite = dependencies.has("vite") || markers.some((marker) => marker.startsWith("vite."));
   const isReact = dependencies.has("react") || dependencies.has("react-dom") || dependencies.has("react-native");
+  const isAngular = dependencies.has("@angular/core") || markers.includes("angular.json");
+  const isVue = dependencies.has("vue");
 
   const frameworks: Framework[] = [];
   if (isNext) frameworks.push("next");
+  if (isAngular) frameworks.push("angular");
   if (isVite) frameworks.push("vite");
   if (isReact) frameworks.push("react");
+  if (isVue) frameworks.push("vue");
   if (frameworks.length === 0 && hasIndex) frameworks.push("vanilla");
 
   const capabilities: ProjectCapabilities = {
@@ -49,6 +54,8 @@ export function detectProject(projectRoot: string): ProjectDescriptor {
     dom: hasIndex || frameworks.length > 0,
     screenshots: hasIndex || frameworks.length > 0,
     react: isReact,
+    angular: isAngular,
+    vue: isVue,
     vite: isVite,
     next: isNext,
     serverRuntime: isNext,
@@ -66,6 +73,12 @@ export function detectProject(projectRoot: string): ProjectDescriptor {
   }
   if (isReact && !isVite && !isNext) {
     warnings.push("React was detected without a Vite or Next.js marker; only generic browser capabilities are guaranteed.");
+  }
+  if (isAngular) {
+    warnings.push("Angular runtime enrichment requires a Chromium development build; Angular CLI's internal Vite server does not expose Web Debug Vite provenance.");
+  }
+  if (isVue) {
+    warnings.push("Vue runtime enrichment requires a compatible Vue 3 Chromium development build.");
   }
 
   return {

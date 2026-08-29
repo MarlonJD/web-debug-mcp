@@ -2,7 +2,7 @@
 
 This repository adopts the harness-engineering v2 certification contract for the local developer tool. The bounded claim is `harness-ready`; it is not a production-readiness or provider-authentication claim.
 
-Release `0.4.0` refreshes the checked-in certification window through one direct-child attestation overlay. The native gate checks structure, ancestry, coverage hash, expiry, and worktree drift but never authenticates the HMAC, so it reports `fresh-structure-candidate`; the external-key formal verifier is required for the current bounded `CERT000` claim.
+Release `0.4.0` refreshed the checked-in certification window through one direct-child attestation overlay. After source-only `0.5.0-next.0` Angular/Vue changes, that historical certification window is stale. The native gate checks structure, ancestry, coverage hash, expiry, and worktree drift but never authenticates the HMAC; no current `CERT000` is claimed until a separately authorized fresh source/attestation pair is created and externally verified.
 
 ## Ownership and commands
 

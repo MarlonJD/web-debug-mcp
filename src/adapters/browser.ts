@@ -5,6 +5,7 @@ import type {
   BrowserSnapshot,
   BrowserTarget,
   BrowserEngine,
+  Framework,
   DebuggerBreakpoint,
   DebuggerSnapshot,
   OperationContext,
@@ -23,6 +24,8 @@ export interface BrowserStartOptions {
   headless?: boolean;
   allowRemote?: boolean;
   viewport?: ViewportSize;
+  /** Private core-detected page runtimes used to select target-scoped bridges. */
+  frameworks?: Framework[];
   /** Elevated modes are private core-validated settings. They are not
    * serialized into public session summaries. */
   tls?: "strict" | "allow-insecure-loopback";

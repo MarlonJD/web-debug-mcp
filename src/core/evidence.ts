@@ -14,7 +14,7 @@ export function composeEvidence(
   replay: ReplayTimeline,
 ): EvidenceBundle {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     capturedAt: new Date().toISOString(),
     session: { ...session },
     project: { ...project },

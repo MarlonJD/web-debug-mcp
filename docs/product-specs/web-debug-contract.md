@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-This is the final `0.4.0` package and plugin contract.
+The immutable package/plugin release remains `0.4.0`. This checkout is source-only `0.5.0-next.0`; it adds locally verified Angular/Vue evidence and is release pending.
 
 ## User outcome
 
@@ -14,6 +14,8 @@ Browser actions are carried by `web_browser_action`, not new tools: navigate, cl
 
 The current scenario and verification data contract is schema version 4. It removes legacy duplicate fields and alternate viewport input shapes; callers must branch on `schemaVersion` rather than infer shape from package version.
 
+Issue evidence is schema version 3. `BrowserSnapshot` and `ReplayFrame` contain canonical nullable `react`, `angular`, and `vue` page-runtime fields. Angular/Vue enrichment is Chromium development-only, checks-only attempts return null fields, paused captures are explicitly stale, and Safari remains generic browser evidence.
+
 ## Trust and lifecycle
 
 Targets are loopback-only unless remote authority is explicit. The selected top-level origin is fixed before navigation and never rebased after redirects or actions. Ordinary cross-origin subresources remain usable; top-level escapes and secondary pages are rejected or quarantined. Elevated TLS/auth mode retains its stronger exact-origin network guard.
@@ -24,4 +26,4 @@ Sessions are active-only managed records. Close destroys private URLs, auth stat
 
 The package-only `doctor` command checks first-run readiness without adding an MCP tool or launching arbitrary browser state. The repository does not create portable scenario files, execute arbitrary Next Server Actions, monitor production, control unattended remote browsers, or claim current HMAC/production certification without fresh external evidence.
 
-Exact verified versions live in [`../COMPATIBILITY.md`](../COMPATIBILITY.md); agent evaluation tasks live in [`../demos/agent-evaluation.md`](../demos/agent-evaluation.md).
+Exact verified versions and candidate-only boundaries live in [`../COMPATIBILITY.md`](../COMPATIBILITY.md); agent evaluation tasks live in [`../demos/agent-evaluation.md`](../demos/agent-evaluation.md). Angular CLI's internal Vite is not the Web Debug endpoint, and Vue hook evidence has no DOM-private fallback.

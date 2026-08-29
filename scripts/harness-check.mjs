@@ -78,6 +78,19 @@ const requiredFiles = [
   "fixtures/react-vite/index.html",
   "fixtures/react-vite/src/main.jsx",
   "fixtures/react-vite/src/App.jsx",
+  "fixtures/vue-vite/package.json",
+  "fixtures/vue-vite/vite.config.ts",
+  "fixtures/vue-vite/index.html",
+  "fixtures/vue-vite/src/main.js",
+  "fixtures/vue-vite/src/App.vue",
+  "fixtures/vue-vite/src/CheckoutForm.vue",
+  "fixtures/angular/package.json",
+  "fixtures/angular/angular.json",
+  "fixtures/angular/tsconfig.json",
+  "fixtures/angular/tsconfig.app.json",
+  "fixtures/angular/src/index.html",
+  "fixtures/angular/src/main.ts",
+  "fixtures/angular/src/styles.css",
   "fixtures/next/package.json",
   "fixtures/next/next.config.mjs",
   "fixtures/next/app/layout.jsx",
@@ -95,6 +108,10 @@ const requiredFiles = [
   "scripts/live-smoke.mjs",
   "scripts/live-react-vite-smoke.mjs",
   "scripts/serve-react-vite.mjs",
+  "scripts/live-vue-vite-smoke.mjs",
+  "scripts/serve-vue-vite.mjs",
+  "scripts/live-angular-smoke.mjs",
+  "scripts/serve-angular.mjs",
   "scripts/live-next-smoke.mjs",
   "scripts/live-safari-smoke.mjs",
   "scripts/live-local-fidelity-smoke.mjs",
@@ -107,12 +124,20 @@ const requiredFiles = [
   "src/adapters/next.ts",
   "src/adapters/safari.ts",
   "src/adapters/react-bridge.ts",
+  "src/adapters/angular.ts",
+  "src/adapters/angular-bridge.ts",
+  "src/adapters/vue.ts",
+  "src/adapters/vue-bridge.ts",
   "src/adapters/vite.ts",
   "src/adapters/vite-plugin.ts",
   "test/next-fixture-contract.test.ts",
   "test/next-adapter.test.ts",
   "test/chromium-policy.test.ts",
   "test/vite-adapter.test.ts",
+  "test/angular-adapter.test.ts",
+  "test/angular-fixture-contract.test.ts",
+  "test/vue-adapter.test.ts",
+  "test/vue-fixture-contract.test.ts",
   "test/complex-fixture-contract.test.ts",
   "test/http.test.ts",
   "test/mcp-response.test.ts",
@@ -132,14 +157,14 @@ const registeredPlans = [...execPlanIndex.matchAll(/\]\(((?:active|completed)\/[
 check(registeredPlans.length > 0, "ExecPlan registry must link at least one active or completed plan");
 for (const registeredPlan of new Set(registeredPlans)) read(`docs/exec-plans/${registeredPlan}`);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:next", "smoke:safari", "smoke:local-fidelity", "demo:compare", "eval:catalog", "eval:grade"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:vue-vite", "smoke:angular", "smoke:next", "smoke:safari", "smoke:local-fidelity", "serve:vue-vite", "serve:angular", "demo:compare", "eval:catalog", "eval:grade"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "released" && /^\d+\.\d+\.\d+$/.test(releasedPluginVersion ?? "") && releasedPluginVersion === sourceVersion, "released metadata must align source and plugin runtime versions");
+check(packageJson.webDebug?.releaseStatus === "source-next" && sourceVersion === "0.5.0-next.0" && releasedPluginVersion === "0.4.0", "source-next metadata must separate unreleased source from the immutable 0.4.0 plugin runtime");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -198,6 +223,8 @@ inspectSource(sourceRoot);
 
 const mcpSource = read("src/index.ts");
 const reactBridgeSource = read("src/adapters/react-bridge.ts");
+const angularBridgeSource = read("src/adapters/angular-bridge.ts");
+const vueBridgeSource = read("src/adapters/vue-bridge.ts");
 const safariSource = read("src/adapters/safari.ts");
 const sessionSource = read("src/core/session-manager.ts");
 const chromiumSource = read("src/adapters/chromium.ts");
@@ -221,6 +248,9 @@ for (const toolName of [
   check(mcpSource.includes(`\"${toolName}\"`), `public MCP tool is not registered: ${toolName}`);
 }
 check(reactBridgeSource.includes("flamegraph"), "React bridge must expose the bounded flamegraph view");
+check(angularBridgeSource.includes("window.__WEB_DEBUG_ANGULAR__") && angularBridgeSource.includes("isFrameworkInternal"), "Angular bridge must expose bounded documented-global evidence without framework internals");
+check(vueBridgeSource.includes("window.__WEB_DEBUG_VUE__") && vueBridgeSource.includes("component:updated") && !vueBridgeSource.includes("__vueParentComponent"), "Vue bridge must use the bounded hook contract without a DOM-private fallback");
+check(chromiumSource.includes("bridgeScriptIdentifiers") && chromiumSource.includes("frameworks.has(\"angular\")") && chromiumSource.includes("frameworks.has(\"vue\")"), "Chromium must select and clean up Angular/Vue target-scoped bridges");
 check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
 check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");

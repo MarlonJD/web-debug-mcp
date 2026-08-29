@@ -18,7 +18,7 @@ describe("MCP screenshot resource registration", () => {
     await writeFile(screenshotPath, Buffer.from("resource-png"));
     const manager = {
       capture: async () => ({
-        schemaVersion: 2,
+        schemaVersion: 3,
         browser: { screenshotPath },
         session: { artifactDir },
       }),

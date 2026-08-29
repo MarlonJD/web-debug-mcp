@@ -28,4 +28,22 @@ describe("project capability detection", () => {
     expect(descriptor.capabilities.next).toBe(true);
     expect(descriptor.capabilities.serverRuntime).toBe(true);
   });
+
+  it("detects Angular without claiming the encapsulated CLI Vite server", () => {
+    const descriptor = detectProject(resolve("fixtures/angular"));
+    expect(descriptor.frameworks).toEqual(["angular"]);
+    expect(descriptor.markers).toContain("angular.json");
+    expect(descriptor.capabilities.angular).toBe(true);
+    expect(descriptor.capabilities.vue).toBe(false);
+    expect(descriptor.capabilities.vite).toBe(false);
+    expect(descriptor.capabilities.browser).toBe(true);
+  });
+
+  it("detects the Vue 3/Vite fixture in deterministic framework order", () => {
+    const descriptor = detectProject(resolve("fixtures/vue-vite"));
+    expect(descriptor.frameworks).toEqual(["vite", "vue"]);
+    expect(descriptor.capabilities.vue).toBe(true);
+    expect(descriptor.capabilities.angular).toBe(false);
+    expect(descriptor.capabilities.vite).toBe(true);
+  });
 });

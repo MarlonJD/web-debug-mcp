@@ -12,6 +12,7 @@ Every tool advertises one output schema and, after input validation reaches its 
 - bounded console and network metadata, with Safari network provenance disclosed as BiDi or Performance Resource Timing;
 - screenshot path when capture succeeds plus an opaque `web-debug://artifact/...` resource; small pixels may also be inline;
 - debugger pause reason, call frames, scopes, and redacted locals;
+- evidence `schemaVersion: 3` and nullable React, Angular, and Vue page-runtime snapshots; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
 - explicit redaction policy and truncation warnings.
 - a bounded `replay` timeline whose fill/select actions are sanitised and whose frames are inspectable or safely restorable through `web_replay_seek`.
 - verification attempt frames are capture-only, carry `attemptId`, and are reset per attempt; ordinary manual action frames retain their existing restore behavior.

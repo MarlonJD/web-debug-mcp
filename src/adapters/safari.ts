@@ -339,6 +339,8 @@ export class SafariAdapter implements BrowserAdapter {
       screenshotPath,
       debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
       react: null,
+      angular: null,
+      vue: null,
       next: null,
       vite: null,
       accessibility: null,

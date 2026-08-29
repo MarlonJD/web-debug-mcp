@@ -1,8 +1,8 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.4.0",
+  "version": "0.5.0-next.0",
   "webDebug": {
-    "releaseStatus": "released",
+    "releaseStatus": "source-next",
     "releasedPluginRuntimeVersion": "0.4.0"
   },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
@@ -40,6 +40,8 @@
     "chromium",
     "safari",
     "react",
+    "angular",
+    "vue",
     "vite",
     "nextjs",
     "cdp"
@@ -55,6 +57,8 @@
     "smoke:live": "npm run build && node scripts/live-smoke.mjs",
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
+    "smoke:vue-vite": "npm run build && node scripts/live-vue-vite-smoke.mjs",
+    "smoke:angular": "npm run build && node scripts/live-angular-smoke.mjs",
     "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
     "smoke:local-fidelity": "npm run build && node scripts/live-local-fidelity-smoke.mjs",
     "demo:compare": "npm run build --silent && node scripts/demo-compare.mjs",
@@ -62,6 +66,8 @@
     "eval:grade": "node scripts/agent-eval.mjs --grade",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",
+    "serve:vue-vite": "node scripts/serve-vue-vite.mjs",
+    "serve:angular": "node scripts/serve-angular.mjs",
     "serve:fixture": "node scripts/serve-fixture.mjs",
     "pretest": "npm run build --silent",
     "test": "vitest run",
@@ -73,16 +79,28 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@angular/build": "21.2.22",
+    "@angular/cli": "21.2.22",
+    "@angular/common": "21.2.22",
+    "@angular/compiler": "21.2.22",
+    "@angular/compiler-cli": "21.2.22",
+    "@angular/core": "21.2.22",
+    "@angular/platform-browser": "21.2.22",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "5.1.1",
+    "@vitejs/plugin-vue": "6.0.8",
     "@types/node": "24.3.0",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
     "tsx": "4.20.6",
     "typescript": "5.9.2",
     "vite": "7.3.6",
-    "vitest": "3.2.4"
+    "vitest": "4.1.11",
+    "vue": "3.5.42",
+    "zone.js": "0.16.2"
   }
 }

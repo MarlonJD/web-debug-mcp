@@ -64,6 +64,8 @@ class McpScriptedAdapter implements BrowserAdapter {
       screenshotPath: null,
       debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
       react: null,
+      angular: null,
+      vue: null,
       next: null,
       vite: null,
       warnings: [],

@@ -13,6 +13,8 @@ describe("declared compatibility matrix", () => {
     const reactVite = JSON.parse(await readFile("fixtures/react-vite/package.json", "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
     const complexVite = JSON.parse(await readFile("fixtures/complex-vite/package.json", "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
     const next = JSON.parse(await readFile("fixtures/next/package.json", "utf8")) as { dependencies: Record<string, string> };
+    const angular = JSON.parse(await readFile("fixtures/angular/package.json", "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
+    const vueVite = JSON.parse(await readFile("fixtures/vue-vite/package.json", "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
     const compatibility = await readFile("docs/COMPATIBILITY.md", "utf8");
     const chromiumSmoke = await readFile("scripts/live-smoke.mjs", "utf8");
     const safariSmoke = await readFile("scripts/live-safari-smoke.mjs", "utf8");
@@ -21,6 +23,7 @@ describe("declared compatibility matrix", () => {
       scope: string;
       baseCommit: string;
       sourceVersion: string;
+      releaseBaseline: { version: string; commit: string };
       runtime: Record<string, string>;
       checks: Array<{ command: string; status: string }>;
     };
@@ -37,13 +40,22 @@ describe("declared compatibility matrix", () => {
     expect(next.dependencies.next).toBe(root.devDependencies.next);
     expect(next.dependencies.react).toBe(root.devDependencies.react);
     expect(next.dependencies["react-dom"]).toBe(root.devDependencies["react-dom"]);
-    expect(evidence).toMatchObject({ schemaVersion: 1, scope: "0.4.0-release" });
+    expect(angular.dependencies["@angular/core"]).toBe(root.devDependencies["@angular/core"]);
+    expect(angular.devDependencies["@angular/cli"]).toBe(root.devDependencies["@angular/cli"]);
+    expect(angular.devDependencies.typescript).toBe(root.devDependencies.typescript);
+    expect(vueVite.dependencies.vue).toBe(root.devDependencies.vue);
+    expect(vueVite.devDependencies["@vitejs/plugin-vue"]).toBe(root.devDependencies["@vitejs/plugin-vue"]);
+    expect(vueVite.devDependencies.vite).toBe(root.devDependencies.vite);
+    expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.5.0-next.0-local", releaseBaseline: { version: "0.4.0" } });
     expect(evidence.sourceVersion).toBe((root as { version?: string }).version);
-    expect(evidence.baseCommit).toMatch(/^[0-9a-f]{40}$/);
+    expect(evidence.releaseBaseline.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(evidence.runtime.mcpSdk).toBe(root.dependencies["@modelcontextprotocol/sdk"]);
     expect(evidence.runtime.react).toBe(root.devDependencies.react);
     expect(evidence.runtime.vite).toBe(root.devDependencies.vite);
     expect(evidence.runtime.next).toBe(root.devDependencies.next);
+    expect(evidence.runtime.angular).toBe(root.devDependencies["@angular/core"]);
+    expect(evidence.runtime.vue).toBe(root.devDependencies.vue);
+    expect(evidence.runtime.vitest).toBe(root.devDependencies.vitest);
     expect(evidence.checks.map((check) => check.command)).toEqual(expect.arrayContaining([
       "npm test",
       "npm run smoke:live",
@@ -51,6 +63,8 @@ describe("declared compatibility matrix", () => {
       "npm run smoke:next",
       "npm run smoke:safari",
       "npm run smoke:local-fidelity",
+      "npm run smoke:vue-vite",
+      "npm run smoke:angular",
     ]));
     expect(evidence.checks.every((check) => check.status === "passed")).toBe(true);
     expect(chromiumSmoke).toContain("browserVersion: adapter.browserVersion()");

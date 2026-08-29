@@ -25,6 +25,9 @@ import type {
   DebuggerSnapshot,
   NetworkEntry,
   ReactSnapshot,
+  AngularSnapshot,
+  VueSnapshot,
+  Framework,
   OperationContext,
   LocatorProbeResult,
   LocatorProperty,
@@ -46,6 +49,10 @@ import { assertTopLevelOrigin, navigationOriginError, originOf } from "../core/o
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { ReactAdapter } from "./react.js";
 import { REACT_DEBUG_BRIDGE_SCRIPT } from "./react-bridge.js";
+import { AngularAdapter } from "./angular.js";
+import { ANGULAR_DEBUG_BRIDGE_SCRIPT } from "./angular-bridge.js";
+import { VueAdapter } from "./vue.js";
+import { VUE_DEBUG_BRIDGE_SCRIPT } from "./vue-bridge.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -118,9 +125,14 @@ export class ChromiumAdapter implements BrowserAdapter {
   private readonly pauseWaiters = new Set<() => void>();
   private readonly scriptUrls = new Map<string, string>();
   private readonly reactAdapter = new ReactAdapter();
+  private readonly angularAdapter = new AngularAdapter();
+  private readonly vueAdapter = new VueAdapter();
+  private frameworks = new Set<Framework>();
   private lastKnownTitle = "";
   private lastKnownDom: BrowserSnapshot["dom"] = { bodyText: "", elements: [] };
   private lastKnownReact: ReactSnapshot | null = null;
+  private lastKnownAngular: AngularSnapshot | null = null;
+  private lastKnownVue: VueSnapshot | null = null;
   private pausedEvent: PausedEvent | null = null;
   private targetId: string | null = null;
   private version: string | null = null;
@@ -131,12 +143,13 @@ export class ChromiumAdapter implements BrowserAdapter {
   private popupRouteHandler: ((route: import("playwright-core").Route, request: Request) => Promise<void>) | null = null;
   private popupHandler: ((popup: Page) => void) | null = null;
   private mainFrameNavigationHandler: ((frame: Frame) => void) | null = null;
-  private bridgeScriptIdentifier: string | null = null;
+  private readonly bridgeScriptIdentifiers: string[] = [];
   private mainFrameId: string | null = null;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
     this.allowRemote = options.allowRemote ?? false;
+    this.frameworks = new Set(options.frameworks ?? []);
     assertAllowedUrl(options.url, this.allowRemote);
     const requestedOrigin = originOf(options.url);
     this.baseOrigin = requestedOrigin;
@@ -229,10 +242,15 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.mainFrameId = null;
     }
     await this.installProtocolGuards(this.page, this.context, requestedOrigin);
-    const bridgeRegistration = await this.cdp.send("Page.addScriptToEvaluateOnNewDocument", {
-      source: REACT_DEBUG_BRIDGE_SCRIPT,
-    }) as { identifier?: string };
-    this.bridgeScriptIdentifier = bridgeRegistration.identifier ?? null;
+    const bridgeScripts = [
+      ...(this.frameworks.has("react") ? [REACT_DEBUG_BRIDGE_SCRIPT] : []),
+      ...(this.frameworks.has("angular") ? [ANGULAR_DEBUG_BRIDGE_SCRIPT] : []),
+      ...(this.frameworks.has("vue") ? [VUE_DEBUG_BRIDGE_SCRIPT] : []),
+    ];
+    for (const source of bridgeScripts) {
+      const registration = await this.cdp.send("Page.addScriptToEvaluateOnNewDocument", { source }) as { identifier?: string };
+      if (registration.identifier) this.bridgeScriptIdentifiers.push(registration.identifier);
+    }
     this.cdp.on("Debugger.paused", (event) => {
       this.pausedEvent = event as PausedEvent;
       for (const resolvePause of this.pauseWaiters) resolvePause();
@@ -259,7 +277,14 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.assertFinalOrigin(this.page.url());
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
-    this.lastKnownReact = await this.reactAdapter.snapshot(this.page).catch(() => null);
+    const [react, angular, vue] = await Promise.all([
+      this.frameworks.has("react") ? this.reactAdapter.snapshot(this.page).catch(() => null) : null,
+      this.frameworks.has("angular") ? this.angularAdapter.snapshot(this.page).catch(() => null) : null,
+      this.frameworks.has("vue") ? this.vueAdapter.snapshot(this.page).catch(() => null) : null,
+    ]);
+    this.lastKnownReact = react;
+    this.lastKnownAngular = angular;
+    this.lastKnownVue = vue;
     this.version = this.browser.version();
     return this.target();
   }
@@ -290,6 +315,11 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   async close(_context: OperationContext = {}): Promise<void> {
+    if (this.page && this.frameworks.has("vue") && !this.pausedEvent) {
+      await this.page.evaluate(() => {
+        (window as Window & { __WEB_DEBUG_VUE__?: { dispose?: () => void } }).__WEB_DEBUG_VUE__?.dispose?.();
+      }).catch(() => undefined);
+    }
     if (this.context && this.popupRouteHandler && typeof (this.context as BrowserContext & { unroute?: unknown }).unroute === "function") {
       await this.context.unroute("**/*", this.popupRouteHandler).catch(() => undefined);
     }
@@ -298,7 +328,9 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (this.cdp) {
       if (this.fetchRequestHandler) this.cdp.off("Fetch.requestPaused", this.fetchRequestHandler);
       await this.cdp.send("Fetch.disable").catch(() => undefined);
-      if (this.bridgeScriptIdentifier) await this.cdp.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: this.bridgeScriptIdentifier }).catch(() => undefined);
+      for (const identifier of this.bridgeScriptIdentifiers.splice(0)) {
+        await this.cdp.send("Page.removeScriptToEvaluateOnNewDocument", { identifier }).catch(() => undefined);
+      }
     }
     try {
       await this.cdp?.detach();
@@ -323,7 +355,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.popupRouteHandler = null;
     this.popupHandler = null;
     this.mainFrameNavigationHandler = null;
-    this.bridgeScriptIdentifier = null;
+    this.bridgeScriptIdentifiers.length = 0;
+    this.frameworks.clear();
+    this.lastKnownAngular = null;
+    this.lastKnownVue = null;
     this.mainFrameId = null;
   }
 
@@ -333,6 +368,8 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.requestCounter = 0;
     this.lastKnownDom = { bodyText: "", elements: [] };
     this.lastKnownReact = null;
+    this.lastKnownAngular = null;
+    this.lastKnownVue = null;
   }
 
   targetIdentity(): string | null { return this.targetId; }
@@ -400,10 +437,14 @@ export class ChromiumAdapter implements BrowserAdapter {
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
     let react = options.checksOnly ? null : this.lastKnownReact;
+    let angular = options.checksOnly ? null : this.lastKnownAngular;
+    let vue = options.checksOnly ? null : this.lastKnownVue;
 
     if (this.pausedEvent) {
       warnings.push("JavaScript is paused; DOM text is the last known unpaused snapshot.");
       if (react) warnings.push("JavaScript is paused; React state is the last known unpaused snapshot.");
+      if (angular) warnings.push("JavaScript is paused; Angular state is the last known unpaused snapshot.");
+      if (vue) warnings.push("JavaScript is paused; Vue state is the last known unpaused snapshot.");
     } else {
       try {
         dom = await this.readDom(page);
@@ -413,20 +454,33 @@ export class ChromiumAdapter implements BrowserAdapter {
       }
       if (!options.checksOnly) {
         const optionalBudget = optionalBudgetMs(context, 1_000);
-        if (optionalBudget === 0) {
-          warnings.push("React snapshot skipped because the shared deadline left no optional-enrichment budget.");
-        } else {
+        const selected = [
+          ...(this.frameworks.has("react") ? [{ name: "React", capture: () => this.reactAdapter.snapshot(page) }] : []),
+          ...(this.frameworks.has("angular") ? [{ name: "Angular", capture: () => this.angularAdapter.snapshot(page) }] : []),
+          ...(this.frameworks.has("vue") ? [{ name: "Vue", capture: () => this.vueAdapter.snapshot(page) }] : []),
+        ];
+        if (optionalBudget === 0 && selected.length > 0) {
+          warnings.push("Framework snapshots skipped because the shared deadline left no optional-enrichment budget.");
+        } else if (selected.length > 0) {
           const outcome = await withTimeout(
-            trackPending(Promise.resolve().then(() => this.reactAdapter.snapshot(page)).then((value) => ({ ok: true as const, value })).catch((error) => ({ ok: false as const, error })), context),
+            trackPending(Promise.all(selected.map(async (item) => {
+              try { return { name: item.name, ok: true as const, value: await item.capture() }; }
+              catch (error) { return { name: item.name, ok: false as const, error }; }
+            })), context),
             optionalBudget,
           );
           if (outcome === null) {
-            warnings.push("React snapshot unavailable: optional enrichment timed out.");
-          } else if (!outcome.ok) {
-            warnings.push(`React snapshot unavailable: ${outcome.error instanceof Error ? outcome.error.message : String(outcome.error)}`);
+            for (const item of selected) warnings.push(`${item.name} snapshot unavailable: optional enrichment timed out.`);
           } else {
-            react = outcome.value;
-            this.lastKnownReact = react;
+            for (const item of outcome) {
+              if (!item.ok) {
+                warnings.push(`${item.name} snapshot unavailable: ${item.error instanceof Error ? item.error.message : String(item.error)}`);
+                continue;
+              }
+              if (item.name === "React") { react = item.value as ReactSnapshot | null; this.lastKnownReact = react; }
+              if (item.name === "Angular") { angular = item.value as AngularSnapshot | null; this.lastKnownAngular = angular; }
+              if (item.name === "Vue") { vue = item.value as VueSnapshot | null; this.lastKnownVue = vue; }
+            }
           }
         }
       }
@@ -504,6 +558,8 @@ export class ChromiumAdapter implements BrowserAdapter {
         breakpoints: [...this.breakpoints],
       } : await this.debuggerSnapshot(context),
       react,
+      angular,
+      vue,
       next: null,
       vite: null,
       accessibility,

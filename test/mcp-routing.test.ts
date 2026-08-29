@@ -16,7 +16,7 @@ class RoutingManager {
   list(...args: unknown[]) { return this.record("list", args, []); }
   status(...args: unknown[]) { return this.record("status", args, { id: SESSION_ID, status: "ready" }); }
   act(...args: unknown[]) { return this.record("act", args, { kind: "press", url: "http://127.0.0.1:4173/", title: "Fixture" }); }
-  capture(...args: unknown[]) { return this.record("capture", args, { schemaVersion: 2, browser: { screenshotPath: null }, session: { artifactDir: "/tmp/unused" } }); }
+  capture(...args: unknown[]) { return this.record("capture", args, { schemaVersion: 3, browser: { screenshotPath: null }, session: { artifactDir: "/tmp/unused" } }); }
   inspectNext(...args: unknown[]) { return this.record("inspectNext", args, { detected: true, kind: "compileRoute", result: null, warnings: [] }); }
   seekReplay(...args: unknown[]) { return this.record("seekReplay", args, { sessionId: SESSION_ID, restored: false }); }
   setBreakpoint(...args: unknown[]) { return this.record("setBreakpoint", args, { id: "bp", sourceUrl: "app.js", line: 1, column: null }); }

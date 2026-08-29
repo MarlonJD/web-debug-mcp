@@ -41,6 +41,7 @@ interface AdapterConfig {
 class ScriptedBrowserAdapter implements BrowserAdapter {
   readonly actions: BrowserAction[] = [];
   readonly startedUrls: string[] = [];
+  readonly startedOptions: BrowserStartOptions[] = [];
   readonly snapshotOptions: SnapshotOptions[] = [];
   readonly snapshotNetworks: BrowserSnapshot["network"][] = [];
   snapshotCount = 0;
@@ -87,6 +88,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
 
   async start(options: BrowserStartOptions): Promise<BrowserTarget> {
     this.startedUrls.push(options.url);
+    this.startedOptions.push(structuredClone(options));
     const shouldFail = typeof this.config.failStart === "function" ? this.config.failStart(this.instanceNumber) : this.config.failStart;
     if (shouldFail) throw new WebDebugError("BROWSER_START_RETRYABLE", "scripted candidate startup failed");
     this.target.url = this.config.finalStartUrl ?? options.url;
@@ -180,6 +182,8 @@ function snapshotFor(bodyText: string, options: {
   elements?: BrowserSnapshot["dom"]["elements"];
   network?: BrowserSnapshot["network"];
   react?: BrowserSnapshot["react"];
+  angular?: BrowserSnapshot["angular"];
+  vue?: BrowserSnapshot["vue"];
   screenshotPath?: string | null;
   warnings?: string[];
 } = {}): BrowserSnapshot {
@@ -193,6 +197,8 @@ function snapshotFor(bodyText: string, options: {
     screenshotPath: options.screenshotPath ?? null,
     debugger: emptyDebugger(),
     react: options.react ?? null,
+    angular: options.angular ?? null,
+    vue: options.vue ?? null,
     next: null,
     vite: null,
     warnings: options.warnings ?? [],
@@ -262,6 +268,18 @@ async function record(manager: SessionManager, sessionId: string, overrides: Par
 }
 
 describe("session manager adaptive contract", () => {
+  it("forwards detected framework metadata privately and discloses Safari runtime limits", async () => {
+    const vue = managerFor([snapshotFor("Fixed")], { mode: "attach", targetId: "tab-1" });
+    const vueSession = await start(vue.manager, { projectRoot: "fixtures/vue-vite" });
+    expect(vue.adapters[0]?.startedOptions[0]?.frameworks).toEqual(["vite", "vue"]);
+    await vue.manager.close(vueSession.id);
+
+    const safari = managerFor([snapshotFor("Fixed")], { browser: "safari", mode: "webdriver", targetId: "safari-1" });
+    const safariSession = await start(safari.manager, { projectRoot: "fixtures/angular", browser: "safari" });
+    expect(safariSession.warnings.join(" ")).toContain("generic browser evidence only");
+    await safari.manager.close(safariSession.id);
+  });
+
   it("records and verifies a low-risk quick scenario with one authoritative attempt", async () => {
     const { manager, adapters } = managerFor([snapshotFor("Bug"), snapshotFor("Bug"), snapshotFor("Fixed"), snapshotFor("Fixed")], { mode: "attach", targetId: "tab-1" });
     const session = await start(manager);
@@ -316,6 +334,8 @@ describe("session manager adaptive contract", () => {
     expect(result.evidence.postFix?.replay.frames).toHaveLength(1);
     expect(result.evidence.postFix?.replay.frames[0]?.attemptId).toBe(result.postFix.attempts.at(-1)?.attemptId);
     expect(result.evidence.postFix?.replay.frames[0]?.react).toBeNull();
+    expect(result.evidence.postFix?.replay.frames[0]?.angular).toBeNull();
+    expect(result.evidence.postFix?.replay.frames[0]?.vue).toBeNull();
     expect(result.evidence.postFix?.replay.frames[0]?.index).toBeGreaterThan(scenario.baseline.evidence?.replay.frames[0]?.index ?? -1);
     await manager.close(session.id);
   });
@@ -682,6 +702,8 @@ describe("session manager adaptive contract", () => {
       console: [{ level: "error", text: `details=${secret}` }],
       network: [{ requestId: secret, method: "GET", url: `http://127.0.0.1:4173/?token=${secret}`, resourceType: "fetch", status: 500, ok: false }],
       react: { detected: true, rendererCount: 1, commitCount: 1, commits: [], profiler: { mode: "devtools-hook", capped: false }, components: [{ name: "Secret", source: null, props: { nested: { value: secret } }, hooks: [], renderCount: 1, renderCause: "mount", propChanges: [], hookChanges: [], actualDurationMs: null, selfDurationMs: null, treeDurationMs: null, children: [] }], flamegraph: [], warnings: [secret] },
+      angular: { detected: true, version: "21.2.22", mode: "development", treeMode: "dom-host", snapshotCount: 1, componentCount: 1, components: [{ name: "Secret", host: null, state: { token: secret }, sampleCount: 1, changedStateKeys: [], children: [] }], truncated: false, warnings: [secret] },
+      vue: { detected: true, version: "3.5.42", appCount: 1, componentCount: 1, components: [{ name: "Secret", source: null, props: { token: secret }, state: { value: secret }, updateCount: 1, changedPropKeys: [], changedStateKeys: [], children: [] }], truncated: false, warnings: [secret] },
       screenshotPath: `/tmp/${secret}.png`,
       warnings: [`error details ${secret}`],
     });

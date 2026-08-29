@@ -67,6 +67,28 @@ describe("Chromium remote target policy", () => {
     }
   });
 
+  it("injects only selected framework bridges and removes every target-scoped script", async () => {
+    const page = fakePage("framework-target");
+    const browser = fakeBrowser([fakeContext([page])]);
+    const connect = vi.spyOn(chromium, "connectOverCDP").mockResolvedValue(browser as never);
+    const adapter = new ChromiumAdapter();
+    try {
+      await adapter.start({
+        url: "http://127.0.0.1:4173/",
+        cdpEndpoint: "http://127.0.0.1:9222",
+        frameworks: ["react", "angular", "vue"],
+      });
+      expect(page.addedBridgeScripts).toHaveLength(3);
+      expect(page.addedBridgeScripts.join("\n")).toContain("__WEB_DEBUG_REACT__");
+      expect(page.addedBridgeScripts.join("\n")).toContain("__WEB_DEBUG_ANGULAR__");
+      expect(page.addedBridgeScripts.join("\n")).toContain("__WEB_DEBUG_VUE__");
+    } finally {
+      await adapter.close();
+      expect(page.removedBridgeIds).toEqual(["bridge-script-1", "bridge-script-2", "bridge-script-3"]);
+      connect.mockRestore();
+    }
+  });
+
   it("blocks cross-origin redirects and action navigation while allowing cross-origin subresources", async () => {
     const redirectingPage = fakePage("redirect-target");
     redirectingPage.redirects.set("http://127.0.0.1:4173/", "https://example.com/escaped");
@@ -156,14 +178,18 @@ describe("Chromium remote target policy", () => {
       page.evaluateResults = [{ bodyText: "Checks", elements: [] }, { bodyText: "Full", elements: [] }, null];
       const checksOnly = await adapter.snapshot({ artifactDir: "/tmp/chromium-checks-only", captureScreenshot: false, checksOnly: true });
       expect(checksOnly.react).toBeNull();
+      expect(checksOnly.angular).toBeNull();
+      expect(checksOnly.vue).toBeNull();
       expect(checksOnly.network).toEqual([]);
       expect(page.evaluateCalls).toBe(1);
 
       page.eventHandlers.request?.({ headers: () => ({}), method: () => "GET", url: () => "http://127.0.0.1:4173/after", resourceType: () => "fetch" });
       const full = await adapter.snapshot({ artifactDir: "/tmp/chromium-full", captureScreenshot: false, checksOnly: false });
       expect(full.react).toBeNull();
+      expect(full.angular).toBeNull();
+      expect(full.vue).toBeNull();
       expect(full.network).toHaveLength(1);
-      expect(page.evaluateCalls).toBe(3);
+      expect(page.evaluateCalls).toBe(2);
     } finally {
       await adapter.close();
       connect.mockRestore();
@@ -177,7 +203,7 @@ describe("Chromium remote target policy", () => {
     const adapter = new ChromiumAdapter();
     vi.useFakeTimers();
     try {
-      await adapter.start({ url: "http://127.0.0.1:4173/", cdpEndpoint: "http://127.0.0.1:9222" });
+      await adapter.start({ url: "http://127.0.0.1:4173/", cdpEndpoint: "http://127.0.0.1:9222", frameworks: ["react"] });
       page.evaluateCalls = 0;
       page.evaluateResults = [{ bodyText: "Browser-only", elements: [] }];
       page.evaluateHang = true;
@@ -307,6 +333,8 @@ function fakePage(targetId: string) {
     fetchEnabled: false,
     autoAttachPages: false,
     activeCdp: null as any,
+    addedBridgeScripts: [] as string[],
+    removedBridgeIds: [] as string[],
     routeHandler: null as ((route: any, request: any) => Promise<void>) | null,
     route: async function (_pattern: string, handler: (route: any, request: any) => Promise<void>) { this.routeHandler = handler; },
     unroute: async function (_pattern: string, handler: (route: any, request: any) => Promise<void>) { if (this.routeHandler === handler) this.routeHandler = null; },
@@ -391,7 +419,11 @@ function fakeCdp(page: any) {
     send: async (method: string, params?: any) => {
       if (method === "Target.getTargetInfo") return { targetInfo: { targetId: page.targetId } };
       if (method === "Page.getFrameTree") return { frameTree: { frame: { id: "main-frame" } } };
-      if (method === "Page.addScriptToEvaluateOnNewDocument") return { identifier: "bridge-script" };
+      if (method === "Page.addScriptToEvaluateOnNewDocument") {
+        page.addedBridgeScripts.push(params.source);
+        return { identifier: `bridge-script-${page.addedBridgeScripts.length}` };
+      }
+      if (method === "Page.removeScriptToEvaluateOnNewDocument") { page.removedBridgeIds.push(params.identifier); return {}; }
       if (method === "Fetch.enable") { page.fetchEnabled = true; return {}; }
       if (method === "Fetch.disable") { page.fetchEnabled = false; return {}; }
       if (method === "Fetch.continueRequest") { decisions.set(params.requestId, "continued"); return {}; }

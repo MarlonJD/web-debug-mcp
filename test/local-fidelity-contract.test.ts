@@ -110,7 +110,7 @@ describe("0.3.x local fidelity contracts", () => {
       failureViewports: ["mobile"],
     });
     expect(scenario.baseline.status).toBe("reproduced");
-    expect(scenario.baseline.evidence?.schemaVersion).toBe(2);
+    expect(scenario.baseline.evidence?.schemaVersion).toBe(3);
     expect(scenario.baseline.attempts[0]?.viewports).toHaveLength(2);
     expect(scenario.baseline.attempts[0]?.checkpoints?.length).toBeGreaterThan(0);
     expect(scenario.environmentFingerprint.schemaVersion).toBe(2);
@@ -130,9 +130,9 @@ describe("0.3.x local fidelity contracts", () => {
     expect(changedScope.contractHash).not.toBe(scenario.contractHash);
     const verification = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
     expect(verification.schemaVersion).toBe(4);
-    expect(verification.evidence.postFix?.schemaVersion).toBe(2);
+    expect(verification.evidence.postFix?.schemaVersion).toBe(3);
     const evidence = await manager.capture(session.id, false);
-    expect(evidence.schemaVersion).toBe(2);
+    expect(evidence.schemaVersion).toBe(3);
     await manager.close(session.id);
   });
 
@@ -264,7 +264,7 @@ class MatrixAdapter {
   async start(options: any): Promise<any> { this.viewport = options.viewport ?? this.viewport; this.target.viewport = this.viewport; return { ...this.target }; }
   async close(): Promise<void> {}
   async act(action: any): Promise<any> { if (action.kind === "navigate") this.target.url = action.url; return { kind: action.kind, url: this.target.url, title: this.target.title }; }
-  async snapshot(): Promise<any> { const text = this.viewport.width < 500 ? "Bug" : "Healthy"; return { url: this.target.url, title: this.target.title, viewport: this.viewport, dom: { bodyText: text, elements: [] }, console: [], network: [], screenshotPath: null, debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] }, react: null, next: null, vite: null, warnings: [], observations: { url: { state: "pass", freshness: "fresh", provenance: "browser" }, dom: { state: "pass", freshness: "fresh", provenance: "browser" }, console: { state: "pass", freshness: "fresh", provenance: "browser" } } }; }
+  async snapshot(): Promise<any> { const text = this.viewport.width < 500 ? "Bug" : "Healthy"; return { url: this.target.url, title: this.target.title, viewport: this.viewport, dom: { bodyText: text, elements: [] }, console: [], network: [], screenshotPath: null, debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] }, react: null, angular: null, vue: null, next: null, vite: null, warnings: [], observations: { url: { state: "pass", freshness: "fresh", provenance: "browser" }, dom: { state: "pass", freshness: "fresh", provenance: "browser" }, console: { state: "pass", freshness: "fresh", provenance: "browser" } } }; }
   async probe(locator: any, properties: string[]): Promise<any> { const text = this.viewport.width < 500 ? "Bug" : "Healthy"; return { locator, properties, observedAt: new Date().toISOString(), provenance: "browser", count: 1, visible: true, enabled: true, checked: false, text, warnings: [] }; }
   targetIdentity(): string { return this.target.targetId; }
   browserVersion(): string { return "matrix"; }

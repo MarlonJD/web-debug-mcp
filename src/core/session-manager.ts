@@ -259,6 +259,7 @@ export class SessionManager {
         headless: input.headless,
         allowRemote: input.allowRemote,
         viewport: input.viewport,
+        frameworks: [...descriptor.frameworks],
         tls,
         approvedOrigin: new URL(input.url).origin,
         ...(authState ? { authState, authFixture: "seeded-disposable" as const } : {}),
@@ -273,6 +274,9 @@ export class SessionManager {
     };
     for (const secret of authSecrets) if (secret) managed.redactionSecrets.add(secret);
     if (authState) managed.summary.warnings.push("Disposable auth storage was seeded; screenshot pixels are not claimed redacted.");
+    if (browser === "safari" && (descriptor.capabilities.angular || descriptor.capabilities.vue)) {
+      managed.summary.warnings.push("Safari WebDriver provides generic browser evidence only; Angular and Vue runtime enrichment is available in Chromium development sessions.");
+    }
     this.sessions.set(id, managed);
     try {
       const target = await this.callAdapter(() => adapter.start(managed.startOptions, context), context);
@@ -1122,6 +1126,8 @@ export class SessionManager {
       // Attempt replay frames stay lightweight; representative captures are
       // where framework bundles are retained for diagnosis.
       react: redactionActions ? null : browser.react,
+      angular: redactionActions ? null : browser.angular,
+      vue: redactionActions ? null : browser.vue,
     });
     if (session.replayFrames.length > MAX_REPLAY_FRAMES) { session.replayFrames.shift(); session.replayTruncated = true; }
   }
@@ -1743,6 +1749,8 @@ function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     optionalTruncated = true;
     bounded.browser.warnings = [...bounded.browser.warnings, "Evidence optional detail was pruned to the 96 KiB bound."];
     bounded.browser.react = null;
+    bounded.browser.angular = null;
+    bounded.browser.vue = null;
     bounded.browser.vite = null;
     bounded.browser.accessibility = null;
     if (bounded.browser.next) {
@@ -1932,6 +1940,8 @@ function boundVerificationResult(result: VerificationResult): VerificationResult
 function pruneEvidence(evidence: EvidenceBundle): EvidenceBundle {
   const pruned = cloneJson(evidence) as EvidenceBundle;
   pruned.browser.react = null;
+  pruned.browser.angular = null;
+  pruned.browser.vue = null;
   pruned.browser.vite = null;
   if (pruned.browser.next) {
     pruned.browser.next.requestTraces = pruned.browser.next.requestTraces.slice(-2).map((trace) => ({ ...trace, spans: trace.spans.slice(0, 5), fetches: trace.fetches.slice(0, 5) }));

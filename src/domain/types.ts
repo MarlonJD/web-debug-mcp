@@ -1,4 +1,4 @@
-export type Framework = "vanilla" | "react" | "vite" | "next";
+export type Framework = "vanilla" | "react" | "angular" | "vue" | "vite" | "next";
 
 export type BrowserEngine = "chromium" | "safari";
 
@@ -93,6 +93,8 @@ export interface ProjectCapabilities {
   dom: boolean;
   screenshots: boolean;
   react: boolean;
+  angular: boolean;
+  vue: boolean;
   vite: boolean;
   next: boolean;
   serverRuntime: boolean;
@@ -306,6 +308,48 @@ export interface ReactSnapshot {
   warnings: string[];
 }
 
+export interface AngularComponentNode {
+  name: string;
+  host: { tag: string; id: string | null } | null;
+  state: Record<string, unknown>;
+  sampleCount: number;
+  changedStateKeys: string[];
+  children: AngularComponentNode[];
+}
+
+export interface AngularSnapshot {
+  detected: true;
+  version: string | null;
+  mode: "development";
+  treeMode: "dom-host";
+  snapshotCount: number;
+  componentCount: number;
+  components: AngularComponentNode[];
+  truncated: boolean;
+  warnings: string[];
+}
+
+export interface VueComponentNode {
+  name: string;
+  source: { file: string } | null;
+  props: Record<string, unknown>;
+  state: Record<string, unknown>;
+  updateCount: number;
+  changedPropKeys: string[];
+  changedStateKeys: string[];
+  children: VueComponentNode[];
+}
+
+export interface VueSnapshot {
+  detected: true;
+  version: string | null;
+  appCount: number;
+  componentCount: number;
+  components: VueComponentNode[];
+  truncated: boolean;
+  warnings: string[];
+}
+
 export interface NextSnapshot {
   detected: true;
   endpoint: string;
@@ -385,6 +429,8 @@ export interface ReplayFrame {
   network: NetworkEntry[];
   debugger: DebuggerSnapshot;
   react: ReactSnapshot | null;
+  angular: AngularSnapshot | null;
+  vue: VueSnapshot | null;
 }
 
 export interface ReplayTimeline {
@@ -472,6 +518,8 @@ export interface BrowserSnapshot {
   screenshotPath: string | null;
   debugger: DebuggerSnapshot;
   react: ReactSnapshot | null;
+  angular: AngularSnapshot | null;
+  vue: VueSnapshot | null;
   next: NextSnapshot | null;
   vite: ViteSnapshot | null;
   accessibility?: AccessibilityDiagnostics | null;
@@ -498,7 +546,7 @@ export interface BrowserObservations {
 }
 
 export interface EvidenceBundle {
-  schemaVersion: 2;
+  schemaVersion: 3;
   attemptId?: string;
   phase?: "baseline" | "post-fix" | "manual";
   capturedAt: string;

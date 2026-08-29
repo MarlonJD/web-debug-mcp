@@ -1,15 +1,17 @@
 <!-- harness-plan:v1
 id: angular-vue-support
-status: active
+status: completed
 created: 2026-08-29
-updated: 2026-08-29
-completed:
+updated: 2026-08-30
+completed: 2026-08-30
 owner: Platform Engineering
 -->
 
 # Add bounded Angular and Vue 3 runtime evidence
 
-Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan begins after the immutable `0.4.0` source/tag/npm release at commit `94328c05af5f2263a2f64edec1b3267e44aae915`. The separate `complete-0-4-0-release` closeout owns only release evidence and certification cleanup; this plan must not rewrite that release, move `v0.4.0`, publish a package, or change the installed `0.4.0` plugin.
+Implementation status: complete locally; release promotion remains a separate follow-up.
+
+Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The immutable `0.4.0` source/tag/npm release is complete at commit `94328c05af5f2263a2f64edec1b3267e44aae915`; subsequent harness-attestation documentation commits do not reopen that release boundary. This plan names the unreleased feature line `0.5.0-next.0`, remains source-only, and must not rewrite `0.4.0`, move `v0.4.0`, publish a package, promote plugin metadata, or change the installed `0.4.0` plugin.
 
 ## Purpose / Big Picture
 
@@ -29,14 +31,14 @@ Success is observable when:
 ## Progress
 
 - [x] (2026-08-29 20:47Z) Inspect the released `0.4.0` architecture, evidence/replay contracts, React/Vite seams, official Angular/Vue development tooling surfaces, and current registry versions.
-- [ ] Register this plan after the `0.4.0` closeout finishes updating `docs/exec-plans/index.md`; do not overlap or absorb its release-evidence changes.
-- [ ] Establish the source-next identity and versioned Angular/Vue public data contract without changing the 13-tool MCP catalog or released plugin runtime.
-- [ ] Complete one Vue 3/Vite vertical slice: detection, target-scoped runtime bridge, bounded snapshot, deterministic fixture, unit contracts, and live smoke.
-- [ ] Complete one Angular CLI vertical slice using documented development globals, a truthful DOM-host tree, deterministic fixture, unit contracts, and live smoke.
-- [ ] Integrate framework evidence with paused-state handling, replay sanitization, redaction, byte pruning, deadlines, Safari boundaries, doctor messaging, and session warnings.
-- [ ] Update source-next documentation, compatibility evidence, native harness routes, and exact-version tests while leaving released plugin manifests/skill/runtime pinned to `0.4.0`.
-- [ ] Run focused tests, the full deterministic suite, type checks, build, native harness, both new live smokes, all existing live smokes, diff checks, and command-owned process cleanup.
-- [ ] Complete this plan only after all promised local behavior is exercised; leave release/publication and unverified framework versions as separate follow-up work.
+- [x] (2026-08-30) Register this plan after the completed `0.4.0` release closeout and preserve the immutable release boundary.
+- [x] (2026-08-30) Establish source-only `0.5.0-next.0`, evidence schema 3, Angular/Vue capabilities, canonical nullable snapshot/replay fields, and private detected-framework routing without changing the 13-tool MCP catalog or released `0.4.0` plugin runtime.
+- [x] (2026-08-30) Complete the Vue 3.5.42/Vite 7.3.6 vertical slice: safely chained exact hook payloads, bounded component/props/state/update evidence, deterministic fixture, contract tests, Vite HMR provenance, and live smoke.
+- [x] (2026-08-30) Complete the Angular 21.2.22 CLI vertical slice using documented development globals, a private-Ivy-free DOM-host tree, bounded own state/change evidence, deterministic fixture, contract tests, and live smoke.
+- [x] (2026-08-30) Integrate selected target-scoped bridge identifiers, concurrent optional snapshots, paused/checks-only caches, replay fields, redaction, optional pruning, cancellation/pending ownership, and Safari generic limitations.
+- [x] (2026-08-30) Update source-next documentation, compatibility evidence, native harness routes, and exact-version tests while leaving released plugin manifests/skill/runtime pinned to `0.4.0`.
+- [x] (2026-08-30) Run focused tests, the full deterministic suite, type checks, build, native harness, both new live smokes, all existing live smokes, diff checks, package dry-run, and command-owned process cleanup.
+- [x] (2026-08-30) Complete the source-only implementation; release/publication and unverified framework versions remain separate follow-up work.
 
 ## Surprises & Discoveries
 
@@ -46,8 +48,16 @@ Success is observable when:
 - Angular's documented `getComponent`, `getOwningComponent`, and `getHostElement` globals support development inspection, but do not promise the full logical view/injector tree. The first contract must call its hierarchy `dom-host`, keep source locations nullable, and avoid private Ivy arrays.
 - Angular's official profiling integration is development-only and requires enabling performance instrumentation. Automatically invoking it would mutate the inspected page and broaden scope, so exact change-detection cycles and flamegraphs are excluded.
 - Vue DevTools v7 supports Vue 3, and the official Vite plugin is a user-facing DevTools integration rather than a stable machine-readable MCP endpoint. The runtime bridge must prove the Vue 3 hook contract against the exact fixture and must not depend on `vite-plugin-vue-devtools`.
-- Registry observations on 2026-08-29 are Angular core/compiler/common/platform-browser `22.1.4`, Angular CLI/build `22.1.6`, Vue `3.5.42`, `@vitejs/plugin-vue` `6.0.8`, RxJS `7.8.2`, tslib `2.8.1`, and zone.js `0.16.2`. These are candidate fixture pins until deterministic and live verification passes.
-- The `0.4.0` release is immutable and public. Angular/Vue evidence changes the versioned public evidence shape, so source work must identify itself as `0.5.0-next.0` while the bundled/installed plugin remains on released `0.4.0` until a separately authorized release.
+- Registry observations show Angular `21.2.22` is the first fixture pin because it is supported LTS and accepts the repository's TypeScript `5.9.x`; Angular 22 requires TypeScript 6 and remains candidate-only. Vue `3.5.42`, `@vitejs/plugin-vue` `6.0.8`, and existing Vite `7.3.6` are the first Vue/Vite fixture pins until deterministic and live verification pass.
+- Angular CLI's development server encapsulates its internal Vite instance and cannot load this repository's `webDebugVitePlugin()` endpoint. Angular detection therefore never implies `capabilities.vite`, Vite module-graph evidence, or HMR transform provenance.
+- The `0.4.0` release is immutable and public. Angular/Vue work is labeled source-only `0.5.0-next.0`; local compatibility evidence must not be blended with package publication, plugin promotion, or fresh harness-certification authority.
+- The 2026-08-30 planning check of `npm run harness:check` reports three pre-existing failures requiring stale-certification disclosure in README, the certification procedure, and technical debt. This feature may correct those literal disclosures if they still exist at completion, but must not refresh, reinterpret, or claim certification from Angular/Vue local evidence.
+- Angular `@angular/build 21.2.22` requires Vitest `^4.0.8`; clean npm resolution rejected the previous Vitest `3.2.4`. The implementation upgraded the development runner to `4.1.11` instead of using `--legacy-peer-deps`, and focused tests/typecheck passed afterward.
+- The installed Vue 3.5.42 runtime proves component events use `(app, uid, parentUid, component)`. The bridge consumes that exact upstream/internal payload and does not read private DOM component pointers or `component.parent` for hierarchy.
+- Real Angular capture initially exposed own `__ngContext__` data. The bridge now omits `__ng*`/`ɵ*` keys and normalizes compiler-prefixed component names; the live smoke proves the private field is absent.
+- The final full suite passed 117 tests across 28 test files. `npm run harness:check` passed 542 checks with the expected `certification: stale-candidate` status after source changes; this is not a fresh certification claim.
+- Individual final live runs passed for vanilla, React/Vite, Next, Safari, local-fidelity, Vue/Vite, and Angular. The first parallel Next run returned exit code 1 after all assertions were true; a standalone rerun passed, so the parallel teardown race is not treated as a feature failure.
+- The final cleanup scan found no command-owned Angular/Vue fixture, Vite, or browser processes. Pre-existing unrelated Xcode MCP processes were not touched.
 
 ## Decision Log
 
@@ -58,21 +68,24 @@ Success is observable when:
 - Decision: Use one verified Vue 3 DevTools hook strategy and block the Vue runtime milestone if its lifecycle cannot be chained without breaking an existing hook; do not add a second DOM-private fallback path. Rationale: dual private strategies create ambiguous evidence and compatibility layers. Date/Owner: 2026-08-29 / Platform Engineering.
 - Decision: Do not invoke Angular `enableProfiling`, mutate component state, call arbitrary getters/functions/signals, or install Vue DevTools UI packages. Rationale: capture is observational and optional; page mutation requires a separate explicit contract. Date/Owner: 2026-08-29 / Platform Engineering.
 - Decision: Bump `EvidenceBundle.schemaVersion` from 2 to 3 while leaving scenario/verification schema version 4 unchanged. Rationale: `BrowserSnapshot`, `ReplayFrame`, project capabilities, and evidence pruning gain public fields, while scenario semantics do not change. No legacy aliases or dual evidence shapes will be retained. Date/Owner: 2026-08-29 / Platform Engineering.
-- Decision: Begin source implementation as `0.5.0-next.0` with `webDebug.releaseStatus: source-next` and `releasedPluginRuntimeVersion: 0.4.0`; keep plugin manifests, marketplaces, bundled `.mcp.json`, and released workflow skill on `0.4.0`. Rationale: local source must not impersonate immutable `0.4.0`, and the plugin must not advertise code its pinned runtime lacks. Date/Owner: 2026-08-29 / Platform Engineering.
+- Decision: Label this feature line source-only `0.5.0-next.0`; package/release metadata changes belong to implementation or a later release plan, not this planning revision. Keep plugin manifests, marketplaces, bundled `.mcp.json`, and installed workflow skill on released `0.4.0` until separately authorized promotion. Rationale: local feature evidence must not impersonate a release or advertise behavior the pinned plugin runtime lacks. Date/Owner: 2026-08-30 / Platform Engineering.
+- Decision: Select bridge injection through private detected-framework metadata passed from `SessionManager` to `BrowserStartOptions`; do not inject all bridges into every page. Register each selected bridge as a separate target-scoped CDP script and remove every returned identifier during close, including partial-start failure cleanup. Rationale: selection minimizes page interference and makes lifecycle ownership explicit. Date/Owner: 2026-08-30 / Platform Engineering.
+- Decision: Pin the first Angular fixture to Angular `21.2.22` with TypeScript `5.9.x`; Angular 22/TypeScript 6 remains candidate-only. Rationale: this proves an actively supported Angular line without forcing an unrelated TypeScript-major migration into the first increment. Date/Owner: 2026-08-30 / Platform Engineering.
 
 ## Outcomes & Retrospective
 
-Active. At completion, replace this paragraph with the exact Angular/Vue fixture versions, component/state fields proven, test counts, smoke browser version, evidence-schema result, source-next/package identities, cleanup result, and remaining candidate-only surfaces. Explicitly state whether Vue hook chaining and Angular DOM-host hierarchy met the intended contract. Do not call the feature released or production-ready unless a later authorized release plan supplies that authority.
+Completed locally. Source-only `0.5.0-next.0` now contains Angular 21.2.22 and Vue 3.5.42 runtime evidence, fixtures, focused tests, managed serve/live scripts, compatibility/docs/harness edits, and immutable `0.4.0` plugin separation. The evidence bundle is schema 3 while scenario/verification remains schema 4. Angular proves a two-component DOM-host tree, state change, and private-Ivy omission; Vue proves a safely chained two-component DevTools-hook tree, props/state/update evidence, source hints, and Vite HMR provenance. Final verification passed: 117 deterministic tests in 28 files; source/test typecheck; build; `npm run harness:check` with 542 checks and `certification: stale-candidate`; `npm pack --dry-run --json`; both new framework smokes; and individual vanilla, React/Vite, Next, Safari, and local-fidelity regression smokes. `git diff --check` passed and no command-owned fixture/browser processes remained. The immutable `0.4.0` package/tag/plugin was not published or modified. Remaining candidate-only surfaces are Angular 22/TypeScript 6, Vue 2, Nuxt, SSR/hydration, non-Vite bundlers, framework-native Safari, profiler/router/store parity, and source-line mappings not proven by a fixture. This plan does not claim production-ready or current certification status.
 
 ## Context and Orientation
 
-The current released baseline is `web-debug-mcp@0.4.0`, commit/tag `94328c05af5f2263a2f64edec1b3267e44aae915`. The `0.4.0` closeout may still have a short-lived documentation/certification diff; finish or checkpoint that writer before implementation and preserve its files. Work on the current branch only; do not create or switch branches as part of this plan.
+The current released baseline is `web-debug-mcp@0.4.0`, commit/tag `94328c05af5f2263a2f64edec1b3267e44aae915`. `HEAD` contains later harness-attestation documentation commits; preserve them and do not treat them as a new product release. Work on the current branch only; do not create or switch branches as part of this plan.
 
 Relevant ownership:
 
 - `src/domain/types.ts` defines `Framework`, `ProjectCapabilities`, `AngularSnapshot`/`VueSnapshot` additions, `BrowserSnapshot`, `ReplayFrame`, and evidence schema version.
 - `src/core/capabilities.ts` detects only known package/config markers. Add `angular.json`, direct `@angular/core`, and direct `vue` markers; do not infer Nuxt, Vue 2, or Angular from transitive packages.
-- `src/adapters/chromium.ts` owns target-scoped script registration, optional page-runtime snapshots, pause caches, and selected-target isolation. It must register and remove independent React/Angular/Vue scripts and collect the three snapshots concurrently under one existing optional budget.
+- `src/adapters/browser.ts` carries private detected-framework metadata in `BrowserStartOptions`; `SessionManager.start` supplies the project descriptor and matrix candidates reuse the same metadata.
+- `src/adapters/chromium.ts` owns target-scoped script registration, optional page-runtime snapshots, pause caches, and selected-target isolation. It injects only selected React/Angular/Vue bridges, retains every returned CDP script identifier, removes every identifier during normal close and failed start, and collects selected snapshots concurrently under one existing optional budget.
 - `src/adapters/angular.ts` and `src/adapters/angular-bridge.ts` will read and expose the bounded Angular development snapshot.
 - `src/adapters/vue.ts` and `src/adapters/vue-bridge.ts` will read and expose the bounded Vue 3 development snapshot.
 - `src/adapters/safari.ts` must return `angular: null` and `vue: null`; `SessionManager.start` adds one bounded warning when an Angular/Vue project selects Safari.
@@ -140,19 +153,19 @@ Both bridge serializers use the existing sensitive-key pattern and enforce: 200 
 
 ## Plan of Work
 
-### Milestone 0 — close release overlap and establish source-next identity
+### Milestone 0 — preserve the released baseline and freeze the source-only contract
 
-Goal: start from a truthful immutable `0.4.0` baseline without mixing feature work into its release evidence.
+Goal: implement from the immutable `0.4.0` baseline while keeping feature evidence, release evidence, plugin promotion, and certification authority separate.
 
-Work: wait until the `complete-0-4-0-release` writer has finished; inspect `git status`, `HEAD`, `v0.4.0`, public npm `0.4.0`, and the active registry. Register this plan without overwriting the completed release move. Update package/lock/release-identity/harness contracts to source `0.5.0-next.0`, released plugin runtime `0.4.0`, and no publication. Preserve the previous source-next split pattern recorded in `trust-and-contract-hardening.md`, but remove final-release-only assertions rather than adding compatibility aliases.
+Work: record `94328c05af5f2263a2f64edec1b3267e44aae915` as the released product baseline and current `HEAD` as its later harness-attestation documentation state. Use `0.5.0-next.0` only as the feature-line label in this plan and subsequent source implementation. Do not modify package, lockfile, tags, npm/GitHub releases, plugin manifests, marketplaces, bundled `.mcp.json`, installed plugin state, or certification artifacts merely to make the plan look released. If implementation later changes source identity, update package/lock/release-identity tests together as an implementation milestone and keep released runtime `0.4.0`; no publication is authorized here.
 
-Result/proof: source/MCP/process/cleanup report `0.5.0-next.0`; plugin manifests/marketplaces/bundled runtime still report `0.4.0`; release-identity tests and native harness accept exactly that split.
+Result/proof: the active plan is registered, `v0.4.0` remains untouched, current harness-attestation commits are preserved, and all implementation/reporting language distinguishes source-only `0.5.0-next.0`, `verified locally`, `candidate-only`, `release pending`, and stale or unchanged certification authority.
 
 ### Milestone 1 — versioned contract and static detection
 
 Goal: make Angular/Vue support discoverable before a browser starts.
 
-Work: add the exact types above; add capability booleans; detect Angular from direct `@angular/core` or `angular.json`, and Vue 3 candidates from direct `vue`. Keep deterministic framework ordering: `next`, `angular`, `vite`, `react`, `vue`, then `vanilla` only when no framework exists. Add warnings that framework runtime enrichment requires a Chromium development build; preserve Vite's separate plugin warning. Update fake snapshots and compile-time exhaustiveness in tests.
+Work: add the exact types above; add capability booleans; detect Angular from direct `@angular/core` or `angular.json`, and Vue 3 candidates from direct `vue`. Keep deterministic framework ordering: `next`, `angular`, `vite`, `react`, `vue`, then `vanilla` only when no framework exists. Angular alone must not set `vite`; only an actual Vite dependency/config marker may do so. Add warnings that framework runtime enrichment requires a Chromium development build; preserve Vite's separate plugin warning. Update fake snapshots and compile-time exhaustiveness in every existing test adapter.
 
 Result/proof: capability tests cover Angular CLI, Vue/Vite, mixed markers, malformed package JSON, and generic fallback; `web_project_detect` returns the new fields through the unchanged MCP envelope.
 
@@ -160,9 +173,9 @@ Result/proof: capability tests cover Angular CLI, Vue/Vite, mixed markers, malfo
 
 Goal: produce one end-to-end Vue runtime snapshot while reusing working Vite provenance.
 
-Work: add `VueAdapter.snapshot(page)` and a target-scoped bridge installed before navigation. Chain an existing Vue DevTools global hook rather than replacing it; observe app/component lifecycle, keep weak references/maps, and expose only `window.__WEB_DEBUG_VUE__.snapshot()` plus a bounded disposal path. Verify the actual hook method/event contract from the pinned Vue/devtools package sources before implementation. If safe chaining cannot be proved, stop this milestone as blocked instead of installing a DOM-private fallback.
+Work: first run an exact-fixture spike against Vue `3.5.42` and inspect its installed runtime source/types to freeze the upstream/internal DevTools hook operations and events actually emitted. Then add `VueAdapter.snapshot(page)` and a selected, target-scoped bridge installed before navigation. Chain an existing hook without replacing its methods, listener registry, enabled state, or extension behavior; keep raw app/component references page-local and expose only `window.__WEB_DEBUG_VUE__.snapshot()` plus bounded disposal. If safe chaining and cleanup cannot be proved against an existing-hook test double and the real fixture, mark the milestone blocked. Do not read DOM-private `__vue*` properties, component proxies, or add a second fallback strategy.
 
-Create `fixtures/vue-vite/` with Vue `3.5.42`, `@vitejs/plugin-vue` `6.0.8`, Vite `7.3.6`, `webDebugVitePlugin()`, an SFC with props and reactive state, and stable test ids. Add `scripts/serve-vue-vite.mjs` and `scripts/live-vue-vite-smoke.mjs` using the managed-process helpers, port `4176`, an isolated headless Chromium launch, one state-changing action, runtime capture, source breakpoint, Vite module graph, and an HMR transform diff that restores the fixture in `finally`.
+Create `fixtures/vue-vite/` with Vue `3.5.42`, `@vitejs/plugin-vue` `6.0.8`, Vite `7.3.6`, `webDebugVitePlugin()`, an SFC with props and reactive state, and stable test ids. Add `scripts/serve-vue-vite.mjs` and `scripts/live-vue-vite-smoke.mjs`, package scripts `serve:vue-vite` and `smoke:vue-vite`, and use managed-process helpers on loopback port `4176`. The smoke proves one state-changing action, runtime capture, Vite module graph, and an HMR transform diff that restores fixture source in `finally`. Add a Vue SFC debugger/source-line assertion only after the fixture spike identifies a stable emitted source URL and line; otherwise prove the source hint and existing generic debugger separately and leave SFC breakpoint mapping candidate-only.
 
 Result/proof: Vue fixture tests prove no app-specific Web Debug import, bridge bounds, hook chaining, redaction, update counts, source hint, component tree, Vite evidence, and cleanup; live JSON reports `passed: true`.
 
@@ -172,17 +185,17 @@ Goal: produce truthful Angular component/state evidence without private Ivy trav
 
 Work: add `AngularAdapter.snapshot(page)` and a pre-navigation bridge whose snapshot discovers DOM elements, calls documented `window.ng.getComponent`/`getOwningComponent`/`getHostElement`, deduplicates component instances, and constructs parentage from host-element ancestry. Read only own data descriptors, compare bounded serialized samples in weak maps, and expose explicit `treeMode: "dom-host"`. Return `null` when Angular is absent and a bounded development-build warning when project detection expected Angular but `window.ng` is unavailable.
 
-Create `fixtures/angular/` with Angular core/compiler/common/platform-browser/compiler-cli `22.1.4`, CLI/build `22.1.6`, RxJS `7.8.2`, tslib `2.8.1`, and zone.js `0.16.2` only if the generated build contract requires it. Use a minimal standalone development app with plain class fields, nested components, stable test ids, and one interaction. Add `scripts/serve-angular.mjs` and `scripts/live-angular-smoke.mjs` using port `4177`, `ng serve` development mode, bounded readiness/teardown, component tree/state/change assertions, a TypeScript source breakpoint, generic browser evidence, and no Vite claim.
+Create `fixtures/angular/` with Angular core/compiler/common/platform-browser/compiler-cli/CLI/build `21.2.22`, the existing TypeScript `5.9.x`, and exact compatible RxJS/tslib/zone.js packages only when required by the generated development contract. Use a minimal standalone development app with plain class fields, nested components, stable test ids, and one interaction. Add `scripts/serve-angular.mjs` and `scripts/live-angular-smoke.mjs`, package scripts `serve:angular` and `smoke:angular`, and use managed-process helpers on loopback port `4177`. Run `ng serve` in development mode and prove component tree/state/change assertions, generic browser evidence, and the explicit absence of Web Debug Vite endpoint/module/HMR claims. Add an Angular TypeScript debugger/source-line assertion only when the fixture proves a stable emitted source URL and line; otherwise record source-map debugging as candidate-only rather than failing Angular runtime support.
 
-Result/proof: Angular fixture/adapter/capability tests and live JSON establish exact version, dev-mode detection, nested host tree, redacted state, changed keys, breakpoint source, generic browser evidence, and process cleanup.
+Result/proof: Angular fixture/adapter/capability tests and live JSON establish exact version, dev-mode detection, nested host tree, redacted state, changed keys, generic browser evidence, and process cleanup; source/breakpoint mapping is asserted only if the fixture proves it.
 
 ### Milestone 4 — shared browser/session safety and bounded evidence
 
 Goal: make the two new optional enrichments obey every existing lifecycle and privacy invariant.
 
-Work: register React/Angular/Vue bridge scripts independently on the selected CDP target and remove all returned script identifiers during close. Never inject secondary pages. Snapshot all three adapters concurrently under one existing Chromium optional-enrichment deadline so framework count does not multiply latency. While JavaScript is paused, use last-known snapshots and explicit stale warnings; checks-only attempts return all framework fields as null.
+Work: pass private `frameworks` metadata through canonical start options and every fresh matrix/retry candidate. Register only selected React/Angular/Vue bridge scripts independently on the selected CDP target, store every returned identifier, and remove every identifier during normal close, partial-start failure, cancellation cleanup, and attached-target detach. Never inject secondary pages. Snapshot all selected adapters concurrently under one existing Chromium optional-enrichment deadline so framework count does not multiply latency. Track each promise in the operation's pending set; caller cancellation must abort the shared deadline, bounded cleanup must settle or poison the session before lease release, and a slow optional framework must remain warning-only. While JavaScript is paused, use last-known snapshots with explicit stale warnings; checks-only attempts return React/Angular/Vue/Next/Vite enrichment as null.
 
-Update replay capture, secret replacement, private-input scenario frames, `boundEvidence`, `pruneEvidence`, result overflow paths, close/reset state, Safari null fields, and all scripted adapters. Optional pruning removes Angular/Vue detail alongside React/Vite before decisive DOM/check data. Static framework detection with missing runtime data produces a warning, not a failed browser session or verification verdict. Auth/private-input screenshot suppression remains unchanged.
+Update every relevant `SessionManager` path: canonical start options and matrix candidates; `captureInternal`; full-capture representatives; `recordReplayFrame`; private-input scenario-frame omission; secret replacement; `boundEvidence`; `pruneEvidence`; final result overflow; observer reset; close/tombstone cleanup; Safari null fields; and all scripted adapters in `test/`. Optional pruning removes Angular/Vue detail alongside React/Vite before decisive DOM/check data. Static framework detection with missing runtime data produces a warning, not a failed browser session or verification verdict. Auth/private-input screenshot suppression remains unchanged.
 
 Result/proof: tests cover sensitive values nested in Angular/Vue state, cyclic/accessor/function values, component/depth/key caps, paused/stale evidence, timeout/cancellation, attached-target sibling isolation, replay omission/scrubbing, evidence size pruning, Safari boundaries, and close/reset behavior.
 
@@ -190,11 +203,13 @@ Result/proof: tests cover sensitive values nested in Angular/Vue state, cyclic/a
 
 Goal: make claims match exact local proof without publishing unreleased behavior.
 
-Work: update `ARCHITECTURE.md`, `README.md`, `docs/SECURITY.md`, `docs/RELIABILITY.md`, `docs/COMPATIBILITY.md`, `docs/compatibility-evidence.json`, `docs/agent-harness/output-contract.md`, environment/registry/verification/coverage documents, product contract, technical-debt tracker, package keywords/scripts, and `scripts/harness-check.mjs`. Document evidence schema 3 and scenario schema 4 separately. Add Angular/Vue required files and smoke commands to the harness.
+Work: update `ARCHITECTURE.md`, `README.md`, `docs/SECURITY.md`, `docs/RELIABILITY.md`, `docs/COMPATIBILITY.md`, `docs/compatibility-evidence.json`, `docs/agent-harness/output-contract.md`, `docs/agent-harness/environment-contract.md`, `docs/agent-harness/registry.md`, `docs/agent-harness/verification-matrix.md`, `docs/agent-harness/coverage-matrix.md`, `docs/product-specs/web-debug-contract.md`, `docs/exec-plans/tech-debt-tracker.md`, package keywords/scripts/dev dependencies, and `scripts/harness-check.mjs`. Document evidence schema 3 and scenario schema 4 separately. Add Angular/Vue required files and exact `serve:vue-vite`, `smoke:vue-vite`, `serve:angular`, and `smoke:angular` commands to the native harness.
 
-Do not update the released plugin manifests, marketplaces, bundled `.mcp.json`, or installed workflow skill to advertise Angular/Vue while they pin `0.4.0`. Record that plugin promotion, public npm/GitHub release, other Angular/Vue versions, Vue 2, Nuxt, Angular SSR/hydration, Safari runtime evidence, Angular profiler/injector/router, and Vue Router/Pinia timelines require later plans.
+Do not update the released plugin manifests, marketplaces, bundled `.mcp.json`, or installed workflow skill to advertise Angular/Vue while they pin `0.4.0`. Record exact local compatibility evidence as `verified locally` only after each live smoke; label source-only work `release pending`. Do not refresh or claim current HMAC/formal certification solely from these local checks; any stale or unchanged certification remains explicitly separate. Plugin promotion, public npm/GitHub release, other Angular/Vue versions, Vue 2, Nuxt, Angular SSR/hydration, Safari runtime evidence, Angular profiler/injector/router, and Vue Router/Pinia timelines require later plans.
 
-Result/proof: compatibility evidence names exact Node/browser/framework versions and only locally passed checks; source-next docs distinguish local `0.5.0-next.0` from released plugin runtime `0.4.0`; native harness passes with no stale release claim.
+If the three baseline stale-certification disclosure failures remain, update only their owning README/certification/technical-debt statements so the native harness truthfully reports the existing certification window as stale. That documentation repair is not a certification refresh and is not Angular/Vue compatibility evidence.
+
+Result/proof: compatibility evidence names exact Node/browser/framework versions and only locally passed checks; source-next docs distinguish local `0.5.0-next.0` from released plugin runtime `0.4.0`; native harness passes because stale certification is disclosed truthfully, not because local framework smokes were promoted into certification authority.
 
 ### Estimate
 
@@ -204,21 +219,20 @@ Assuming one engineer and the pinned development runtimes: contract/detection 1 
 
 Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing branch. Before each milestone, inspect `git status --short --branch` and preserve unrelated changes.
 
-1. Finish release-writer separation, register this plan, and establish the source-next identity:
+1. Confirm the immutable released baseline and current attestation-only `HEAD` before implementation:
 
    ```bash
    git status --short --branch
    git log -3 --oneline --decorate
    npm view web-debug-mcp@0.4.0 version dist.shasum --json
-   npm install --no-audit --no-fund
-   npm run typecheck
    ```
 
-   Expected: immutable `v0.4.0`/npm evidence remains unchanged; package/lock local source identity is `0.5.0-next.0`; released plugin runtime remains `0.4.0`.
+   Expected: immutable `v0.4.0`/npm evidence remains unchanged, current later commits are documentation/attestation only, and this registered plan labels the feature line source-only `0.5.0-next.0`. Do not change package or release metadata during planning.
 
-2. After contract/detection changes, run focused deterministic checks:
+2. During implementation, install the exact development fixture dependencies, update any source-next package identity and its release-identity tests atomically if required by the implementation owner, then run focused contract/detection checks:
 
    ```bash
+   npm install --no-audit --no-fund
    npx vitest run test/capabilities.test.ts test/mcp-routing.test.ts test/mcp-response.test.ts test/release-identity.test.ts
    npm run typecheck
    ```
@@ -230,7 +244,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing bran
    npm run smoke:vue-vite
    ```
 
-   Expected smoke assertions: Vue detected, exact version, nested component, props/state, changed keys/update count, source hint, Vite module/HMR evidence, breakpoint source, clean console, and awaited teardown.
+   Expected smoke assertions: Vue detected, exact version, nested component, props/state, changed keys/update count, source hint, Vite module/HMR evidence, clean console, and awaited teardown. Require a breakpoint source/line only if the fixture spike proves a stable mapping.
 
 4. After the Angular slice:
 
@@ -239,7 +253,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing bran
    npm run smoke:angular
    ```
 
-   Expected smoke assertions: Angular development runtime detected, exact version, DOM-host component hierarchy, sampled state/change keys, source breakpoint, clean generic browser evidence, no Vite claim, and awaited teardown.
+   Expected smoke assertions: Angular development runtime detected, exact version, DOM-host component hierarchy, sampled state/change keys, clean generic browser evidence, no Web Debug Vite endpoint/module/HMR claim, and awaited teardown. Require a TypeScript breakpoint source/line only if the fixture proves a stable mapping.
 
 5. Run cross-cutting and complete local gates:
 
@@ -280,7 +294,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing bran
 - Browser boundary: Safari returns generic evidence with `angular: null`/`vue: null` and a stable Chromium-only warning; no Safari framework parity is claimed.
 - Compatibility: exact Angular/Vue/package/browser versions move to `verified locally` only after contract tests and the corresponding live smoke pass; all other versions remain candidate-only.
 - Regression: all existing deterministic tests and Chromium/React-Vite/Next/Safari/local-fidelity smokes continue to pass.
-- Release truthfulness: source is `0.5.0-next.0`, released plugin/runtime remains `0.4.0`, no npm/GitHub/plugin publication occurs, and `v0.4.0` remains untouched.
+- Release truthfulness: the feature is labeled source-only `0.5.0-next.0`; released package/plugin/runtime remains `0.4.0` until a later authorized promotion, no npm/GitHub/plugin publication occurs, `v0.4.0` remains untouched, and local compatibility evidence makes no fresh certification claim.
 
 ## Idempotence and Recovery
 
@@ -294,7 +308,7 @@ Do not publish, tag, update the installed plugin, run remote CDP, modify product
 
 ## Artifacts and Notes
 
-- Released baseline: commit/tag `94328c05af5f2263a2f64edec1b3267e44aae915`, npm `web-debug-mcp@0.4.0`, archive shasum `c7daee55f175d113503d4e662ea8bc418da149ea`.
+- Released baseline: commit/tag `94328c05af5f2263a2f64edec1b3267e44aae915`, npm `web-debug-mcp@0.4.0`, archive shasum `c7daee55f175d113503d4e662ea8bc418da149ea`; current `HEAD` adds harness-attestation documentation without changing that product identity.
 - Existing framework seam: `src/adapters/react.ts`, `src/adapters/react-bridge.ts`, `src/adapters/chromium.ts`, `src/adapters/vite.ts`, and `src/adapters/vite-plugin.ts`.
 - Official Angular evidence: [DevTools development-build boundary](https://angular.dev/tools/devtools), [`getOwningComponent`](https://angular.dev/api/core/globals/getOwningComponent), [`getHostElement`](https://angular.dev/api/core/globals/getHostElement), and [development-only profiling](https://angular.dev/api/core/enableProfiling).
 - Official Vue evidence: [Vue DevTools Vue 3 boundary](https://devtools.vuejs.org/getting-started/installation) and [Vite plugin role](https://devtools.vuejs.org/guide/vite-plugin).
@@ -304,7 +318,7 @@ Do not publish, tag, update the installed plugin, run remote CDP, modify product
 
 Runtime dependencies remain exactly `@modelcontextprotocol/sdk`, `playwright-core`, and `zod`; Angular/Vue packages are development-only fixture/toolchain dependencies. Pin exact root and fixture versions so `test/compatibility.test.ts` can prove alignment. Candidate pins are:
 
-- Angular: `@angular/core`, `@angular/common`, `@angular/compiler`, `@angular/platform-browser`, and `@angular/compiler-cli` `22.1.4`; `@angular/cli` and `@angular/build` `22.1.6`; RxJS `7.8.2`; tslib `2.8.1`; zone.js `0.16.2` only when required by the fixture.
+- Angular: `@angular/core`, `@angular/common`, `@angular/compiler`, `@angular/platform-browser`, `@angular/compiler-cli`, `@angular/cli`, and `@angular/build` `21.2.22`; retain TypeScript `5.9.x`; pin exact compatible RxJS/tslib/zone.js versions from the resolved Angular 21 fixture. Angular 22 and TypeScript 6 remain candidate-only.
 - Vue: `vue` `3.5.42`, `@vitejs/plugin-vue` `6.0.8`, and existing Vite `7.3.6`.
 
 Do not add `vite-plugin-vue-devtools`, Angular DevTools packages, a framework-neutral bridge framework, a server daemon, or new MCP tools. `AngularAdapter` and `VueAdapter` mirror the narrow `ReactAdapter.snapshot(Page)` boundary. Their injected globals are page-internal implementation details and never public MCP inputs. `SessionManager` remains the authority for warnings, replay, secrets, deadlines, pruning, and close behavior; adapters cannot bypass it.
@@ -312,3 +326,6 @@ Do not add `vite-plugin-vue-devtools`, Angular DevTools packages, a framework-ne
 ## Revision History
 
 - (2026-08-29 20:47Z) Change: Created the detailed Angular/Vue source-next implementation plan from the immutable `0.4.0` baseline and current official development-runtime contracts. Reason: Make the requested two-framework implementation restartable, reviewable, and truthful about browser, DevTools, release, and compatibility boundaries before source changes begin.
+- (2026-08-30) Change: Merged the independent `sol max` and `sol ultra` reviews plus the consolidated audit. Reason: Close the already-resolved `0.4.0` boundary; pin Angular 21.2.22/TypeScript 5.9; treat Vue hook chaining as an exact-fixture internal-contract gate; select bridge injection through private framework metadata; cover all cancellation/replay/redaction/pruning paths; correct smoke names/ports and conditional debugger claims; and separate local compatibility evidence from release, plugin, and certification authority.
+- (2026-08-30) Change: Recorded the interrupted implementation checkpoint. Reason: The requested stop occurred after both new live smokes and focused gates passed but before the post-compatibility full suite, existing regression smokes, and final native harness could be rerun; preserve exact verified and not-run boundaries for safe continuation.
+- (2026-08-30) Change: Completed the source-only Angular/Vue implementation and final validation. Reason: 117 deterministic tests, source/test typecheck, build, 542-check native harness, package dry-run, both new framework smokes, all existing individual live regression smokes, and cleanup checks passed; immutable `0.4.0` release/plugin identities and certification authority remained separate.
