@@ -1,0 +1,1 @@
+# Preserve the required active ExecPlan lifecycle directory when no plan is active.
