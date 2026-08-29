@@ -5,6 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
+| [Add bounded Angular and Vue 3 runtime evidence](active/angular-vue-support.md) | Platform Engineering | planning | 2026-08-29 | Release closeout finished; establish the `0.5.0-next.0` framework-evidence contract before implementation |
 <!-- harness:plans:active:end -->
 
 ## Completed
