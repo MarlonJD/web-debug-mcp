@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "scope": "0.4.0-release",
-  "observedAt": "2026-08-29T20:36:00Z",
-  "baseCommit": "6499acaf25278c8dfcf25e2da400294c07316624",
+  "observedAt": "2026-08-29T20:47:00Z",
+  "baseCommit": "94328c05af5f2263a2f64edec1b3267e44aae915",
   "sourceVersion": "0.4.0",
   "runtime": {
     "node": "24.18.0",
@@ -22,7 +22,7 @@
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" }
   ],
   "limits": [
-    "This evidence applies to the local 0.4.0 release source based on baseCommit; public npm/GitHub/plugin publication is verified separately.",
+    "This evidence applies to the exact 0.4.0 release source; public npm, GitHub, and Codex identities were verified separately and recorded in the release plan.",
     "Approved external CDP, release publication, HMAC certification, provider authority, production, and other runtime versions remain unverified."
   ]
 }

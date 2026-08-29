@@ -5,7 +5,6 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Complete the 0.4.0 release and harness migration](active/complete-0-4-0-release.md) | Platform Engineering | implementing | 2026-08-29 | Migrating historical plans and preparing final release identities after npm authentication succeeded |
 <!-- harness:plans:active:end -->
 
 ## Completed
@@ -13,6 +12,7 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
+| [Complete the 0.4.0 release and harness migration](completed/complete-0-4-0-release.md) | 2026-08-29 | Formal harness debt cleared; immutable npm/GitHub `0.4.0` and Codex plugin published with exact local/public evidence | 106 tests; typecheck/build; native/formal harness; plugin validator; five live smokes; six-scenario demo; local/public 13-tool handshakes; release/plugin identity equality |
 | [Harden Web Debug trust boundaries and product contracts](completed/trust-and-contract-hardening.md) | 2026-08-29 | Source-next `0.4.0-next.0` locally hardens origin, lifecycle, MCP output, artifacts, actions, doctor, evaluation, and harness truthfulness without publishing | 106 tests; typecheck/build; native harness `500` stale-candidate; fresh-prefix 13-tool prerelease handshake; Chromium/React-Vite/Next/Safari/local-fidelity smokes |
 | [Clarify Web Debug routing and publish 0.3.2/0.3.3 correction](completed/web-debug-routing-0-3-2.md) | 2026-08-28 | Web Debug routing clarified as a browser-evidence complement; immutable `0.3.3` metadata correction published and installed in Codex | 61 tests; typecheck/build; harness `234`; skill/plugin validators; public npm/fresh-prefix 13-tool handshake; exact `v0.3.3` release SHA; Codex `0.3.3+codex.20260828123311` enabled |
 | [Publish the first npm package as 0.3.1](completed/npm-publication-0-3-1.md) | 2026-08-28 | First public npm release with a runnable CLI, no install-time script, immutable npm-pinned plugin runtime, and preserved `v0.3.0` history | 61 tests; typecheck/build; harness `232`; plugin validator; real tarball/fresh-prefix and public-registry 13-tool handshakes; npm/GitHub/Codex identities verified |

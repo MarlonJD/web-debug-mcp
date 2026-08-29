@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: complete-0-4-0-release
-status: active
+status: completed
 created: 2026-08-29
 updated: 2026-08-29
-completed:
+completed: 2026-08-29
 owner: Platform Engineering
 -->
 
@@ -23,8 +23,8 @@ Success is observable when the formal harness reports zero errors, the final sou
 - [x] (2026-08-29 20:30Z) Migrate the five historical completed plans and registry row without changing recorded product outcomes; the formal harness now reports zero errors and zero warnings.
 - [x] (2026-08-29 20:36Z) Promote package, public docs, plugin manifests, marketplace metadata, bundled runtime, and workflow skill from the prerelease/released `0.3.3` split to final `0.4.0`.
 - [x] (2026-08-29 20:41Z) Run 106 deterministic tests, typecheck/build, native and zero-error formal harnesses, plugin validation, all five live smokes, the six-scenario comparison demo, and real final tarball/fresh-prefix checks; no approved external-CDP endpoint exists on this host.
-- [ ] Commit and push the release source, create/push exact `v0.4.0`, publish npm and GitHub release artifacts, then refresh/install and verify the Codex plugin.
-- [ ] Record exact evidence, unresolved authority blockers, cleanup, and semantic review before completing this plan.
+- [x] (2026-08-29 20:45Z) Commit/push release source `94328c0`, create/push exact annotated `v0.4.0`, publish the tested tarball to npm and the matching GitHub release, then refresh/install Codex plugin `0.4.0+codex.20260829203143`.
+- [x] (2026-08-29 20:47Z) Record exact public/package/plugin evidence, keep the unavailable external-CDP and provider-production scopes literal, clean command-owned state, and prepare digest-bound plan review plus the final direct-child HMAC overlay.
 
 ## Surprises & Discoveries
 
@@ -34,6 +34,8 @@ Success is observable when the formal harness reports zero errors, the final sou
 - The installed Codex plugin is enabled at `0.3.3+codex.20260828123311` from the `web-debug` marketplace.
 - The formal harness baseline is exactly 24 errors across five historical completed plans and one registry date mismatch; the newly completed trust-hardening plan adds no error.
 - No configured environment variable, repository `.env` file, or running command-owned browser exposes an approved external CDP endpoint; remote live attachment remains unavailable rather than inferred from loopback evidence.
+- npm direct publication required a second browser approval specific to `web-debug-mcp@0.4.0`; the approved operation published the exact tested shasum and public fresh-cache verification matched it.
+- Codex marketplace refresh reflected the new manifest immediately, but `codex plugin add` was still run to create the immutable installed cache snapshot and verify the bundled `web-debug-mcp@0.4.0` runtime pin.
 
 ## Decision Log
 
@@ -44,11 +46,15 @@ Success is observable when the formal harness reports zero errors, the final sou
 
 ## Outcomes & Retrospective
 
-Active. Replace this with achieved release identities, exact verification, remaining blockers, and rollback facts before completion.
+Release `0.4.0` is complete and verified locally/publicly within the repository-owned release scope. Formal harness errors fell from 24 to zero without suppressions. Package, lockfile, MCP/process/cleanup identity, npm `latest`, annotated tag, GitHub release, both plugin manifests, both marketplaces, bundled `.mcp.json`, and installed Codex plugin now agree on `0.4.0` or timestamped Codex build `0.4.0+codex.20260829203143`.
+
+The exact archive shasum is `c7daee55f175d113503d4e662ea8bc418da149ea`; npm reports the same integrity, and both the local archive and public fresh-cache install returned version `0.4.0`, 13 tools, and output schemas on every tool. Deterministic tests, typecheck/build, native/formal harnesses, plugin validation, five live smokes, and the six-scenario comparison demo passed. Codex reports one enabled `web-debug@web-debug` plugin with no source-next/local duplicate and runtime pin `web-debug-mcp@0.4.0`; Claude CLI is absent, so Claude support is static-manifest validated only.
+
+No approved external CDP endpoint was configured, so that live remote check remains candidate-only under DEBT-002. The owner-held HMAC key exists and the next direct-child overlay refreshes ordinary repository-local `harness-ready` evidence; this never establishes provider-backed production authority. Existing versions/tags were not moved or unpublished, and no connector-authored GitHub comment/review was created.
 
 ## Context and Orientation
 
-Commit `6499aca` on `main` contains the completed source-next contract and a clean working tree. `package.json` reports `0.4.0-next.0` while package metadata records released plugin runtime `0.3.3`; plugin manifests and `.mcp.json` are deliberately still `0.3.3`. The formal plan errors are in `docs/exec-plans/completed/adaptive-flake-verification.md`, `local-fidelity-and-session-lifecycle.md`, `npm-publication-0-3-1.md`, `web-debug-mcp-mvp.md`, `web-debug-routing-0-3-2.md`, plus one completed-date row in `docs/exec-plans/index.md`.
+Commit `6499aca` introduced the verified prerelease contract. Release commit `94328c05af5f2263a2f64edec1b3267e44aae915` promotes it to `0.4.0`, contains the historical plan migration, and is the peeled target of annotated `v0.4.0`. The public package, GitHub release, and installed plugin are now available; this post-release source record prepares the final direct-child certification overlay.
 
 Release surfaces include `package.json`, `package-lock.json`, `src/core/version.ts`, `plugins/web-debug/.mcp.json`, both plugin manifests, both marketplace files, the bundled workflow skill, README/product/security/harness documentation, and release identity tests. Existing completed release plans record the prior npm/GitHub/Codex command and rollback patterns.
 
@@ -94,6 +100,9 @@ Do not run `npm login` or external-browser attachment silently when user interac
 - Formal harness after migration: 0 errors, 0 warnings, 5 informational capability/manual-review items.
 - Public baseline: npm/GitHub latest `0.3.3`; no `v0.4.0` tag.
 - Final local archive: `web-debug-mcp-0.4.0.tgz`, shasum `c7daee55f175d113503d4e662ea8bc418da149ea`, integrity `sha512-lCff9jIQZpPVOiiJIOjHX/pLZ5Ch2Ir4k38u1H8ih/hYpCcT2HBdIcETsnC45x3vN1ET5t0a48CKscreaB3Pww==`, 100 entries, fresh-prefix version `0.4.0`, 13 tools, and output schemas on every tool.
+- Public npm: `latest=0.4.0`; public shasum/integrity match the tested archive; an empty-directory fresh-cache install added 96 packages and passed the 13-tool/output-schema handshake.
+- Git/GitHub: release source and peeled local/remote tag are `94328c05af5f2263a2f64edec1b3267e44aae915`; GitHub release URL is `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.4.0`.
+- Codex: marketplace refresh/install succeeded with no errors; `web-debug@web-debug` is installed/enabled at `0.4.0+codex.20260829203143`, and its cached `.mcp.json` pins `web-debug-mcp@0.4.0`.
 
 ## Interfaces and Dependencies
 
@@ -102,3 +111,5 @@ Keep the existing `@modelcontextprotocol/sdk`, `playwright-core`, and `zod` vers
 ## Revision History
 
 - (2026-08-29 20:24Z) Change: Created the release-and-harness completion plan after committing the verified source-next checkpoint and running authentication/plugin preflight. Reason: Make the authorized external and historical follow-up restartable without inventing npm credentials or an external CDP target.
+- (2026-08-29 20:47Z) Change: Completed historical harness migration, final release verification/publication, GitHub release, and Codex plugin update; recorded exact identities and scoped remaining gates. Reason: Finish every authorized repository-owned action while keeping unavailable external CDP and provider-production evidence literal.
+  Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-29 20:48Z; content-sha256=411205ac078a6dfb43cd09d6beaa1411b08d7188400791e29663a8121a7a4f61; evidence=Reviewed all checked migration, release, public-registry, GitHub, plugin, verification, recovery, cleanup, and evidence milestones; exact immutable identities agree, while external CDP and provider-production authority remain explicitly unavailable.

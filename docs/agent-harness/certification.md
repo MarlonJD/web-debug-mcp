@@ -2,7 +2,7 @@
 
 This repository adopts the harness-engineering v2 certification contract for the local developer tool. The bounded claim is `harness-ready`; it is not a production-readiness or provider-authentication claim.
 
-The checked-in historical certification window is stale and is retained as immutable evidence of its original source/attestation interval. Its expiry and coverage hash do not cover current work. The native gate checks structure, ancestry, hash, expiry, and worktree drift but never authenticates the HMAC; even a structurally fresh window is only `fresh-structure-candidate`. Until the external-key formal verifier passes, no current `CERT000` is claimed.
+Release `0.4.0` refreshes the checked-in certification window through one direct-child attestation overlay. The native gate checks structure, ancestry, coverage hash, expiry, and worktree drift but never authenticates the HMAC, so it reports `fresh-structure-candidate`; the external-key formal verifier is required for the current bounded `CERT000` claim.
 
 ## Ownership and commands
 
@@ -13,14 +13,14 @@ The checked-in historical certification window is stale and is retained as immut
 - Evidence issuer: `local-platform-engineering`; this is a local observer label, not an external authority
 - HMAC key custody: the caller controls an owner-only raw key outside the repository; the key is never committed or printed
 - Optional production verifier: unavailable; this repository has no production deployment or provider trust root
-- Escalation boundary: external CDP targets, credentialed browser profiles, hosted deployment, production approval, rollback authority, and destructive or external infrastructure changes require explicit user/provider authority. Exact-SHA GitHub release and reversible Codex marketplace/plugin updates are repository-owned release actions; `v0.3.0` exercised that explicit authority while deployment/production remain out of scope.
+- Escalation boundary: external CDP targets, credentialed browser profiles, hosted deployment, production approval, rollback authority, and destructive or external infrastructure changes require explicit user/provider authority. Exact-SHA GitHub/npm release and reversible Codex marketplace/plugin updates are repository-owned release actions; `v0.4.0` exercised that explicit authority while deployment/production remain out of scope.
 
 ## Source and attestation lifecycle
 
 Implementation, tests, the native gate, maintenance behavior, and this procedure belong to source commit `S`. The certification overlay is a single direct-child commit `A` containing only the configured coverage matrix, certification manifest, and referenced v2 HMAC evidence records. Every evidence record names `S`, while the verifier is invoked against trusted current `A`.
 
-The coverage matrix must contain the complete canonical inventory and one explained `verified` or justified `N/A` status per row. Each such status links to exactly one fresh evidence record under `docs/agent-harness/evidence/`. Release/package/plugin mechanics are candidate until an authorized exact-SHA release run supplies evidence; deployment/production authority remains unavailable and all production authority fields remain `null`.
+The coverage matrix contains the complete canonical inventory and one explained `verified` or justified `N/A` status per row. Each status links to exactly one fresh evidence record under `docs/agent-harness/evidence/`. The release-authority row is verified by the explicit `v0.4.0` approval and rollback observations named in the manifest; these local records do not authenticate a production provider, deployment, or external target.
 
 ## Revalidation and limits
 
-Run the native gate, deterministic tests, type/build checks, relevant live smokes, real tarball install, process cleanup checks, and the bundled read-only certification verifier before claiming the result. A valid HMAC proves consistency with the caller-selected key and repository manifest; it does not prove a provider event, human approval, deployment, rollback authority, or production identity. Any source change after the attestation commit invalidates the certification and requires a new source/attestation pair. The current external verifier also reports legacy completed-plan schema errors; this task records that as candidate harness-maintenance work rather than fabricating a fresh attestation.
+Run the native gate, deterministic tests, type/build checks, relevant live smokes, real/public tarball installs, process cleanup checks, and the bundled read-only certification verifier before claiming the result. A valid HMAC proves consistency with the caller-selected key and repository manifest; it does not prove a provider event, human approval, deployment, rollback authority, or production identity. Any source change after the attestation commit invalidates the certification and requires a new source/attestation pair. The formal plan/index checker reports zero errors for this window.
