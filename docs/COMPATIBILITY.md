@@ -1,6 +1,6 @@
 # Compatibility
 
-This matrix separates declared package support from behavior verified on an exact local runtime. It describes the source-next working tree and remains release pending; the published npm/plugin `0.3.3` contract is unchanged. A version not listed as verified is not implicitly unsupported; it is simply candidate-only until the corresponding deterministic fixture and live smoke pass. The exact current local observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json).
+This matrix separates declared package support from behavior verified on an exact local runtime for release `0.4.0`. A version not listed as verified is not implicitly unsupported; it is simply candidate-only until the corresponding deterministic fixture and live smoke pass. The exact current local observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json).
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |

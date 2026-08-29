@@ -1,9 +1,9 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.4.0-next.0",
+  "version": "0.4.0",
   "webDebug": {
-    "releaseStatus": "source-next",
-    "releasedPluginRuntimeVersion": "0.3.3"
+    "releaseStatus": "released",
+    "releasedPluginRuntimeVersion": "0.4.0"
   },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",

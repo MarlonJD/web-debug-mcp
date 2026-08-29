@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-This contract belongs to source-next `0.4.0-next.0` and is release pending. The published npm package and bundled plugin remain on the immutable `0.3.3` contract until a separately authorized release.
+This is the final `0.4.0` package and plugin contract.
 
 ## User outcome
 

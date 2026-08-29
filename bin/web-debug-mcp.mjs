@@ -7,7 +7,7 @@ import { doctorArgumentFailure, parseDoctorArgs, runDoctor } from "../dist/core/
 const args = process.argv.slice(2);
 const help = `Usage:
   web-debug-mcp                         Start the MCP stdio server
-  web-debug-mcp doctor [options]        Check source-next local readiness
+  web-debug-mcp doctor [options]        Check local runtime readiness
   web-debug-mcp cleanup [--all-idle]    Clean identity-verified idle MCP processes
   web-debug-mcp --help                  Show this help
 

@@ -10,7 +10,7 @@
       "source": "./plugins/web-debug",
       "displayName": "Web Debug",
       "description": "Evidence-first local web debugging that complements frontend build and test workflows.",
-      "version": "0.3.3",
+      "version": "0.4.0",
       "author": {
         "name": "Marlon J.D.",
         "url": "https://github.com/MarlonJD"

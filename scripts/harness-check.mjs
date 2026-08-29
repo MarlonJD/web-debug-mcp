@@ -45,6 +45,7 @@ const requiredFiles = [
   "docs/exec-plans/tech-debt-tracker.md",
   "docs/demos/comparison.md",
   "docs/demos/agent-evaluation.md",
+  "docs/releases/0.4.0.md",
   "docs/COMPATIBILITY.md",
   "docs/compatibility-evidence.json",
   "docs/examples-evidence.md",
@@ -138,7 +139,7 @@ check(packageJson.name === "web-debug-mcp", "package.json name must remain web-d
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "source-next" && /^\d+\.\d+\.\d+$/.test(releasedPluginVersion ?? "") && releasedPluginVersion !== sourceVersion, "source-next metadata must name a distinct released plugin runtime");
+check(packageJson.webDebug?.releaseStatus === "released" && /^\d+\.\d+\.\d+$/.test(releasedPluginVersion ?? "") && releasedPluginVersion === sourceVersion, "released metadata must align source and plugin runtime versions");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -251,7 +252,7 @@ check(read("README.md").includes("codex mcp add"), "README must document Codex M
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
-check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("#main"), "README must distinguish the source-next identity from the immutable released runtime");
+check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("0.4.0-next.0") && !read("README.md").includes("#main"), "README must document the immutable final release runtime");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
 check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");
@@ -314,7 +315,7 @@ const certificationStatus = certificationStructurallyFresh ? "fresh-structure-ca
 if (!certificationStructurallyFresh) {
   check(read("README.md").includes("historical certification window") && read("README.md").includes("does not claim a current `CERT000`"), "README must disclose a stale historical certification window");
   check(read("docs/agent-harness/certification.md").includes("historical certification window is stale"), "Certification procedure must disclose current staleness");
-  check(read("docs/exec-plans/tech-debt-tracker.md").includes("DEBT-003") && read("docs/exec-plans/tech-debt-tracker.md").includes("reopened"), "Stale certification must remain reopened technical debt");
+  check(read("docs/exec-plans/tech-debt-tracker.md").includes("DEBT-003") && read("docs/exec-plans/tech-debt-tracker.md").includes("fresh attestation"), "Stale certification must remain explicit technical debt until refreshed");
 }
 
 const managedDocs = ["AGENTS.md", "ARCHITECTURE.md", "README.md", "docs/SECURITY.md", "docs/RELIABILITY.md"];

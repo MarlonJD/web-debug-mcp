@@ -82,7 +82,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:10Z) Commit and push the Next request-trace linkage milestone as `f0e28f0` on `origin/main`.
 - [x] (2026-08-27 02:16Z) Add deterministic coverage for missing Node WebSocket support and verify explicit Safari BiDi fallback behavior; commit and push as `1f587cc`.
 - [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
-- [ ] Candidate follow-up: obtain an approved external Chromium/CDP endpoint for live remote-attach evidence; local policy coverage is complete but external evidence is unavailable. Tracked in `docs/exec-plans/tech-debt-tracker.md`.
+- [x] (2026-08-28 02:17Z) Move the approved external Chromium/CDP live-attach follow-up to `DEBT-002`; local policy coverage is complete and the unavailable external evidence remains explicit debt rather than unchecked completed-plan work.
 - [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness. The current source and attestation IDs are authoritative in `docs/agent-harness/certification.json` and Git parent history.
 - [x] (2026-08-27 15:30Z) Rewrite the public README to explain the project purpose, MCP value, native macOS/iOS skill distinction, use cases, benefits, expectations, and explicit non-expectations; update the GitHub repository description and topics.
 - [x] (2026-08-27 13:49Z) Make the server installable as a standalone stdio MCP through GitHub `npx` for Codex and Claude Code; add the executable package contract, agent-use instructions, and README-first installation guidance.
@@ -92,7 +92,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 18:13Z) Validate complex logic, async, and visual repairs with live Chromium, desktop/mobile geometry, temporary before/after screenshots, deterministic fixture contracts, and no owned process left behind.
 - [x] (2026-08-27 18:23Z) Run final model QA arms with `gpt-5.6-sol + xhigh` and `gpt-5.6-luna + max`; both passed the core gates and all three repair contracts, and the runner now exits non-zero on semantic repair failure.
 - [x] (2026-08-27 18:31Z) Add a user-facing `docs/examples-evidence.md` guide and link it from README, with scenario explanations, before/after evidence, and usage rationale.
-- [x] (2026-08-27) Package the local MCP server as the `web-debug` Codex/ChatGPT/Claude Code plugin with shared workflow skill and client-specific repository marketplace entries.
+- [x] (2026-08-27 15:10Z) Package the local MCP server as the `web-debug` Codex/ChatGPT/Claude Code plugin with shared workflow skill and client-specific repository marketplace entries.
 
 ## Surprises & Discoveries
 
@@ -308,6 +308,7 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-27 02:16Z) Change: Recorded Safari BiDi fallback test commit `1f587cc`. Reason: Verify explicit degradation when the Node runtime lacks WebSocket support.
 - (2026-08-27 02:17Z) Change: Recorded native Next trace contract commit `a866284`. Reason: Keep the project gate aligned with the normalized server trace evidence.
 - (2026-08-27 15:30Z) Change: Recorded the public README and GitHub metadata positioning update. Reason: Make the project’s purpose, differentiation, value, use cases, and limits discoverable before installation.
-- (2026-08-27) Change: Added the `web-debug` Codex/ChatGPT plugin wrapper, bundled `web-debug-workflow` skill, local stdio MCP configuration, repository marketplace entry, and install documentation. Reason: Provide the AWS Agent Toolkit-style single-install experience while preserving the standalone `web-debug-mcp` server for other MCP clients.
-- (2026-08-27) Change: Expanded the README with explicit plugin installation, bundled-MCP behavior, first-launch requirements, and post-install usage steps. Reason: Make the single-install experience understandable to users without requiring separate MCP configuration.
-- (2026-08-27) Change: Added the Claude Code plugin manifest and root marketplace catalog, plus Claude-specific README installation and namespaced-skill guidance. Reason: Make the same single-install plugin available to Claude Code while retaining the shared MCP server and skill.
+- (2026-08-27 15:10Z) Change: Added the `web-debug` Codex/ChatGPT plugin wrapper, bundled `web-debug-workflow` skill, local stdio MCP configuration, repository marketplace entry, and install documentation. Reason: Provide the AWS Agent Toolkit-style single-install experience while preserving the standalone `web-debug-mcp` server for other MCP clients.
+- (2026-08-27 15:10Z) Change: Expanded the README with explicit plugin installation, bundled-MCP behavior, first-launch requirements, and post-install usage steps. Reason: Make the single-install experience understandable to users without requiring separate MCP configuration.
+- (2026-08-27 15:17Z) Change: Added the Claude Code plugin manifest and root marketplace catalog, plus Claude-specific README installation and namespaced-skill guidance. Reason: Make the same single-install plugin available to Claude Code while retaining the shared MCP server and skill.
+  Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-29 20:30Z; content-sha256=a35c3e293b09455f06baacc0d1be6bed66a055200b49d108237b3f6513ca5a61; evidence=Reviewed the full vertical-slice milestone ledger, browser/framework/Safari/replay/plugin evidence, moved external-CDP follow-up in DEBT-002, recovery limits, and the completed local-versus-production scope.

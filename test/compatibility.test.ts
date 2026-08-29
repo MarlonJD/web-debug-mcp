@@ -37,7 +37,7 @@ describe("declared compatibility matrix", () => {
     expect(next.dependencies.next).toBe(root.devDependencies.next);
     expect(next.dependencies.react).toBe(root.devDependencies.react);
     expect(next.dependencies["react-dom"]).toBe(root.devDependencies["react-dom"]);
-    expect(evidence).toMatchObject({ schemaVersion: 1, scope: "source-next-release-pending" });
+    expect(evidence).toMatchObject({ schemaVersion: 1, scope: "0.4.0-release" });
     expect(evidence.sourceVersion).toBe((root as { version?: string }).version);
     expect(evidence.baseCommit).toMatch(/^[0-9a-f]{40}$/);
     expect(evidence.runtime.mcpSdk).toBe(root.dependencies["@modelcontextprotocol/sdk"]);

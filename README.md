@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-> **Source-next `0.4.0-next.0` / release pending (2026-08-29):** this working tree contains the unreleased schema-4 contract, structured MCP output/resources/progress, `doctor`, deterministic action expansion, origin/lifecycle hardening, and artifact quotas described below. The published npm package and bundled plugin remain immutable `0.3.3` and do not gain these features until a separately authorized release. Build this checkout to exercise source-next behavior; the install commands below intentionally continue to install the released `0.3.3` contract.
+Version `0.4.0` is the schema-4 release with structured MCP output/resources/progress, `doctor`, deterministic action expansion, fixed-origin and lifecycle hardening, and bounded screenshot retention.
 
 ## Install as an MCP server
 
@@ -17,14 +17,14 @@ The published npm package runs locally over stdio and does not require a hosted 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.3.3
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.4.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y web-debug-mcp@0.3.3
+-y web-debug-mcp@0.4.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -32,7 +32,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "web-debug-mcp@0.3.3"]
+args = ["-y", "web-debug-mcp@0.4.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 ```
@@ -63,7 +63,7 @@ Codex starts web-debug-mcp over local stdio on demand
 web_project_detect → reproduce → web_issue_capture → fix verification
 ~~~
 
-The source-checkout stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP/WebDriver endpoints, optional loopback URL, Safari BiDi WebSocket availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes. The installed `0.3.3` plugin retains its released command contract.
+The stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP/WebDriver endpoints, optional loopback URL, Safari BiDi WebSocket availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
 
 ### Install from the Codex CLI
 
@@ -92,7 +92,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.3.3` npm release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.4.0` npm release; Node.js 20+, npm, and network access are required.
 
 ### Boundary with Build Web Apps and native runners
 
@@ -124,14 +124,14 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata and skill, but its bundled `.mcp.json` intentionally still starts released `web-debug-mcp@0.3.3`; it does not exercise source-next.
+This command loads the repository's plugin metadata, skill, and bundled `web-debug-mcp@0.4.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.3.3
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.4.0
 claude mcp list
 ```
 
@@ -172,7 +172,7 @@ The project deliberately keeps one public MCP catalog. React, Vite, Next, Chromi
 
 MCP is the transport and tool contract between an agent such as Codex and this debugging process. The server exposes typed, discoverable operations instead of asking the agent to parse terminal output or drive an unstructured DevTools UI.
 
-The source-next public tools cover:
+The public tools cover:
 
 - project capability detection;
 - explicit Chromium or Safari session start and status;
@@ -367,14 +367,14 @@ Run the MCP server after building:
 node dist/index.js
 ```
 
-To exercise source-next through an MCP client, register that built file directly under a distinct name and do not enable the released plugin in the same client session:
+To exercise a local checkout through an MCP client, register that built file directly under a distinct name and do not enable the released plugin in the same client session:
 
 ```bash
-codex mcp add web-debug-mcp-source-next -- node /absolute/path/to/web-debug-mcp/dist/index.js
-claude mcp add --transport stdio --scope project web-debug-mcp-source-next -- node /absolute/path/to/web-debug-mcp/dist/index.js
+codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
+claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify the prerelease `serverInfo.version` is `0.4.0-next.0`. The released plugin remains the correct path for stable `0.3.3` behavior.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.4.0`. The released plugin remains the recommended single-install path.
 
 Then use the MCP client workflow:
 
@@ -448,9 +448,9 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 The repository-local evidence sweep covers deterministic tests, source and test TypeScript checking, build, native harness checks, adaptive scenario bounds, and proportional Chromium, React/Vite, Next, Safari, replay, and repair smokes when those runtimes are available. The checked-in HMAC evidence is a historical certification window whose source, coverage hash, and expiry no longer match current work; this repository does not claim a current `CERT000`. The native harness reports that state as `certification: stale-candidate`. Fresh HMAC attestation, provider-backed production authority, and an approved external remote-browser run remain separate gates.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [source-next product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 
-Exact locally verified source-next versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits the three frozen agent repair contracts documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
+Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits the three frozen agent repair contracts documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
 
 ## License
 

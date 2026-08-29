@@ -11,7 +11,7 @@ import { cleanupRegistry, ProcessRegistry } from "../src/core/process-registry.j
 import { PACKAGE_VERSION } from "../src/core/version.js";
 
 describe("release identity", () => {
-  it("separates source-next runtime identity from the immutable released plugin", async () => {
+  it("keeps final package, MCP, registry, cleanup, and plugin identities aligned", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { version: string; webDebug: { releaseStatus: string; releasedPluginRuntimeVersion: string } };
     const packageLock = JSON.parse(await readFile("package-lock.json", "utf8")) as { version: string; packages: Record<string, { version?: string }> };
     const pluginMcp = JSON.parse(await readFile("plugins/web-debug/.mcp.json", "utf8")) as { mcpServers: Record<string, { args: string[] }> };
@@ -21,9 +21,9 @@ describe("release identity", () => {
     const claudeMarketplace = JSON.parse(await readFile(".claude-plugin/marketplace.json", "utf8")) as { plugins: Array<{ name: string; version: string }> };
 
     expect(PACKAGE_VERSION).toBe(packageJson.version);
-    expect(packageJson.webDebug.releaseStatus).toBe("source-next");
+    expect(packageJson.webDebug.releaseStatus).toBe("released");
     const releasedPluginVersion = packageJson.webDebug.releasedPluginRuntimeVersion;
-    expect(releasedPluginVersion).not.toBe(PACKAGE_VERSION);
+    expect(releasedPluginVersion).toBe(PACKAGE_VERSION);
     expect(packageLock.version).toBe(PACKAGE_VERSION);
     expect(packageLock.packages[""]?.version).toBe(PACKAGE_VERSION);
     expect(pluginMcp.mcpServers["web-debug-mcp"]?.args).toContain(`web-debug-mcp@${releasedPluginVersion}`);
