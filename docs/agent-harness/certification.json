@@ -2,13 +2,13 @@
   "schema_version": 2,
   "claim": "harness-ready",
   "profile": "adaptive",
-  "repository_commit": "2338fe69f0ed77ca907ec26f544defff1593ac47",
+  "repository_commit": "8133040dca88847a1e7b3aef035234954d09ace9",
   "repository_identity": "scm://github.com/MarlonJD/web-debug-mcp#R_kgDOUFEzeA",
   "deployment_target_id": "harness://github.com/MarlonJD/web-debug-mcp/main-local",
   "environment": "repository-local",
-  "issued_at": "2026-08-27T14:13:04Z",
-  "expires_at": "2026-08-28T14:13:04Z",
-  "coverage_sha256": "97dcc31900fb96a09df3de25798dfaddc7b3f9a2a0fa7bb02fef72c0cd142583",
+  "issued_at": "2026-08-29T20:51:54Z",
+  "expires_at": "2026-09-04T20:51:54Z",
+  "coverage_sha256": "07c308d30c24e4b413f4b3e54a97c83848a5f2ab6ae3eec7f50b345c38af39b0",
   "evidence_root": "docs/agent-harness/evidence",
   "project_native_gate": {
     "command": "npm run harness:check",
@@ -19,12 +19,12 @@
     "triggers": [
       "manual"
     ],
-    "max_age_hours": 168,
+    "max_age_hours": 144,
     "evidence": "docs/agent-harness/evidence/continuous-maintenance.json"
   },
   "production_authority": {
-    "owner": null,
-    "approval_evidence": null,
-    "rollback_evidence": null
+    "owner": "Platform Engineering",
+    "approval_evidence": "docs/agent-harness/evidence/release-approval.json",
+    "rollback_evidence": "docs/agent-harness/evidence/release-rollback.json"
   }
 }
