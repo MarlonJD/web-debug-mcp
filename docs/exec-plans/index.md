@@ -5,7 +5,6 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Complete the 0.5.0 security and plugin release](active/complete-0-5-0-release.md) | Platform Engineering | implementing | 2026-08-30 | Patch confirmed redaction and registry-accounting defects; npm publication later requires web authentication |
 <!-- harness:plans:active:end -->
 
 ## Completed
@@ -13,6 +12,7 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
+| [Complete the 0.5.0 security and plugin release](completed/complete-0-5-0-release.md) | 2026-08-31 | Reviewed redaction and registry defects fixed; final npm/GitHub/Codex plugin and MCP identities converged on immutable 0.5.0 | 124 tests; typecheck/build; native/formal harness; plugin/skill validators; prod audit; Node 20/22/24 handshakes; seven live smokes; six-scenario demo; exact local/public archive; GitHub/npm/dist-tags/Codex verification |
 | [Complete the 0.4.0 release and harness migration](completed/complete-0-4-0-release.md) | 2026-08-29 | Formal harness debt cleared; immutable npm/GitHub `0.4.0` and Codex plugin published with exact local/public evidence | 106 tests; typecheck/build; native/formal harness; plugin validator; five live smokes; six-scenario demo; local/public 13-tool handshakes; release/plugin identity equality |
 | [Add bounded Angular and Vue 3 runtime evidence](completed/angular-vue-support.md) | 2026-08-30 | Source-only `0.5.0-next.0` adds bounded Angular 21 and Vue 3 Chromium runtime evidence without changing the immutable `0.4.0` release/plugin | 117 tests; typecheck/build; native harness `542` with stale-candidate certification; Angular/Vue and all existing live smokes; package dry-run |
 | [Harden Web Debug trust boundaries and product contracts](completed/trust-and-contract-hardening.md) | 2026-08-29 | Source-next `0.4.0-next.0` locally hardens origin, lifecycle, MCP output, artifacts, actions, doctor, evaluation, and harness truthfulness without publishing | 106 tests; typecheck/build; native harness `500` stale-candidate; fresh-prefix 13-tool prerelease handshake; Chromium/React-Vite/Next/Safari/local-fidelity smokes |
