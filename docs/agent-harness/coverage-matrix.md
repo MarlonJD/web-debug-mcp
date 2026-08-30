@@ -81,3 +81,5 @@ Revalidated for `0.4.0`: 106 tests, source/test typecheck, build, native harness
 Attestation was refreshed after adding the tracked empty active-lifecycle directory required for clean-clone plan validation; this does not change the recorded `0.4.0` product or release evidence.
 
 Final `0.5.0` local release gates add Angular/Vue evidence plus reviewed redaction and registry-accounting corrections. Publication, public handshake, and plugin-install evidence are recorded in the release ExecPlan, while the checked-in HMAC window remains explicitly historical until separately refreshed.
+
+Release `0.5.0` is published from exact source/tag `4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b`. npm `latest`, the 116-entry archive shasum `e5bc37a37ad6f8efb35b79944ce6548e5aaa1068`, public fresh-cache 13-tool handshake, GitHub release, and installed Codex plugin `0.5.0+codex.20260830202439` were observed. This ordinary release evidence does not refresh or replace the historical HMAC window.

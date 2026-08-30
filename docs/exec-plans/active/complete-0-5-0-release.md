@@ -25,8 +25,9 @@ Success is observable when Basic/Digest authorization, cookie headers, quoted se
 - [x] (2026-08-30 20:25Z) Complete the required independent bypass/regression review, resolve its four concrete redaction findings, and pass 124 deterministic tests plus typecheck/build/native harness.
 - [x] (2026-08-30 20:30Z) Promote every current package, documentation, plugin, marketplace, workflow, and harness surface to final `0.5.0`; native and formal harnesses pass with historical certification kept stale.
 - [x] (2026-08-30 20:52Z) Build and exercise the exact final archive, all relevant live smokes including Safari 26.6.2, comparison demo, Node 20/22/24 handshakes, plugin validators, audit, and clean-process checks.
-- [ ] Commit/push the frozen release, create/push exact `v0.5.0`, publish the tested archive to npm, create the GitHub release, and update npm dist-tags.
-- [ ] Refresh/install the Codex plugin, verify its `web-debug-mcp@0.5.0` runtime in a new session, record exact public evidence, and close this plan.
+- [x] (2026-08-30 21:00Z) Commit/push frozen source `4c0cb075`, create/push exact `v0.5.0`, publish the tested archive with npm `latest=0.5.0`, create the GitHub release, and complete public fresh-cache verification.
+- [ ] Move npm `next` from `0.5.0-next.0` to final `0.5.0`; repeated web-approval sessions have expired before authorization completes.
+- [x] (2026-08-30 21:00Z) Refresh/install the Codex plugin, verify one enabled `0.5.0+codex.20260830202439` build with bundled `web-debug-mcp@0.5.0`, and confirm no duplicate standalone runtime; a newly started session is required to load the updated catalog.
 
 ## Surprises & Discoveries
 
@@ -38,6 +39,7 @@ Success is observable when Basic/Digest authorization, cookie headers, quoted se
 - The first regex extension passed the original examples but an independent reviewer found marker-prefix, escaped/nested JSON, cross-line whitespace, and alias-parity bypasses. Replacing that extension with a deterministic assignment scanner closed the complete reviewed family while preserving JSON structure and ordinary lines.
 - Final archive distribution handshakes pass under Node 20.20.2, 22.23.2, and 24.18.0 with `serverInfo.version: 0.5.0`, 13 tools, and output schemas. Broader deterministic/live work remains on Node 24.
 - Chromium, React/Vite, Vue/Vite, Angular, Next, local-fidelity, and all six comparison scenarios pass. Safari updated from 26.5.2 to 26.6.2 on this host; two runs correctly reported the disabled-automation blocker, then the rerun passed after the user re-enabled remote automation.
+- Publishing the exact tarball sets npm shasum/integrity correctly but does not populate registry `gitHead`; release provenance therefore uses the tested archive digest plus the exact peeled Git/GitHub tag instead of inventing absent metadata.
 
 ## Decision Log
 
@@ -97,6 +99,9 @@ Capture Codex marketplace/plugin state before mutation. If plugin refresh/instal
 - Authentication: GitHub keyring succeeds as `MarlonJD`; npm web login succeeds as owner `marlonjd` after the initial `E401` preflight.
 - Final local archive: `/tmp/web-debug-release-0.5.0.wA7WGE/web-debug-mcp-0.5.0.tgz`; 116 entries; shasum `e5bc37a37ad6f8efb35b79944ce6548e5aaa1068`; integrity `sha512-IveD2t6DR1xP2PkbTLDN8sG6ZeVLJWUwPBGfl+6jH2hIzPIyYmyVHuEcRd5qXpUjSPV7yeyCwZpJ9R/PozjSUg==`; fresh-prefix install added 96 packages and passed version/tool/schema/help/doctor/cleanup checks.
 - Local release gates: 124 tests; typecheck/build; native harness 544; formal harness 0 errors/0 warnings; plugin and skill validators; production dependency audit 0 vulnerabilities; Chromium, React/Vite, Vue/Vite, Angular, Next, Safari 26.6.2, local-fidelity, and all six demo scenarios passed.
+- Git/GitHub: release commit and peeled local/remote annotated tag are `4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b`; GitHub release is `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.5.0`.
+- Public npm: `latest=0.5.0`; shasum/integrity match the tested archive; empty-directory/fresh-cache install added 96 packages and passed the 13-tool/output-schema plus Angular/Vue detection handshake. Registry `gitHead` is absent because publication used the exact prebuilt tarball.
+- Codex: `web-debug@web-debug` is installed/enabled at `0.5.0+codex.20260830202439`; its immutable cache `.mcp.json` and `codex mcp list` both pin `web-debug-mcp@0.5.0`, with no second standalone registration.
 
 ## Interfaces and Dependencies
 
