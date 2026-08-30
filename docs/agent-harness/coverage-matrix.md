@@ -2,7 +2,7 @@
 
 Use this matrix to prove that the repository implements every applicable harness-engineering capability. A document name alone is not evidence.
 
-The current `0.4.0` attested source and direct-child commits are recorded in `certification.json` and Git parent history. Every row links to one fresh HMAC-consistent record for that bounded repository-local window. The native gate checks structural freshness only; the external-key verifier owns the current `CERT000` result.
+The checked-in `0.4.0` attested source and direct-child commits are recorded in `certification.json` and Git parent history. Those HMAC-consistent rows are historical after final `0.5.0` source changes. The native gate checks structural freshness only; no current `CERT000` is claimed until a fresh owner-key overlay is created and externally verified.
 
 Revalidated after the public README and GitHub repository metadata positioning update.
 
@@ -79,3 +79,5 @@ Revalidated for Web Debug plugin routing and the forward-only `0.3.3` metadata c
 Revalidated for `0.4.0`: 106 tests, source/test typecheck, build, native harness, zero-error formal harness, plugin validation, five live smokes, and the six-scenario comparison demo passed. The exact tarball/public npm package share shasum `c7daee55f175d113503d4e662ea8bc418da149ea`; fresh installs reported version `0.4.0`, 13 tools, and output schemas. Release source/tag/GitHub release resolve to `94328c05af5f2263a2f64edec1b3267e44aae915`, and Codex reports `0.4.0+codex.20260829203143` installed/enabled with runtime pin `web-debug-mcp@0.4.0`. No approved external CDP endpoint or provider production verifier was available.
 
 Attestation was refreshed after adding the tracked empty active-lifecycle directory required for clean-clone plan validation; this does not change the recorded `0.4.0` product or release evidence.
+
+Final `0.5.0` local release gates add Angular/Vue evidence plus reviewed redaction and registry-accounting corrections. Publication, public handshake, and plugin-install evidence are recorded in the release ExecPlan, while the checked-in HMAC window remains explicitly historical until separately refreshed.

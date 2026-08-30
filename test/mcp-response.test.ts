@@ -33,6 +33,19 @@ describe("MCP structured response and screenshot artifacts", () => {
     const nonJsonError = errorToolResult(new WebDebugError("NON_JSON", "bad details", { count: 1n, value: Number.POSITIVE_INFINITY }));
     expect(toolOutputSchema.safeParse(nonJsonError.structuredContent).success).toBe(true);
     expect((nonJsonError.structuredContent as { warnings?: string[] }).warnings).toContainEqual(expect.stringContaining("not JSON-serializable"));
+
+    const credentialError = errorToolResult(new WebDebugError(
+      "CREDENTIAL_ERROR",
+      'Authorization: Basic dXNlcjpwYXNz; password="hello world"',
+      { detail: "Cookie: first=alpha; second=bravo" },
+    ));
+    const serializedCredentialError = JSON.stringify(credentialError);
+    expect(serializedCredentialError).toContain("Authorization: [REDACTED]");
+    expect(serializedCredentialError).toContain("Cookie: [REDACTED]");
+    expect(serializedCredentialError).not.toContain("dXNlcjpwYXNz");
+    expect(serializedCredentialError).not.toContain("hello world");
+    expect(serializedCredentialError).not.toContain("first=alpha");
+    expect(serializedCredentialError).not.toContain("second=bravo");
   });
 
   it("inlines only a small contained screenshot and revalidates resource identity", async () => {

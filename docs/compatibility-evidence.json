@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "scope": "0.5.0-next.0-local",
-  "observedAt": "2026-08-30T00:30:00+03:00",
-  "sourceVersion": "0.5.0-next.0",
+  "scope": "0.5.0-local",
+  "observedAt": "2026-08-30T23:25:00+03:00",
+  "sourceVersion": "0.5.0",
   "releaseBaseline": {
     "version": "0.4.0",
     "commit": "94328c05af5f2263a2f64edec1b3267e44aae915",
@@ -10,9 +10,11 @@
   },
   "runtime": {
     "node": "24.18.0",
+    "node20": "20.20.2",
+    "node22": "22.23.2",
     "mcpSdk": "1.30.0",
     "chromium": "151.0.7922.174",
-    "safari": "26.5.2",
+    "safari": "26.6.2",
     "react": "19.2.8",
     "vite": "7.3.6",
     "next": "16.3.3",
@@ -23,7 +25,9 @@
     "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "117/117 deterministic tests including Angular/Vue bridge and fixture contracts" },
+    { "command": "npm test", "status": "passed", "signal": "124/124 deterministic tests including Angular/Vue, sensitive-text redaction, and registry-accounting contracts" },
+    { "command": "final archive handshake under Node 20.20.2", "status": "passed", "signal": "serverInfo 0.5.0, 13 tools, and output schemas" },
+    { "command": "final archive handshake under Node 22.23.2", "status": "passed", "signal": "serverInfo 0.5.0, 13 tools, and output schemas" },
     { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
     { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
     { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
@@ -34,7 +38,8 @@
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, publication, plugin promotion, provider authority, and production remain candidate-only or unavailable.",
-    "The immutable 0.4.0 npm/GitHub/Codex release evidence remains separate; these source-next checks do not refresh HMAC certification."
+    "Node 20.20.2 and 22.23.2 are verified for final-archive MCP distribution handshakes only; broader deterministic and live browser jobs used Node 24.18.0.",
+    "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
+    "The immutable 0.4.0 baseline remains comparison provenance; final 0.5.0 release/plugin evidence is recorded separately and does not refresh HMAC certification."
   ]
 }

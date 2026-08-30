@@ -6,7 +6,7 @@ Run `npm install --no-audit --no-fund` from the repository root. Node.js 20 or n
 
 After building, run `node bin/web-debug-mcp.mjs doctor` with the exact project/browser options to check readiness without launching a browser. Doctor stdout is one bounded JSON report.
 
-The optional Codex/ChatGPT/Claude Code plugin is installed from the repository marketplace. Codex uses `.agents/plugins/marketplace.json`; Claude Code uses `.claude-plugin/marketplace.json`. Both point to the same local stdio MCP server through `plugins/web-debug/.mcp.json`, pinned to immutable public npm release `web-debug-mcp@0.4.0`; enabling the plugin does not create a hosted endpoint or a second browser controller. The first server start uses `npx` to resolve the npm package, so Node.js 20+, npm, and network access are required at first launch.
+The optional Codex/ChatGPT/Claude Code plugin is installed from the repository marketplace. Codex uses `.agents/plugins/marketplace.json`; Claude Code uses `.claude-plugin/marketplace.json`. Both point to the same local stdio MCP server through `plugins/web-debug/.mcp.json`, pinned to immutable public npm release `web-debug-mcp@0.5.0`; enabling the plugin does not create a hosted endpoint or a second browser controller. The first server start uses `npx` to resolve the npm package, so Node.js 20+, npm, and network access are required at first launch.
 
 ## Local runtime
 

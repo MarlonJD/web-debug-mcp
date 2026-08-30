@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-The immutable package/plugin release remains `0.4.0`. This checkout is source-only `0.5.0-next.0`; it adds locally verified Angular/Vue evidence and is release pending.
+The immutable package/plugin release is `0.5.0`. It adds locally verified Angular/Vue evidence, complete raw sensitive-field redaction for the reviewed header/key-value family, and idempotent process-registry session reconciliation without changing the 13-tool catalog.
 
 ## User outcome
 
@@ -20,7 +20,7 @@ Issue evidence is schema version 3. `BrowserSnapshot` and `ReplayFrame` contain 
 
 Targets are loopback-only unless remote authority is explicit. The selected top-level origin is fixed before navigation and never rebased after redirects or actions. Ordinary cross-origin subresources remain usable; top-level escapes and secondary pages are rejected or quarantined. Elevated TLS/auth mode retains its stronger exact-origin network guard.
 
-Sessions are active-only managed records. Close destroys private URLs, auth state, actions, replay, secrets, endpoints, executable path, and target identity, then retains at most one of 32 sanitized tombstones for status/idempotency. Artifacts are retained by default only within the four-file/16 MiB session quota or removed through the exact-session `artifactPolicy: "delete"` option; opaque handles may expire earlier than their one-hour upper-bound TTL when quota pruning removes an older file.
+Sessions are active-only managed records. Close destroys private URLs, auth state, actions, replay, secrets, endpoints, executable path, and target identity, then retains at most one of 32 sanitized tombstones for status/idempotency. The process registry derives its absolute active-session count from the manager during locked request finalization, so repeated/concurrent close and bookkeeping failures cannot create a false public lifecycle result. Artifacts are retained by default only within the four-file/16 MiB session quota or removed through the exact-session `artifactPolicy: "delete"` option; opaque handles may expire earlier than their one-hour upper-bound TTL when quota pruning removes an older file.
 
 ## Product boundaries
 

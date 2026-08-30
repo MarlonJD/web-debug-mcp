@@ -38,15 +38,22 @@ describe("Next MCP adapter", () => {
     const logFilePath = join(root, ".next", "dev", "logs", "next-development.log");
     await mkdir(join(root, ".next", "dev", "logs"), { recursive: true });
     await writeFile(logFilePath, Array.from({ length: 240 }, (_, index) =>
-      JSON.stringify({ line: index, message: index === 239 ? "Bearer secret-token" : `server line ${index}` }),
+      JSON.stringify({
+        line: index,
+        message: index === 239
+          ? "Authorization: Basic dXNlcjpwYXNz"
+          : index === 238 ? 'password="hello world"' : `server line ${index}`,
+      }),
     ).join("\n"));
 
     try {
       stubNextFetch(logFilePath);
       const snapshot = await new NextAdapter().snapshot("http://127.0.0.1:4175/", root);
       expect(snapshot?.logTail?.file).toBe(".next/dev/logs/next-development.log");
-      expect(snapshot?.logTail?.text).toContain("Bearer [REDACTED]");
-      expect(snapshot?.logTail?.text).not.toContain("secret-token");
+      expect(snapshot?.logTail?.text).toContain("Authorization: [REDACTED]");
+      expect(snapshot?.logTail?.text).toContain('password=\\"[REDACTED]\\"');
+      expect(snapshot?.logTail?.text).not.toContain("dXNlcjpwYXNz");
+      expect(snapshot?.logTail?.text).not.toContain("hello world");
       expect(snapshot?.logTail?.truncated).toBe(true);
     } finally {
       vi.unstubAllGlobals();

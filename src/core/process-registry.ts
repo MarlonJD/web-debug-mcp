@@ -181,34 +181,18 @@ export class ProcessRegistry {
     this.clearIdleTimer();
   }
 
-  async endRequest(): Promise<void> {
+  async endRequest(activeSessionCount: () => number): Promise<void> {
     await this.update((record) => {
+      const sessionCount = activeSessionCount();
+      if (!Number.isSafeInteger(sessionCount) || sessionCount < 0) throw new Error("ACTIVE_SESSION_COUNT_INVALID");
+      const terminating = record.state === "terminating";
+      record.activeSessionCount = sessionCount;
       record.activeRequestCount = Math.max(0, record.activeRequestCount - 1);
       record.busy = record.activeRequestCount > 0 || record.activeSessionCount > 0;
       record.lastActivityAt = this.timestamp();
-      if (!record.busy) { record.state = "idle"; record.idleSince ??= this.timestamp(); }
-    });
-    await this.armIdleFromRecord();
-  }
-
-  async sessionStarted(): Promise<void> {
-    await this.update((record) => {
-      if (record.state === "terminating") throw new Error("PROCESS_TERMINATING");
-      record.activeSessionCount += 1;
-      record.busy = true;
-      record.state = "running";
-      record.idleSince = null;
-      record.lastActivityAt = this.timestamp();
-    });
-    this.clearIdleTimer();
-  }
-
-  async sessionClosed(): Promise<void> {
-    await this.update((record) => {
-      record.activeSessionCount = Math.max(0, record.activeSessionCount - 1);
-      record.busy = record.activeRequestCount > 0 || record.activeSessionCount > 0;
-      record.lastActivityAt = this.timestamp();
-      if (!record.busy) { record.state = "idle"; record.idleSince ??= this.timestamp(); }
+      if (terminating) { record.state = "terminating"; record.idleSince = null; }
+      else if (record.busy) { record.state = "running"; record.idleSince = null; }
+      else { record.state = "idle"; record.idleSince ??= this.timestamp(); }
     });
     await this.armIdleFromRecord();
   }

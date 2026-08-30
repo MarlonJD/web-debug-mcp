@@ -150,7 +150,8 @@ const nextInspectionSchema = z.union([
 ]);
 
 export function createServer(manager = new SessionManager(), registry?: ProcessRegistry, artifactStore = new ArtifactStore()): McpServer {
-  const respondFor = <T>(operation: () => T | Promise<T>, screenshots?: (value: T) => ScreenshotCandidate[]) => respond(operation, registry, artifactStore, screenshots);
+  const activeSessionCount = () => manager.list().length;
+  const respondFor = <T>(operation: () => T | Promise<T>, screenshots?: (value: T) => ScreenshotCandidate[]) => respond(operation, registry, artifactStore, activeSessionCount, screenshots);
   const server = new McpServer(
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
@@ -173,7 +174,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         }
         return await artifactStore.read(String(id), uri);
       } finally {
-        if (requestStarted) await registry!.endRequest().catch(() => undefined);
+        if (requestStarted) await registry!.endRequest(activeSessionCount).catch(() => undefined);
       }
     },
   );
@@ -212,7 +213,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       outputSchema: toolOutputSchema,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_session_start,
     },
-    async (input, extra) => respondFor(async () => { const result = await manager.start(input, requestContext(extra.signal)); await registry?.sessionStarted(); return result; }),
+    async (input, extra) => respondFor(() => manager.start(input, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -401,7 +402,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       outputSchema: toolOutputSchema,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_session_close,
     },
-    async ({ sessionId, artifactPolicy }) => respondFor(async () => { const result = await manager.close(sessionId, artifactPolicy); await registry?.sessionClosed(); return result; }),
+    async ({ sessionId, artifactPolicy }) => respondFor(() => manager.close(sessionId, artifactPolicy)),
   );
 
   return server;
@@ -446,6 +447,7 @@ async function respond<T>(
   operation: () => T | Promise<T>,
   registry: ProcessRegistry | undefined,
   artifactStore: ArtifactStore,
+  activeSessionCount: () => number,
   screenshots?: (value: T) => ScreenshotCandidate[],
 ) {
   let accounted = false;
@@ -456,7 +458,7 @@ async function respond<T>(
   } catch (error) {
     return errorToolResult(error);
   } finally {
-    if (accounted) await registry?.endRequest().catch(() => undefined);
+    if (accounted) await registry?.endRequest(activeSessionCount).catch(() => undefined);
   }
 }
 

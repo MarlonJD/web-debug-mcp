@@ -10,7 +10,7 @@
       "source": "./plugins/web-debug",
       "displayName": "Web Debug",
       "description": "Evidence-first local web debugging that complements frontend build and test workflows.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Marlon J.D.",
         "url": "https://github.com/MarlonJD"
@@ -23,6 +23,8 @@
         "mcp",
         "chromium",
         "react",
+        "angular",
+        "vue",
         "vite",
         "nextjs",
         "safari"

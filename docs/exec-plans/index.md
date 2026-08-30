@@ -5,6 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
+| [Complete the 0.5.0 security and plugin release](active/complete-0-5-0-release.md) | Platform Engineering | implementing | 2026-08-30 | Patch confirmed redaction and registry-accounting defects; npm publication later requires web authentication |
 <!-- harness:plans:active:end -->
 
 ## Completed

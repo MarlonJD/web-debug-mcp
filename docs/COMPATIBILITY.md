@@ -1,13 +1,13 @@
 # Compatibility
 
-This matrix separates the immutable released `0.4.0` runtime from source-only `0.5.0-next.0` behavior verified on exact local development fixtures. A version not listed as verified is not implicitly unsupported; it is candidate-only until its deterministic contract and live smoke pass. Exact local observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not release, plugin-promotion, HMAC-certification, or production authority.
+This matrix records final `0.5.0` behavior verified on exact local development fixtures. A version not listed as verified is not implicitly unsupported; it is candidate-only until its deterministic contract and live smoke pass. Exact local observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not HMAC certification, provider authority, or production evidence.
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |
-| Node.js | `>=20` from `package.json` | `24.18.0` for deterministic tests, build, stdio, doctor, and Chromium flows | Node 20 and 22 minimum-runtime jobs are not run in this local-only task |
+| Node.js | `>=20` from `package.json` | `24.18.0` for deterministic tests/build/live flows; `20.20.2` and `22.23.2` for exact final-archive stdio initialization, 13-tool listing, and output schemas | Full deterministic and live browser matrices under Node 20/22 remain candidate-only |
 | MCP SDK | Package lock | `@modelcontextprotocol/sdk 1.30.0` with output schemas, structured content, progress, resources, cancellation, and in-memory transport | Other MCP client implementations require their own handshake |
 | Chromium | Explicit executable or CDP endpoint | Google Chrome `151.0.7922.174` local launch; exact live result is recorded by the Chromium smokes | Approved external CDP remains authority-gated |
-| Safari | Local W3C WebDriver | Safari `26.5.2` for visible WebDriver/BiDi compatibility when host automation is enabled | Debugger parity and pre-request top-level interception are unavailable; cross-origin state is post-navigation quarantined |
+| Safari | Local W3C WebDriver | Safari `26.6.2` for visible WebDriver/BiDi console, DOM/action/screenshot, and disclosed Performance Resource Timing network fallback when host automation is enabled | Debugger parity and pre-request top-level interception are unavailable; cross-origin state is post-navigation quarantined |
 | React | Development runtime | React and React DOM `19.2.8` fixture | Other React majors are candidate-only |
 | Vite | Development plugin endpoint | Vite `7.3.6` and `@vitejs/plugin-react 5.1.1` fixture | Other Vite/plugin combinations are candidate-only |
 | Next.js | Compatible development `/_next/mcp` endpoint | Next `16.3.3` with React `19.2.8` fixture | Other Next versions are candidate-only |

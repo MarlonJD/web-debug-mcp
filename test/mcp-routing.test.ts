@@ -1,8 +1,13 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 
 import { createServer } from "../src/index.js";
+import { ProcessRegistry } from "../src/core/process-registry.js";
 import type { SessionManager } from "../src/core/session-manager.js";
 
 const SESSION_ID = "00000000-0000-4000-8000-000000000001";
@@ -29,6 +34,34 @@ class RoutingManager {
   private record(method: string, args: unknown[], result: unknown) {
     this.calls.push({ method, args });
     return result;
+  }
+}
+
+class LifecycleManager {
+  private readonly active = new Map<string, { id: string; status: "ready" }>();
+  private readonly closed = new Map<string, { id: string; status: "closed"; warnings: string[] }>();
+  private nextId = 1;
+
+  start() {
+    const suffix = String(this.nextId++).padStart(12, "0");
+    const session = { id: `00000000-0000-4000-8000-${suffix}`, status: "ready" as const };
+    this.active.set(session.id, session);
+    return session;
+  }
+
+  list() { return [...this.active.values()]; }
+
+  close(sessionId: string) {
+    const existing = this.active.get(sessionId);
+    if (existing) {
+      this.active.delete(sessionId);
+      const closed = { id: sessionId, status: "closed" as const, warnings: [] };
+      this.closed.set(sessionId, closed);
+      return closed;
+    }
+    const closed = this.closed.get(sessionId);
+    if (!closed) throw new Error(`Unknown debug session: ${sessionId}`);
+    return closed;
   }
 }
 
@@ -108,4 +141,73 @@ describe("all public MCP handler routes", () => {
       await server.close();
     }
   });
+
+  it("reconciles registry session counts from manager state across repeated closes", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "web-debug-mcp-accounting-"));
+    const registry = new ProcessRegistry({ directory, idleTtlMs: 0 });
+    const manager = new LifecycleManager();
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager as unknown as SessionManager, registry);
+    const client = new Client({ name: "registry-accounting-client", version: "1.0.0" });
+    await registry.start();
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const first = structuredData(await client.callTool({ name: "web_session_start", arguments: { projectRoot: "/project", url: "http://127.0.0.1:4173/" } })) as { id: string };
+      const second = structuredData(await client.callTool({ name: "web_session_start", arguments: { projectRoot: "/project", url: "http://127.0.0.1:4173/" } })) as { id: string };
+      expect(await registry.read()).toMatchObject({ activeSessionCount: 2, activeRequestCount: 0, busy: true, state: "running" });
+
+      await Promise.all([
+        client.callTool({ name: "web_session_close", arguments: { sessionId: first.id } }),
+        client.callTool({ name: "web_session_close", arguments: { sessionId: first.id } }),
+      ]);
+      await client.callTool({ name: "web_session_close", arguments: { sessionId: first.id, artifactPolicy: "delete" } });
+      expect(manager.list()).toHaveLength(1);
+      expect(await registry.read()).toMatchObject({ activeSessionCount: 1, activeRequestCount: 0, busy: true, state: "running" });
+
+      await client.callTool({ name: "web_session_close", arguments: { sessionId: second.id } });
+      expect(manager.list()).toHaveLength(0);
+      expect(await registry.read()).toMatchObject({ activeSessionCount: 0, activeRequestCount: 0, busy: false, state: "idle" });
+    } finally {
+      await client.close();
+      await server.close();
+      await registry.requestShutdown(async () => undefined);
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("does not replace completed lifecycle results with registry finalization errors", async () => {
+    const manager = new LifecycleManager();
+    const observedCounts: number[] = [];
+    const registry = {
+      beginRequest: async () => undefined,
+      endRequest: async (activeSessionCount: () => number) => {
+        observedCounts.push(activeSessionCount());
+        throw new Error("REGISTRY_FINALIZATION_FAILED");
+      },
+    } as unknown as ProcessRegistry;
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager as unknown as SessionManager, registry);
+    const client = new Client({ name: "registry-failure-client", version: "1.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const startResult = await client.callTool({ name: "web_session_start", arguments: { projectRoot: "/project", url: "http://127.0.0.1:4173/" } });
+      expect(startResult.isError).not.toBe(true);
+      const session = structuredData(startResult) as { id: string };
+      expect(manager.list()).toHaveLength(1);
+
+      const closeResult = await client.callTool({ name: "web_session_close", arguments: { sessionId: session.id } });
+      expect(closeResult.isError).not.toBe(true);
+      expect(manager.list()).toHaveLength(0);
+      expect(observedCounts).toEqual([1, 0]);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
 });
+
+function structuredData(result: unknown): unknown {
+  const structured = (result as { structuredContent?: { ok?: boolean; data?: unknown } }).structuredContent;
+  expect(structured?.ok).toBe(true);
+  return structured?.data;
+}

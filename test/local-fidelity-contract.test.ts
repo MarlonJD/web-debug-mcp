@@ -78,7 +78,7 @@ describe("0.3.x local fidelity contracts", () => {
       expect((await registry.read())?.state).toBe("idle");
       await registry.beginRequest();
       expect((await registry.read())?.activeRequestCount).toBe(1);
-      await registry.endRequest();
+      await registry.endRequest(() => 0);
       expect((await registry.read())?.state).toBe("idle");
       await registry.requestShutdown(async () => undefined);
       await registry.requestShutdown(async () => undefined);

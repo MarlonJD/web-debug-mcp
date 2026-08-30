@@ -1,6 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.4.0+codex.20260829203143",
+  "version": "0.5.0+codex.20260830202439",
   "description": "Evidence-first local web debugging that complements frontend build and test workflows with bounded browser evidence.",
   "author": {
     "name": "Marlon J.D.",
@@ -14,6 +14,8 @@
     "mcp",
     "chromium",
     "react",
+    "angular",
+    "vue",
     "vite",
     "nextjs",
     "safari",
@@ -25,7 +27,7 @@
   "interface": {
     "displayName": "Web Debug",
     "shortDescription": "Reproduce local web bugs with bounded evidence.",
-    "longDescription": "Inspect and repair a running local web app through exact locator probes, guarded loopback TLS, disposable auth, computed accessibility, named checkpoints, bounded viewport matrices, React, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence. Auth-seeded screenshots are suppressed; Safari remains CSS-only for advanced capabilities.",
+    "longDescription": "Inspect and repair a running local web app through exact locator probes, guarded loopback TLS, disposable auth, computed accessibility, named checkpoints, bounded viewport matrices, React, Angular, Vue, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence. Auth-seeded screenshots are suppressed; Safari remains CSS-only for advanced capabilities.",
     "developerName": "Marlon J.D.",
     "category": "Developer Tools",
     "capabilities": [
@@ -35,7 +37,7 @@
     "websiteURL": "https://github.com/MarlonJD/web-debug-mcp",
     "defaultPrompt": [
       "Use Web Debug to reproduce this local browser bug and capture evidence.",
-      "Inspect this React, Vite, or Next.js runtime issue with Web Debug.",
+      "Inspect this React, Angular, Vue, Vite, or Next.js runtime issue with Web Debug.",
       "Verify this frontend fix against a recorded Web Debug flow.",
       "Use Web Debug to diagnose responsive geometry at desktop and mobile sizes.",
       "Compare deterministic test evidence with Web Debug browser evidence.",

@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Version `0.4.0` remains the immutable published/plugin runtime. This checkout is source-only `0.5.0-next.0`: it adds evidence schema 3 with bounded Angular 21 and Vue 3 Chromium development-runtime snapshots while scenario/verification stays schema 4. It is release pending and is not installed by the released `0.4.0` plugin.
+Version `0.5.0` is the current package and plugin runtime. It adds evidence schema 3 with bounded Angular 21 and Vue 3 Chromium development-runtime snapshots, strengthens defensive text redaction and process-registry lifecycle accounting, and keeps scenario/verification schema 4 plus the existing 13-tool MCP catalog.
 
 ## Install as an MCP server
 
@@ -17,14 +17,14 @@ The published npm package runs locally over stdio and does not require a hosted 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.4.0
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.5.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y web-debug-mcp@0.4.0
+-y web-debug-mcp@0.5.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -32,7 +32,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "web-debug-mcp@0.4.0"]
+args = ["-y", "web-debug-mcp@0.5.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 ```
@@ -92,7 +92,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.4.0` npm release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.5.0` npm release; Node.js 20+, npm, and network access are required.
 
 ### Boundary with Build Web Apps and native runners
 
@@ -124,14 +124,14 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata, skill, and bundled `web-debug-mcp@0.4.0` runtime.
+This command loads the repository's plugin metadata, skill, and bundled `web-debug-mcp@0.5.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.4.0
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.5.0
 claude mcp list
 ```
 
@@ -388,7 +388,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.5.0-next.0`. The released plugin remains on immutable `0.4.0`; the source checkout is only for local candidate verification.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.5.0`. Disable the installed plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
 
 Then use the MCP client workflow:
 
@@ -402,6 +402,10 @@ Then use the MCP client workflow:
 8. Close the session with `web_session_close`. Use `artifactPolicy: "delete"` to remove only that exact session artifact directory; the default `retain` keeps non-empty evidence available for inspection and removes an empty directory.
 
 For Vite, install the development-only plugin in `vite.config.ts`:
+
+```bash
+npm install --save-dev web-debug-mcp@0.5.0
+```
 
 ```ts
 import { webDebugVitePlugin } from "web-debug-mcp/vite";
@@ -460,7 +464,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-The immutable `0.4.0` release evidence remains recorded in its completed release plan. Source-only `0.5.0-next.0` is verified locally with 117 deterministic tests plus Angular 21.2.22 and Vue 3.5.42 live Chromium smokes; existing browser/framework smokes remain separate regression gates. The checked-in historical certification window belongs to the earlier attested source and is stale after these source changes; this checkout does not claim a current `CERT000`. Local compatibility evidence is not release, plugin, HMAC-certification, provider, or production authority, and no approved external remote-browser run is claimed.
+Final `0.5.0` is verified locally with 124 deterministic tests, source/test typecheck, build, native harness checks, and the browser/framework release gates recorded in the release plan. The checked-in historical certification window belongs to the earlier `0.4.0` source and is stale after these changes; this checkout does not claim a current `CERT000`. Local compatibility and release evidence are not provider or production authority, and no approved external remote-browser run is claimed.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 
