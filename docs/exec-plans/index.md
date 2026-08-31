@@ -5,7 +5,6 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Release Web Debug 0.6.0 and update Codex](active/complete-0-6-0-release.md) | Platform Engineering | implementing | 2026-08-31 | Promote the frozen source-next and qualification skill, run final release gates, publish npm/GitHub, and update the installed Codex plugin |
 <!-- harness:plans:active:end -->
 
 ## Completed
@@ -13,6 +12,7 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
+| [Release Web Debug 0.6.0 and update Codex](completed/complete-0-6-0-release.md) | 2026-08-31 | Published exact stable 0.6.0 to npm/GitHub and updated the installed Codex plugin with compact capture contracts and two workflow skills | 155 tests; typecheck/build; native/formal harness; skill/plugin validators; audit; Node 20/22/24 and public 13-schema handshakes; Chromium/framework/local-fidelity/demo evidence; exact npm/GitHub/Codex identities; Safari fresh live blocked literally |
 | [Make capture concise, typed, and runtime-aware](completed/capture-contract-and-runtime-capabilities.md) | 2026-08-31 | Added compact capture profiles, concrete tool schemas, confidence-aware detection, negotiated runtime capabilities, and focused SessionManager modules without publishing | 155 tests; typecheck/build; native/formal harness; exact 152-entry archive/fresh-prefix 13-schema handshake; Chromium/framework/local-fidelity smokes; six-scenario demo; Safari fresh live blocked after two wait timeouts |
 | [Add reviewed manual-parity qualification guidance](completed/manual-parity-qualification-skill.md) | 2026-08-31 | Added a separately routed qualification skill with candidate/reviewer gates, native-runner ownership, non-executable metadata, case-scoped evidence, digest chaining, and diagnostic-only Web Debug escalation | 31 files/149 tests; typecheck/build; native harness 572; both skill validators; plugin validator; adversarial containment/verdict tests; independent forward-tests and final adversarial review |
 | [Complete the 0.5.0 security and plugin release](completed/complete-0-5-0-release.md) | 2026-08-31 | Reviewed redaction and registry defects fixed; final npm/GitHub/Codex plugin and MCP identities converged on immutable 0.5.0 | 124 tests; typecheck/build; native/formal harness; plugin/skill validators; prod audit; Node 20/22/24 handshakes; seven live smokes; six-scenario demo; exact local/public archive; GitHub/npm/dist-tags/Codex verification |

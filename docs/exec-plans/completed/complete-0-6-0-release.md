@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: complete-0-6-0-release
-status: active
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
-completed:
+completed: 2026-08-31
 owner: Platform Engineering
 -->
 
@@ -23,8 +23,8 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 - [x] (2026-08-31 00:29Z) Received the coordinated capture/runtime writer freeze, closed its source-next plan, restored formal plan attestation, and audited every tracked/untracked release file.
 - [x] (2026-08-31 00:36Z) Promoted package, plugin, marketplace, documentation, tests, harness, workflow guidance, and release notes to final `0.6.0`.
 - [x] (2026-08-31 00:41Z) Passed deterministic, type, build, native/formal harness, skill/plugin, audit, exact-archive Node 20/22/24, and cleanup gates; retained the fresh Safari fixture-wait result as literal `blocked` while all other live gates remained passed.
-- [ ] Commit and push frozen source, create/push exact annotated `v0.6.0`, publish the tested archive, create the GitHub release, and converge npm dist-tags.
-- [ ] Refresh/install the Codex plugin, verify one enabled 0.6 build with two skills and bundled runtime 0.6, then record evidence and close this plan.
+- [x] (2026-08-31 00:58Z) Committed and pushed frozen source, created/pushed exact annotated `v0.6.0`, published the tested archive, created the GitHub release, and converged npm `latest`/`next` after browser-authorized npm sessions.
+- [x] (2026-08-31 00:59Z) Refreshed/installed the Codex plugin, verified one enabled 0.6 build with two skills and bundled runtime 0.6, repeated public fresh-cache verification, and recorded release evidence.
 
 ## Surprises & Discoveries
 
@@ -33,7 +33,7 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 - Fresh Chromium, React/Vite, Next, Vue, Angular, local-fidelity, and comparison flows passed. Safari WebDriver opened but two source-next fixture waits timed out; stable release must either obtain a fresh pass after the final fixes or retain a literal scoped blocker without claiming fresh Safari capture evidence.
 - Critical new source, extracted modules, tests, and the manual-parity skill are untracked. They must be explicitly audited and staged before building the release archive so the Git tag and tarball cannot diverge.
 - The host Python lacks `yaml`; skill/plugin validation succeeds through isolated `uv run --with pyyaml` without changing repository dependencies.
-- npm owner authentication and package ownership succeed, but immutable publish requires a browser-authorized one-time CLI session. Two generated web-auth sessions expired without user approval; no npm package or dist-tag write occurred, and Codex plugin installation remains intentionally deferred until the runtime is public.
+- npm immutable publish and dist-tag mutation each required a separate browser-authorized one-time CLI session. Two earlier sessions expired safely; the user approved fresh publish and dist-tag sessions, and the exact tested archive plus both tags converged without rebuilding.
 
 ## Decision Log
 
@@ -45,7 +45,11 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 
 ## Outcomes & Retrospective
 
-Release in progress. Record exact immutable identities, archive digests, test counts, live evidence, public registry/GitHub state, installed plugin state, and unavailable authority before completion.
+Release `0.6.0` is complete within repository-owned GitHub/npm/Codex scope. Exact source and peeled annotated tag are `36716cb66e487d320f3bcab576ff32262c41ec52`; remote main includes the release and evidence commits. npm `latest` and `next` resolve to `0.6.0`, and public shasum/integrity equal the tested 152-entry archive. GitHub release `v0.6.0` is public.
+
+Codex has one installed/enabled `0.6.0+codex.20260831002920` plugin whose immutable cache contains `web-debug-workflow` and `manual-parity-qualification`; bundled and configured MCP both pin `web-debug-mcp@0.6.0`, with no duplicate registration. A new Codex session is required to load the updated skills/tool schemas.
+
+Verification passed with 31 files/155 tests, typecheck/build, native harness 575, formal harness zero errors/warnings, both skill validators, plugin validator, production audit zero vulnerabilities, exact archive Node 20/22/24 handshakes, public fresh-cache handshake, Chromium/framework/local-fidelity smokes, and the six-scenario demo. Fresh Safari live capture remains literally blocked after fixture-wait timeouts; deterministic Safari/BiDi contracts pass, and no fresh Safari PASS is claimed. HMAC/provider/production/external-CDP authority remains unavailable or separate.
 
 ## Context and Orientation
 
@@ -94,7 +98,8 @@ Before Codex mutation, retain the exact installed `0.5.0+codex.20260830202439` v
 - Codex rollback baseline: one installed/enabled `web-debug@web-debug` at `0.5.0+codex.20260830202439`, bundled MCP `web-debug-mcp@0.5.0`.
 - Frozen final archive candidate: `/tmp/web-debug-release-0.6.0.1i5DPT/web-debug-mcp-0.6.0.tgz`; 152 entries; npm shasum `3dc99d7ed5959359999f435136b5dc0aac4b26cb`; integrity `sha512-TfdFeIU2RUdqYkvm4ojQoHyUNVbc1cuK/RRL7DI1fvpeliAngj5gzRRZZG3F/X0Rng0bK03QMIqTM6sUMMQ+xQ==`; Node 20/22/24 each returned `0.6.0`, 13 tools, and 13 concrete schemas.
 - Frozen/pushed release source: `36716cb66e487d320f3bcab576ff32262c41ec52`; remote `main` and peeled annotated `v0.6.0` agree. GitHub release is public at `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.6.0`.
-- Current external blocker: npm `0.6.0` remains absent after two expired web-auth sessions; npm `latest`/`next` and installed Codex plugin therefore remain `0.5.0`.
+- Public npm: `latest=0.6.0`, `next=0.6.0`; shasum/integrity match the exact tested archive; empty-prefix/cache install added 96 packages and returned 13 tools/13 concrete schemas.
+- Installed Codex: one enabled `0.6.0+codex.20260831002920` plugin from the `web-debug` Git marketplace; immutable cache contains both skills and `.mcp.json` pins `web-debug-mcp@0.6.0`.
 - Official plugin packaging guidance: <https://developers.openai.com/plugins/build/plugins>.
 
 ## Interfaces and Dependencies
@@ -104,3 +109,5 @@ Keep `@modelcontextprotocol/sdk`, `playwright-core`, and Zod versions unchanged.
 ## Revision History
 
 - (2026-08-31 00:27Z) Change: Created the stable 0.6.0 release-and-plugin-update plan after authentication, public-version, installed-plugin, source-next, and cross-thread preflight. Reason: Make the authorized immutable publication and rollback sequence restartable and auditable.
+- (2026-08-31 01:00Z) Change: Completed exact-source/tag/npm/GitHub publication, public distribution verification, and the Codex plugin/runtime/two-skill update. Reason: Deliver the authorized stable 0.6.0 release while preserving literal Safari, certification, external-target, and production limits.
+  Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-31 01:00Z; content-sha256=08913649b8646efcea5bacda2b06cdba5259c30ac861e5c514b327571ef2ff5c; evidence=Reviewed every checked source-freeze, version, deterministic, live-browser, archive, Node-runtime, npm, Git/GitHub, plugin, rollback, cleanup, and evidence milestone against observed outputs; exact immutable identities agree and every unavailable authority remains explicit.

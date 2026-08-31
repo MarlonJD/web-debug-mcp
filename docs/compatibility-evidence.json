@@ -36,7 +36,9 @@
     { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 development DOM-host component/state/change evidence with no Vite provenance claim" },
     { "command": "npm run smoke:safari", "status": "blocked", "signal": "Safari 26.6.2 WebDriver opened, but the fixture wait condition exceeded 5 seconds on two isolated retries before capture; deterministic Safari capability/BiDi contracts pass and immutable 0.5.0 live evidence remains historical" },
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" },
-    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-3 project/runtime-aware fingerprints" }
+    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-3 project/runtime-aware fingerprints" },
+    { "command": "public npm 0.6.0 fresh-cache handshake", "status": "passed", "signal": "empty prefix/cache installed 96 packages and returned 0.6.0, 13 tools, and 13 concrete data schemas" },
+    { "command": "Codex plugin update", "status": "passed", "signal": "one enabled 0.6.0+codex.20260831002920 plugin with two skills and bundled web-debug-mcp@0.6.0" }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
