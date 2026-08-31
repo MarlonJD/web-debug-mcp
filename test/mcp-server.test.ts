@@ -8,6 +8,8 @@ import type { ActionResult, BrowserAction, BrowserLocator, BrowserSnapshot, Brow
 import type { BrowserAdapter, BrowserStartOptions, EvaluationResult, SnapshotOptions } from "../src/adapters/browser.js";
 import { SessionManager } from "../src/core/session-manager.js";
 import { createServer, WEB_DEBUG_TOOL_ANNOTATIONS } from "../src/index.js";
+import { chromiumRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
+import { issueCaptureResultSchema } from "../src/domain/wire-schemas.js";
 
 class McpScriptedAdapter implements BrowserAdapter {
   hangActions = false;
@@ -35,6 +37,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   async close(): Promise<void> { this.closed = true; this.release?.(); }
   targetIdentity(): string | null { return this.target.targetId ?? null; }
   browserVersion(): string | null { return "mcp-scripted"; }
+  runtimeCapabilities() { return chromiumRuntimeCapabilities(true); }
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     if (action.kind === "navigate") this.target.url = action.url;
     if (this.hangActions && action.kind === "click") {
@@ -120,7 +123,11 @@ describe("MCP server contract", () => {
     for (const tool of listed.tools) {
       expect(tool.annotations).toEqual(WEB_DEBUG_TOOL_ANNOTATIONS[tool.name as keyof typeof WEB_DEBUG_TOOL_ANNOTATIONS]);
       expect(tool.outputSchema).toMatchObject({ type: "object", properties: expect.objectContaining({ ok: expect.anything(), artifacts: expect.anything(), warnings: expect.anything() }) });
+      expect(JSON.stringify((tool.outputSchema as { properties?: { data?: unknown } }).properties?.data)).not.toBe("{}");
     }
+    expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_project_detect")?.outputSchema)).toContain("frameworkDetections");
+    expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_issue_capture")?.outputSchema)).toContain("changedSurfaces");
+    expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_debug_evaluate")?.outputSchema)).toContain("description");
     const replayTool = listed.tools.find((tool) => tool.name === "web_replay_seek");
     expect(replayTool?.description).toContain("mutate live state");
     expect(replayTool?.annotations).toMatchObject({ readOnlyHint: false, idempotentHint: false });
@@ -159,6 +166,13 @@ describe("MCP server contract", () => {
     expect(bareWait.structuredContent).toBeUndefined();
     expect(bareWait.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.includes("Invalid arguments"))).toBeTruthy();
 
+    const obsoleteCaptureInput = asCallResult(await client.callTool({
+      name: "web_issue_capture",
+      arguments: { sessionId: "00000000-0000-0000-0000-000000000000", captureScreenshot: true },
+    }));
+    expect(obsoleteCaptureInput.isError).toBe(true);
+    expect(obsoleteCaptureInput.structuredContent).toBeUndefined();
+
     await client.close();
     await server.close();
   });
@@ -196,7 +210,7 @@ describe("MCP server contract", () => {
     }, undefined, { onprogress: (event) => { recordProgress.push(event); } }));
     expect(recordResult.isError).not.toBe(true);
     const scenario = structuredData(recordResult) as Record<string, any>;
-    expect(scenario.schemaVersion).toBe(4);
+    expect(scenario.schemaVersion).toBe(5);
     expect(scenario.baseline.status).toBe("reproduced");
     expect(scenario.url).toBe("http://127.0.0.1:4173/");
     expect(scenario).not.toHaveProperty("riskSignals");
@@ -213,7 +227,7 @@ describe("MCP server contract", () => {
     ));
     expect(verifyResult.isError).not.toBe(true);
     const verification = structuredData(verifyResult) as Record<string, any>;
-    expect(verification.schemaVersion).toBe(4);
+    expect(verification.schemaVersion).toBe(5);
     expect(verification.outcome).toBe("verified");
     expect(verification.level).toBe("quick");
     expect(verification).not.toHaveProperty("passed");
@@ -224,6 +238,20 @@ describe("MCP server contract", () => {
     expect((verification.scenario as Record<string, unknown>).baseline).not.toHaveProperty("terminationReason");
     expect(JSON.stringify(verification)).not.toContain(secret);
     expect(verifyProgress.map((event) => event.progress)).toEqual([0, 1, 2, 11]);
+
+    const captureResult = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id } }));
+    expect(captureResult.isError).not.toBe(true);
+    const capture = structuredData(captureResult) as Record<string, any>;
+    expect(capture).toMatchObject({ schemaVersion: 4, profile: "summary" });
+    expect(capture).not.toHaveProperty("details");
+    expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "delta" }).success).toBe(false);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, changedSurfaces: ["dom"] }).success).toBe(false);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "full" }).success).toBe(false);
+    expect(Buffer.byteLength(JSON.stringify(capture))).toBeLessThan(16 * 1024);
+    const deltaResult = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view: { profile: "delta", cursor: capture.cursor, surfaces: ["dom"] } } }));
+    expect(deltaResult.isError).not.toBe(true);
+    expect(structuredData(deltaResult)).toMatchObject({ profile: "delta", fromCursor: capture.cursor, unchangedSurfaces: ["dom"], changedSurfaces: [] });
 
     const legacyBuildReference = asCallResult(await client.callTool({
       name: "web_repro_record",
@@ -254,7 +282,7 @@ describe("MCP server contract", () => {
       observedStatus = manager.status(session.id).status;
     }
     expect(observedStatus).toBe("failed");
-    await expect(manager.capture(session.id, false)).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
+    await expect(manager.capture(session.id, { profile: "summary" })).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
     await manager.close(session.id);
     expect(adapter.closed).toBe(true);
 

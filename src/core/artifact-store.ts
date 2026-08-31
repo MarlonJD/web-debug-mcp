@@ -172,7 +172,9 @@ export class ArtifactStore {
           delivery: inline ? "inline" : "resource",
         });
       } catch (error) {
-        warnings.push(boundText(error instanceof Error ? error.message : String(error), 500));
+        warnings.push(error instanceof WebDebugError && error.code === "ARTIFACT_SIZE_LIMIT"
+          ? `Screenshot artifact exceeded the ${MAX_ARTIFACT_BYTES}-byte limit and was omitted.`
+          : "Screenshot artifact was unavailable or outside its owned session directory and was omitted.");
       }
     }
 

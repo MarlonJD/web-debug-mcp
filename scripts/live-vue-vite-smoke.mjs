@@ -30,35 +30,37 @@ let originalApp = null;
 try {
   await waitForHttpReady(url, server, { label: "Vue/Vite fixture", timeoutMs: 15_000 });
   session = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
-  const before = await manager.capture(session.id, false);
+  const beforeCapture = await manager.capture(session.id, { profile: "include", surfaces: ["dom", "console", "angular", "vue", "vite", "replay"] });
+  const before = beforeCapture.details;
   await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "button" } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "[data-testid='vue-update-ready']" }, property: "text", expected: "Updated", timeoutMs: 5_000 });
-  const after = await manager.capture(session.id, false);
-  const component = findComponent(after.browser.vue?.components ?? [], "CheckoutForm");
-  const viteEvidence = after.browser.vite;
+  const afterCapture = await manager.capture(session.id, { profile: "include", surfaces: ["dom", "console", "angular", "vue", "vite", "replay"] });
+  const after = afterCapture.details;
+  const component = findComponent(after.vue?.components ?? [], "CheckoutForm");
+  const viteEvidence = after.vite;
 
   originalApp = await readFile(appPath, "utf8");
   await writeFile(appPath, originalApp.replace("Vue checkout fixture", "Vue checkout fixture HMR"));
   const hmr = await waitForViteTransformDiff(url);
 
   const assertions = {
-    evidenceSchema: after.schemaVersion === 3,
-    detected: after.project.frameworks.join(",") === "vite,vue" && after.browser.vue?.detected === true,
-    exactVersion: after.browser.vue?.version === "3.5.42",
-    componentTree: Boolean(component) && (after.browser.vue?.componentCount ?? 0) >= 2,
+    evidenceSchema: afterCapture.schemaVersion === 4,
+    detected: afterCapture.project.frameworks.join(",") === "vite,vue" && after.vue?.detected === true,
+    exactVersion: after.vue?.version === "3.5.42",
+    componentTree: Boolean(component) && (after.vue?.componentCount ?? 0) >= 2,
     props: component?.props.currency === "TRY",
     state: component?.state["data.submitted"] === true,
     changedState: component?.changedStateKeys.includes("data.submitted") === true && (component?.updateCount ?? 0) > 0,
     sourceHint: component?.source?.file.endsWith("CheckoutForm.vue") === true,
-    domUpdated: after.browser.dom.bodyText.includes("Payment submitted: 249.90"),
+    domUpdated: after.dom.bodyText.includes("Payment submitted: 249.90"),
     replayRuntime: after.replay.frames.some((frame) => frame.vue?.detected === true),
     viteDetected: viteEvidence?.detected === true && (viteEvidence.moduleCount ?? 0) > 0,
     viteTransformDiff: typeof hmr?.hmr?.lastUpdate?.transformDiff?.patch === "string" && hmr.hmr.lastUpdate.transformDiff.patch.includes("@@"),
-    consoleClean: after.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
-    angularAbsent: before.browser.angular === null && after.browser.angular === null,
+    consoleClean: after.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
+    angularAbsent: before.angular === null && after.angular === null,
   };
   const passed = Object.values(assertions).every(Boolean);
-  process.stdout.write(`${JSON.stringify({ passed, assertions, vue: after.browser.vue, vite: viteEvidence, hmr: hmr?.hmr?.lastUpdate ?? null, warnings: after.session.warnings }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ passed, assertions, vue: after.vue, vite: viteEvidence, hmr: hmr?.hmr?.lastUpdate ?? null, warnings: afterCapture.warnings }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;
 } finally {
   if (originalApp !== null) await writeFile(appPath, originalApp);

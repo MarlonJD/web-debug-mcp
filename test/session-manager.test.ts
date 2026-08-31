@@ -21,6 +21,7 @@ import { SessionManager, type RecordScenarioInput, type StartSessionInput } from
 import { NextAdapter } from "../src/adapters/next.js";
 import { ViteAdapter } from "../src/adapters/vite.js";
 import { MAX_ARTIFACT_BYTES, MAX_SESSION_SCREENSHOTS } from "../src/core/artifact-store.js";
+import { chromiumRuntimeCapabilities, safariRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
 
 type SnapshotScript = BrowserSnapshot | Error | ((options: SnapshotOptions, adapter: ScriptedBrowserAdapter) => BrowserSnapshot | Promise<BrowserSnapshot>);
 
@@ -111,6 +112,11 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   }
   targetIdentity(): string | null { return this.targetIdValue; }
   browserVersion(): string | null { return "scripted-1"; }
+  runtimeCapabilities() {
+    return this.target.browser === "safari"
+      ? safariRuntimeCapabilities(false)
+      : chromiumRuntimeCapabilities(this.target.mode === "attach");
+  }
 
   async act(action: BrowserAction): Promise<ActionResult> {
     this.actions.push({ ...action } as BrowserAction);
@@ -268,16 +274,131 @@ async function record(manager: SessionManager, sessionId: string, overrides: Par
 }
 
 describe("session manager adaptive contract", () => {
+  it("defaults manual capture to a compact non-pixel summary and projects only requested surfaces", async () => {
+    const browser = snapshotFor("A compact body", {
+      console: [{ level: "error", text: "boom" }],
+      network: [{ requestId: "failed", method: "GET", url: "http://127.0.0.1:4173/api", resourceType: "fetch", status: 500, ok: false }],
+      elements: [{ tag: "main", id: "app", role: "main", text: "A compact body" }],
+    });
+    const { manager, adapters } = managerFor([browser, browser], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+
+    const summary = await manager.capture(session.id);
+    expect(summary.profile).toBe("summary");
+    expect(summary).not.toHaveProperty("details");
+    expect(summary.summary).toMatchObject({ domElements: 1, console: { errors: 1 }, network: { failed: 1 } });
+    expect(Buffer.byteLength(JSON.stringify(summary))).toBeLessThan(16 * 1024);
+    expect(adapters[0]?.snapshotOptions[0]).toMatchObject({ captureScreenshot: false });
+
+    const included = await manager.capture(session.id, { profile: "include", surfaces: ["dom", "console"] });
+    expect(included.includedSurfaces).toEqual(["dom", "console"]);
+    expect(Object.keys(included.details ?? {})).toEqual(["dom", "console"]);
+    expect(included.details).not.toHaveProperty("network");
+    await manager.close(session.id, "delete");
+  });
+
+  it("deterministically fits maximal bounded failures into the default summary budget", async () => {
+    const longUrl = `http://127.0.0.1:4173/${"u".repeat(1_900)}`;
+    const heavy = snapshotFor("b".repeat(4_000), {
+      console: Array.from({ length: 3 }, (_, index) => ({ level: "error" as const, text: `error-${index}-${"x".repeat(1_900)}`, url: longUrl, line: index, column: 1 })),
+      network: Array.from({ length: 3 }, (_, index) => ({ requestId: `request-${index}-${"r".repeat(300)}`, method: "GET", url: longUrl, resourceType: "fetch", status: 500, ok: false, failure: "f".repeat(500) })),
+      warnings: Array.from({ length: 20 }, (_, index) => `warning-${index}-${"w".repeat(480)}`),
+    });
+    const { manager } = managerFor([() => ({ ...heavy, url: longUrl })], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager, { url: longUrl });
+    const summary = await manager.capture(session.id);
+    expect(summary.profile).toBe("summary");
+    expect(Buffer.byteLength(JSON.stringify(summary))).toBeLessThanOrEqual(16 * 1024);
+    expect(summary.summary.console.errors).toBeGreaterThan(0);
+    expect(summary.summary.network.failed).toBeGreaterThan(0);
+    await manager.close(session.id, "delete");
+  });
+
+  it("returns current changed surfaces from reusable bounded delta cursors", async () => {
+    const { manager } = managerFor([
+      snapshotFor("Before"),
+      snapshotFor("Before"),
+      snapshotFor("After"),
+      ...Array.from({ length: 9 }, (_, index) => snapshotFor(`Evict ${index}`)),
+    ], { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+    const baseline = await manager.capture(session.id);
+    const unchanged = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor });
+    expect(unchanged.changedSurfaces).toEqual([]);
+    expect(unchanged.unchangedSurfaces).toContain("dom");
+    expect(unchanged.unchangedSurfaces).not.toContain("replay");
+    expect(unchanged.unchangedSurfaces).not.toContain("screenshot");
+    expect(unchanged.details).toEqual({});
+
+    const changed = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom", "console"] });
+    expect(changed.changedSurfaces).toEqual(["dom"]);
+    expect(changed.details?.dom?.bodyText).toBe("After");
+    expect(changed.details).not.toHaveProperty("console");
+
+    const internals = manager as unknown as { sessions: Map<string, { captureGeneration: number }> };
+    internals.sessions.get(session.id)!.captureGeneration += 1;
+    await expect(manager.capture(session.id, { profile: "delta", cursor: changed.cursor, surfaces: ["dom"] })).rejects.toMatchObject({ code: "CAPTURE_CURSOR_STALE" });
+    internals.sessions.get(session.id)!.captureGeneration -= 1;
+
+    for (let index = 0; index < 8; index += 1) await manager.capture(session.id);
+    await expect(manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom"] })).rejects.toMatchObject({ code: "CAPTURE_CURSOR_NOT_FOUND" });
+    await manager.close(session.id, "delete");
+  });
+
+  it("keeps screenshot paths private while full capture explicitly opts into pixels", async () => {
+    const snapshots: SnapshotScript[] = [];
+    const { manager } = managerFor(snapshots, { mode: "attach", targetId: "tab-1" });
+    const session = await start(manager);
+    const path = `${session.artifactDir}/capture-private-path.png`;
+    await writeFile(path, Buffer.from("pixels"));
+    snapshots.push(snapshotFor("Pixels", { screenshotPath: path }));
+    const full = await manager.capture(session.id, { profile: "full" });
+    expect(full.details?.screenshot?.status).toBe("captured");
+    expect(JSON.stringify(full)).not.toContain(path);
+    expect(Buffer.byteLength(JSON.stringify(full))).toBeLessThanOrEqual(96 * 1024);
+    await expect(manager.capture(session.id, { profile: "include", surfaces: ["dom", "dom"] })).rejects.toMatchObject({ code: "CAPTURE_SURFACES_DUPLICATE" });
+    await manager.close(session.id, "delete");
+  });
+
   it("forwards detected framework metadata privately and discloses Safari runtime limits", async () => {
     const vue = managerFor([snapshotFor("Fixed")], { mode: "attach", targetId: "tab-1" });
     const vueSession = await start(vue.manager, { projectRoot: "fixtures/vue-vite" });
     expect(vue.adapters[0]?.startedOptions[0]?.frameworks).toEqual(["vite", "vue"]);
+    expect(vueSession.projectCapabilities).toMatchObject({ vite: true, vue: true, browserTarget: true });
+    expect(vueSession.runtimeCapabilities).toMatchObject({ transport: "chromium-cdp-attach", javascriptDebugger: { state: "supported" }, viewportMatrix: { state: "unsupported" } });
     await vue.manager.close(vueSession.id);
 
     const safari = managerFor([snapshotFor("Fixed")], { browser: "safari", mode: "webdriver", targetId: "safari-1" });
     const safariSession = await start(safari.manager, { projectRoot: "fixtures/angular", browser: "safari" });
     expect(safariSession.warnings.join(" ")).toContain("generic browser evidence only");
+    expect(safariSession.projectCapabilities.angular).toBe(true);
+    expect(safariSession.runtimeCapabilities).toMatchObject({ transport: "safari-webdriver", javascriptDebugger: { state: "unsupported" }, accessibility: { state: "unsupported" }, network: { state: "degraded" } });
     await safari.manager.close(safariSession.id);
+  });
+
+  it("uses negotiated runtime capability rather than browser name for viewport matrices", async () => {
+    const attached = managerFor([], { mode: "attach", targetId: "tab-1" });
+    const attachedSession = await start(attached.manager);
+    await expect(record(attached.manager, attachedSession.id, {
+      viewports: [{ name: "desktop", width: 1_440, height: 900 }, { name: "mobile", width: 390, height: 844 }],
+    })).rejects.toMatchObject({ code: "VIEWPORT_MATRIX_UNAVAILABLE" });
+    await attached.manager.close(attachedSession.id);
+
+    const launched = managerFor([snapshotFor("Bug"), snapshotFor("Bug")], { isolated: true, mode: "launch" });
+    const launchedSession = await start(launched.manager);
+    const scenario = await record(launched.manager, launchedSession.id, {
+      viewports: [{ name: "desktop", width: 1_440, height: 900 }, { name: "mobile", width: 390, height: 844 }],
+    });
+    expect(scenario.viewports).toHaveLength(2);
+    await launched.manager.close(launchedSession.id);
+  });
+
+  it("does not label a generic weak-root session as vanilla in provenance", async () => {
+    const generic = managerFor([snapshotFor("Bug"), snapshotFor("Bug")], { mode: "attach", targetId: "tab-1" });
+    const session = await start(generic.manager, { projectRoot: "." });
+    const scenario = await record(generic.manager, session.id);
+    expect(scenario.environmentFingerprint).toMatchObject({ descriptor: "none", projectFrameworks: [], projectConfidence: "low", projectAmbiguous: false });
+    await generic.manager.close(session.id);
   });
 
   it("records and verifies a low-risk quick scenario with one authoritative attempt", async () => {
@@ -661,7 +782,7 @@ describe("session manager adaptive contract", () => {
       const active = manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" }, { signal: controller.signal, deadline: 10_000 });
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(observedSignal).toBe(true);
-      await expect(manager.capture(session.id, false)).rejects.toMatchObject({ code: "SESSION_BUSY" });
+      await expect(manager.capture(session.id, { profile: "summary" })).rejects.toMatchObject({ code: "SESSION_BUSY" });
       const cancelled = expect(active).rejects.toMatchObject({ code: "REQUEST_CANCELLED" });
       controller.abort();
       await cancelled;
@@ -758,7 +879,7 @@ describe("session manager adaptive contract", () => {
     ]);
 
     for (let index = 0; index < 9; index += 1) await manager.act(session.id, { kind: "hover", locator: { kind: "css", value: `#item-${index}` } });
-    const newest = (await manager.capture(session.id, false)).replay.frames.at(-1)!.index;
+    const newest = (await manager.capture(session.id, { profile: "include", surfaces: ["replay"] })).details!.replay!.frames.at(-1)!.index;
     await expect(manager.seekReplay(session.id, newest, true)).rejects.toMatchObject({ code: "REPLAY_START_UNAVAILABLE" });
     await manager.close(session.id, "delete");
   });
@@ -840,9 +961,9 @@ describe("session manager adaptive contract", () => {
     ], { mode: "attach", targetId: "tab-1" });
     const session = await start(manager);
     await manager.act(session.id, { kind: "select", locator: { kind: "css", value: "#private" }, value: "private-option" });
-    const evidence = await manager.capture(session.id, true);
-    expect(evidence.browser.screenshotPath).toBeNull();
-    expect(evidence.browser.warnings).toContainEqual(expect.stringContaining("private fill/select input values"));
+    const evidence = await manager.capture(session.id, { profile: "full" });
+    expect(evidence.details?.screenshot?.status).toBe("suppressed");
+    expect(evidence.warnings).toContainEqual(expect.stringContaining("private fill/select input values"));
     expect(adapters[0]?.snapshotOptions.at(-1)).toMatchObject({ captureScreenshot: false, suppressScreenshot: true });
     await manager.close(session.id, "delete");
   });
@@ -855,16 +976,16 @@ describe("session manager adaptive contract", () => {
     const oversized = `${session.artifactDir}/screenshot-1.png`;
     await writeFile(oversized, Buffer.alloc(MAX_ARTIFACT_BYTES + 1));
     snapshots.push(snapshotFor("Oversized", { screenshotPath: oversized }));
-    const rejected = await manager.capture(session.id, true);
-    expect(rejected.browser.screenshotPath).toBeNull();
-    expect(rejected.browser.warnings).toContainEqual(expect.stringContaining("per-file limit"));
+    const rejected = await manager.capture(session.id, { profile: "full" });
+    expect(rejected.details?.screenshot?.status).toBe("unavailable");
+    expect(rejected.warnings).toContainEqual(expect.stringContaining("per-file limit"));
     await expect(access(oversized)).rejects.toThrow();
 
     for (let index = 0; index < MAX_SESSION_SCREENSHOTS + 1; index += 1) {
       const path = `${session.artifactDir}/capture-${100 + index}.png`;
       await writeFile(path, Buffer.from(`capture-${index}`));
       snapshots.push(snapshotFor(`Capture ${index}`, { screenshotPath: path }));
-      await manager.capture(session.id, true);
+      await manager.capture(session.id, { profile: "full" });
     }
     const retained = (await readdir(session.artifactDir)).filter((name) => name.endsWith(".png"));
     expect(retained).toHaveLength(MAX_SESSION_SCREENSHOTS);
@@ -926,14 +1047,14 @@ describe("session manager adaptive contract", () => {
     expect(result.outcome).toBe("inconclusive");
     expect(result.postFix.attempts[0]?.termination).toBe("retryable");
     expect(candidates.adapters[2]?.closeCount).toBe(1);
-    expect((await candidates.manager.capture(session.id, false)).redaction.applied).toBe(true);
+    expect((await candidates.manager.capture(session.id, { profile: "summary" })).redaction.applied).toBe(true);
     await candidates.manager.close(session.id);
 
     const busy = managerFor([], { mode: "attach", targetId: "tab-1", hangActions: true }, () => 0, 0);
     const busySession = await start(busy.manager);
     const controller = new AbortController();
     const active = busy.manager.act(busySession.id, { kind: "click", locator: { kind: "css", value: "#hang" } }, { signal: controller.signal });
-    await expect(busy.manager.capture(busySession.id, false)).rejects.toMatchObject({ code: "SESSION_BUSY" });
+    await expect(busy.manager.capture(busySession.id, { profile: "summary" })).rejects.toMatchObject({ code: "SESSION_BUSY" });
     const activeExpectation = expect(active).rejects.toMatchObject({ code: "REQUEST_CANCELLED" });
     controller.abort();
     await activeExpectation;

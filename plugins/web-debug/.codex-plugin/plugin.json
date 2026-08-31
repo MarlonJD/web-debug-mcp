@@ -1,7 +1,7 @@
 {
   "name": "web-debug",
-  "version": "0.5.0+codex.20260830202439",
-  "description": "Evidence-first local web debugging that complements frontend build and test workflows with bounded browser evidence.",
+  "version": "0.6.0+codex.20260831002920",
+  "description": "Evidence-first local web debugging and reviewed manual-parity qualification around native test workflows.",
   "author": {
     "name": "Marlon J.D.",
     "url": "https://github.com/MarlonJD"
@@ -21,13 +21,15 @@
     "safari",
     "visual-debugging",
     "regression-testing",
-    "replay"
+    "replay",
+    "manual-parity",
+    "qualification"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Web Debug",
-    "shortDescription": "Reproduce local web bugs with bounded evidence.",
-    "longDescription": "Inspect and repair a running local web app through exact locator probes, guarded loopback TLS, disposable auth, computed accessibility, named checkpoints, bounded viewport matrices, React, Angular, Vue, Vite, Next.js, Safari, debugger, replay, and fix-verification evidence. Auth-seeded screenshots are suppressed; Safari remains CSS-only for advanced capabilities.",
+    "shortDescription": "Debug local web apps and qualify reviewed flows.",
+    "longDescription": "Inspect and repair a running local web app through bounded browser and framework evidence, or map reviewed manual/product requirements to repository-native Playwright/API qualification with structural crosswalk and run validation. Web Debug remains diagnostic-only for qualification failures; executable tests stay in the target repository.",
     "developerName": "Marlon J.D.",
     "category": "Developer Tools",
     "capabilities": [
@@ -41,7 +43,9 @@
       "Verify this frontend fix against a recorded Web Debug flow.",
       "Use Web Debug to diagnose responsive geometry at desktop and mobile sizes.",
       "Compare deterministic test evidence with Web Debug browser evidence.",
-      "Diagnose this flow with Web Debug semantic locators and named checkpoints."
+      "Diagnose this flow with Web Debug semantic locators and named checkpoints.",
+      "Turn these approved manual cases into traceable native qualification coverage.",
+      "Create a candidate manual-parity baseline from this PRD and role matrix without self-approving it."
     ],
     "brandColor": "#2563EB"
   },

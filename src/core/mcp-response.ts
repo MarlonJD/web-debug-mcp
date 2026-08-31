@@ -8,32 +8,50 @@ import { boundText, redactText, redactValue } from "./redaction.js";
 
 const MAX_TEXT_PREVIEW_BYTES = 8 * 1024;
 
-export const toolOutputSchema = z.object({
-  ok: z.boolean(),
-  data: z.json().optional(),
-  error: z.object({
-    code: z.string().min(1).max(100),
-    message: z.string().max(500),
-    details: z.json().optional(),
-  }).strict().optional(),
-  artifacts: z.array(z.object({
-    kind: z.literal("screenshot"),
-    uri: z.string().url(),
-    mimeType: z.literal("image/png"),
-    bytes: z.number().int().nonnegative(),
-    delivery: z.enum(["inline", "resource"]),
-  }).strict()).max(2),
-  warnings: z.array(z.string().max(500)).max(10),
+const artifactDescriptorSchema = z.object({
+  kind: z.literal("screenshot"),
+  uri: z.string().url(),
+  mimeType: z.literal("image/png"),
+  bytes: z.number().int().nonnegative(),
+  delivery: z.enum(["inline", "resource"]),
 }).strict();
+
+const toolErrorSchema = z.object({
+  code: z.string().min(1).max(100),
+  message: z.string().max(500),
+  details: z.json().optional(),
+}).strict();
+
+export function toolOutputSchemaFor<T extends z.ZodType>(dataSchema: T) {
+  return z.object({
+  ok: z.boolean(),
+  data: dataSchema.optional(),
+  error: toolErrorSchema.optional(),
+  artifacts: z.array(artifactDescriptorSchema).max(2),
+  warnings: z.array(z.string().max(500)).max(10),
+  }).strict().superRefine((value, context) => {
+    if (value.ok && value.data === undefined) context.addIssue({ code: "custom", message: "Successful tool results require data.", path: ["data"] });
+    if (value.ok && value.error !== undefined) context.addIssue({ code: "custom", message: "Successful tool results cannot include an error.", path: ["error"] });
+    if (!value.ok && value.error === undefined) context.addIssue({ code: "custom", message: "Failed tool results require an error.", path: ["error"] });
+    if (!value.ok && value.data !== undefined) context.addIssue({ code: "custom", message: "Failed tool results cannot include data.", path: ["data"] });
+  });
+}
 
 export async function successToolResult(
   value: unknown,
   artifactStore: ArtifactStore,
   screenshots: readonly ScreenshotCandidate[] = [],
+  dataSchema: z.ZodType = z.json(),
 ): Promise<CallToolResult> {
   const canonical = toJsonValue(value);
   const dataBytes = Buffer.byteLength(JSON.stringify(canonical));
   if (dataBytes > MAX_RESULT_BYTES) throw resultLimitError();
+  const validation = dataSchema.safeParse(canonical);
+  if (!validation.success) {
+    throw new WebDebugError("RESULT_SCHEMA_VIOLATION", "The tool result did not match its advertised data schema.", {
+      issues: validation.error.issues.slice(0, 10).map((issue) => ({ code: issue.code, path: issue.path.slice(0, 12).map(String) })),
+    });
+  }
   const artifacts = await artifactStore.prepare(screenshots, Math.max(0, MAX_RESULT_BYTES - dataBytes - MAX_TEXT_PREVIEW_BYTES));
   try {
     const structuredContent = {

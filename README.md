@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Version `0.5.0` is the current package and plugin runtime. It adds evidence schema 3 with bounded Angular 21 and Vue 3 Chromium development-runtime snapshots, strengthens defensive text redaction and process-registry lifecycle accounting, and keeps scenario/verification schema 4 plus the existing 13-tool MCP catalog.
+Version `0.6.0` is the current package and plugin runtime. It keeps the 13-tool catalog while adding compact capture profiles, concrete per-tool result schemas, confidence-aware project detection, negotiated browser runtime capabilities, evidence schema 4, scenario/verification schema 5, and reviewed manual-parity qualification.
 
 ## Install as an MCP server
 
@@ -17,14 +17,14 @@ The published npm package runs locally over stdio and does not require a hosted 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.5.0
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.6.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y web-debug-mcp@0.5.0
+-y web-debug-mcp@0.6.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -32,7 +32,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "web-debug-mcp@0.5.0"]
+args = ["-y", "web-debug-mcp@0.6.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 ```
@@ -41,14 +41,15 @@ Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the 
 
 ## Use Web Debug as a plugin
 
-This is the recommended single-install path for Codex and Claude Code. **Installing Web Debug installs both the workflow skill and the web-debug-mcp MCP server connection. It is not a skill-only package, and no separate MCP setup is required.**
+This is the recommended single-install path for Codex and Claude Code. **Installing Web Debug installs both workflow skills and the web-debug-mcp MCP server connection. It is not a skill-only package, and no separate MCP setup is required.**
 
-The same plugin package supports both Codex and Claude Code. Codex reads the Codex plugin manifest, Claude Code reads the Claude Code plugin manifest, and both use the same workflow skill and MCP configuration.
+The same plugin package supports both Codex and Claude Code. Codex reads the Codex plugin manifest, Claude Code reads the Claude Code plugin manifest, and both use the same workflow skills and MCP configuration.
 
-The plugin contains three pieces:
+The plugin contains four pieces:
 
 - the web-debug plugin manifest;
-- the web-debug-workflow skill, which tells Codex when and how to use the tools;
+- the web-debug-workflow skill, which owns isolated browser-bug reproduction and fix verification;
+- the manual-parity-qualification skill, which maps reviewed manual/product requirements to repository-native qualification tests and non-executable crosswalk/run metadata;
 - a bundled .mcp.json connection that starts the existing web-debug-mcp server.
 
 The runtime flow is:
@@ -56,11 +57,15 @@ The runtime flow is:
 ~~~text
 install Web Debug plugin
         ↓
-Codex loads the skill and bundled MCP connection
+Codex loads both skills and the bundled MCP connection
         ↓
-Codex starts web-debug-mcp over local stdio on demand
+bug diagnosis → Codex starts web-debug-mcp over local stdio on demand
         ↓
 web_project_detect → reproduce → web_issue_capture → fix verification
+
+manual parity → reviewed baseline → native Playwright/API tests
+        ↓
+crosswalk/run validation → Web Debug only if browser diagnosis is needed
 ~~~
 
 The stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP/WebDriver endpoints, optional loopback URL, Safari BiDi WebSocket availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
@@ -82,8 +87,8 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 ### Use the installed plugin
 
 1. Start your local web application.
-2. Ask Codex to reproduce or inspect the issue, for example: “Reproduce this local React bug and capture browser evidence.”
-3. The plugin guides Codex through project detection, an explicit local browser session, bounded actions, evidence capture, and—when requested—recorded-flow fix verification.
+2. Ask Codex either to reproduce a browser issue or to build reviewed manual-parity qualification, for example: “Reproduce this local React bug and capture browser evidence” or “Turn these approved manual cases into a qualification crosswalk and native Playwright coverage.”
+3. The plugin routes isolated bugs through project detection, an explicit local browser session, bounded actions, evidence capture, and recorded-flow fix verification. It routes qualification through reviewed requirements, repository-native tests, structural crosswalk/run validation, and diagnostic-only Web Debug escalation.
 4. For live Chromium launch, provide an explicit executable path, for example:
 
    ~~~bash
@@ -92,7 +97,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.5.0` npm release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.6.0` npm release; Node.js 20+, npm, and network access are required.
 
 ### Boundary with Build Web Apps and native runners
 
@@ -101,8 +106,11 @@ Web Debug complements rather than replaces frontend build and test tooling:
 - Build Web Apps owns frontend authoring, dev-server work, generic rendered QA, and visual implementation.
 - Vitest, Go, and a project’s own Playwright commands own deterministic runner evidence.
 - Web Debug owns local browser-grounded evidence: live DOM/console/network state, CDP and framework diagnostics, semantic probes, replay, and bounded fix verification.
+- Manual Parity Qualification owns source/reviewer state, requirement-to-test crosswalks, mutation certainty, and truthful aggregate reporting around those native runners.
 
 When a request explicitly names Web Debug, use the Web Debug workflow. For mixed work, establish an exact runner failure first, collect only the missing browser evidence with Web Debug, and rerun the relevant checks separately.
+
+When approved manual cases do not exist, Manual Parity Qualification can derive source-linked candidate cases from product requirements, role matrices, state models, API contracts, existing tests, and exploration. Generated candidates never self-approve or become gating coverage. JSON is non-executable metadata only; selectors, browser actions, API calls, and assertions remain typed native test code. The bundled read-only validator checks reference closure, crosswalk completeness, evidence facets, mutation certainty, and aggregate arithmetic without authenticating reviewers or running tests.
 
 Do not install both the plugin and a separate Codex or Claude Code MCP registration for web-debug-mcp unless you intentionally want duplicate MCP registrations. For other MCP clients, use the standalone MCP installation below.
 
@@ -116,7 +124,7 @@ Add the repository marketplace from a Claude Code session, then install the plug
 /reload-plugins
 ~~~
 
-Choose the desired installation scope when Claude Code opens the plugin details. If the install summary says the plugin is already active, no reload is needed. The plugin’s MCP server starts automatically when the plugin is enabled, and its tools appear in /mcp. The bundled workflow can also be invoked directly as /web-debug:web-debug-workflow.
+Choose the desired installation scope when Claude Code opens the plugin details. If the install summary says the plugin is already active, no reload is needed. The plugin’s MCP server starts automatically when the plugin is enabled, and its tools appear in /mcp. The bundled workflows can also be invoked directly as /web-debug:web-debug-workflow and /web-debug:manual-parity-qualification.
 
 For local development or testing before publishing the repository, load the plugin directly:
 
@@ -124,14 +132,14 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata, skill, and bundled `web-debug-mcp@0.5.0` runtime.
+This command loads the repository's plugin metadata, both skills, and bundled `web-debug-mcp@0.6.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.5.0
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.6.0
 claude mcp list
 ```
 
@@ -180,14 +188,24 @@ The public tools cover:
 - explicit Chromium or Safari session start and status;
 - bounded browser actions: navigate, click, fill, exact-locator probe waits, and reload;
 - deterministic locator actions for keyboard press, select, checked state, hover, and scroll-into-view;
-- issue capture with DOM, console, network, screenshot, debugger, framework, and replay evidence;
+- issue capture with compact summary (default), explicit full evidence, selected surfaces, or cursor-based changed surfaces;
 - Chromium breakpoints, pause control, and guarded JavaScript evaluation;
 - Next route compilation and Server Action lookup;
 - replay frame inspection and safe-action restore;
 - reproducible flow recording and post-change verification;
 - session cleanup.
 
-Every tool advertises an MCP output schema and, after input-schema validation succeeds, returns one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
+Every tool advertises and enforces its own concrete MCP `data` schema inside one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Stable top-level and capture-profile fields are concrete; bounded deep runtime/upstream payloads such as evaluation values, debugger locals, framework trees, and Next metadata remain JSON leaves. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
+
+### Capture profiles
+
+`web_issue_capture` defaults to `{ "view": { "profile": "summary" } }`. Summary returns a compact DOM excerpt, counts, latest failures, runtime presence, replay bounds, warnings, and a reusable opaque cursor without producing screenshot pixels. Use an explicit profile when more detail is necessary:
+
+- `full`: every bounded surface plus an explicit screenshot attempt;
+- `include`: only the unique named `surfaces`; include `screenshot` to opt into pixels;
+- `delta`: the current bounded values of selected surfaces whose digest changed since `cursor`; omitted `surfaces` means every evidence surface except replay and screenshot, whose capture side effects require explicit inclusion. This is not JSON Patch, an event stream, or browser-state time travel. Requested screenshots use a fresh artifact rather than pixel diffing, so each successfully captured screenshot is changed.
+
+Surfaces are `dom`, `console`, `network`, `debugger`, `react`, `angular`, `vue`, `next`, `vite`, `accessibility`, `replay`, and `screenshot`. Each session retains at most eight reusable cursors. Unknown, evicted, cross-session, or browser-generation-stale cursors fail explicitly. Screenshot paths never appear in capture data; accepted pixels are delivered only through the envelope's artifact descriptors. Scenario baseline and fix verification still retain authoritative full evidence independently of the manual profile.
 
 The MCP boundary is intentionally small. Framework-specific protocol details stay inside adapters, while session ownership, same-origin navigation, bounds, redaction, and recovery stay centralized.
 
@@ -388,7 +406,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.5.0`. Disable the installed plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.6.0`. Disable the installed `0.6.0` plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
 
 Then use the MCP client workflow:
 
@@ -404,7 +422,7 @@ Then use the MCP client workflow:
 For Vite, install the development-only plugin in `vite.config.ts`:
 
 ```bash
-npm install --save-dev web-debug-mcp@0.5.0
+npm install --save-dev web-debug-mcp@0.6.0
 ```
 
 ```ts
@@ -441,7 +459,7 @@ This project is not:
 - a Safari JavaScript debugger with Chromium CDP parity;
 - a production monitoring, incident-management, or hosted MCP service;
 - an unattended remote-browser controller;
-- a YAML/JSON test-case generator, scenario importer, or cross-session/CI scenario runner;
+- a portable YAML/JSON browser-action DSL, MCP scenario importer, or cross-session/CI scenario runner; qualification JSON is non-executable metadata around repository-native tests;
 - a secret, cookie, browser-storage, or raw-response-body collector;
 - proof that a local smoke passed in production.
 
@@ -464,7 +482,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-Final `0.5.0` is verified locally with 124 deterministic tests, source/test typecheck, build, native harness checks, and the browser/framework release gates recorded in the release plan. The checked-in historical certification window belongs to the earlier `0.4.0` source and is stale after these changes; this checkout does not claim a current `CERT000`. Local compatibility and release evidence are not provider or production authority, and no approved external remote-browser run is claimed.
+Final `0.6.0` release evidence is recorded in its release plan, including exact archive, public npm/GitHub, and installed Codex plugin identity. The checked-in historical certification window remains stale; this checkout does not claim a current `CERT000`. Local compatibility and release evidence are not provider or production authority, and no approved external remote-browser run is claimed.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 

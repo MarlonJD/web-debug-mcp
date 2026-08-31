@@ -47,9 +47,11 @@ const requiredFiles = [
   "docs/demos/agent-evaluation.md",
   "docs/releases/0.4.0.md",
   "docs/releases/0.5.0.md",
+  "docs/releases/0.6.0.md",
   "docs/COMPATIBILITY.md",
   "docs/compatibility-evidence.json",
   "docs/examples-evidence.md",
+  "docs/design-docs/manual-parity-qualification.md",
   "docs/design-docs/scenario-persistence-boundary.md",
   "docs/product-specs/web-debug-contract.md",
   ".agents/plugins/marketplace.json",
@@ -57,6 +59,9 @@ const requiredFiles = [
   "plugins/web-debug/.codex-plugin/plugin.json",
   "plugins/web-debug/.claude-plugin/plugin.json",
   "plugins/web-debug/.mcp.json",
+  "plugins/web-debug/skills/manual-parity-qualification/SKILL.md",
+  "plugins/web-debug/skills/manual-parity-qualification/references/artifact-contract.md",
+  "plugins/web-debug/skills/manual-parity-qualification/scripts/validate-manual-parity.mjs",
   "plugins/web-debug/skills/web-debug-workflow/SKILL.md",
   "src/index.ts",
   "bin/web-debug-mcp.mjs",
@@ -149,6 +154,7 @@ const requiredFiles = [
   "test/release-identity.test.ts",
   "test/managed-process.test.ts",
   "test/eval-contract.test.ts",
+  "test/plugin-skill-contract.test.ts",
   "test/compatibility.test.ts",
   "tsconfig.test.json",
 ];
@@ -165,7 +171,7 @@ check(packageJson.name === "web-debug-mcp", "package.json name must remain web-d
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "released" && sourceVersion === "0.5.0" && releasedPluginVersion === sourceVersion, "final package and released plugin runtime metadata must agree on 0.5.0");
+check(packageJson.webDebug?.releaseStatus === "released" && sourceVersion === "0.6.0" && releasedPluginVersion === sourceVersion, "final package and released plugin runtime metadata must agree on 0.6.0");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -185,13 +191,22 @@ const claudeManifest = claudeManifestText ? JSON.parse(claudeManifestText) : {};
 const claudeMarketplaceText = read(".claude-plugin/marketplace.json");
 const claudeMarketplace = claudeMarketplaceText ? JSON.parse(claudeMarketplaceText) : {};
 const pluginSkill = read("plugins/web-debug/skills/web-debug-workflow/SKILL.md");
+const qualificationSkill = read("plugins/web-debug/skills/manual-parity-qualification/SKILL.md");
+const qualificationContract = read("plugins/web-debug/skills/manual-parity-qualification/references/artifact-contract.md");
+const qualificationValidator = read("plugins/web-debug/skills/manual-parity-qualification/scripts/validate-manual-parity.mjs");
+const pluginSkillDirectories = readdirSync(join(root, "plugins/web-debug/skills"), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
 const bundledMcp = pluginMcp.mcpServers?.["web-debug-mcp"];
 const marketplaceEntry = pluginMarketplace.plugins?.find((entry) => entry?.name === "web-debug");
 const claudeMarketplaceEntry = claudeMarketplace.plugins?.find((entry) => entry?.name === "web-debug");
 check(pluginManifest.name === "web-debug", "Codex plugin manifest name must remain web-debug");
 check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to its bundled MCP configuration");
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
+check(JSON.stringify(pluginSkillDirectories) === JSON.stringify(["manual-parity-qualification", "web-debug-workflow"]), "Plugin must expose exactly the two reviewed workflow skills");
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
+check(pluginManifest.interface?.defaultPrompt?.some((prompt) => typeof prompt === "string" && prompt.includes("manual-parity")), "Codex plugin prompts must expose manual-parity qualification");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
 check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes(`web-debug-mcp@${releasedPluginVersion}`), "Codex plugin must resolve the immutable released runtime named by package metadata");
 check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
@@ -207,6 +222,9 @@ check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code mar
 check(claudeMarketplaceEntry?.version === releasedPluginVersion && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the released plugin runtime");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
+check(qualificationSkill.includes("Never promote your own generated baseline") && qualificationSkill.includes("typed native test code") && qualificationSkill.includes("Web Debug diagnostics never award qualification PASS") && qualificationSkill.includes("record `inconclusive`"), "Qualification skill must preserve reviewer, native-runner, diagnostic-only, and ambiguous-mutation boundaries");
+check(qualificationContract.includes("non-executable metadata") && qualificationContract.includes("coverage") && qualificationContract.includes("execution") && qualificationContract.includes("stability") && qualificationContract.includes("structural-only"), "Qualification artifact contract must keep metadata non-executable and verdict axes explicit");
+check(qualificationValidator.includes("realpath") && qualificationValidator.includes("crosswalkDigest") && qualificationValidator.includes("ambiguous mutation certainty forces inconclusive execution") && !qualificationValidator.includes("playwright"), "Qualification validator must stay contained, drift-aware, mutation-safe, and independent of browser execution");
 
 const sourceRoot = join(root, "src");
 function inspectSource(path) {
@@ -228,6 +246,8 @@ const angularBridgeSource = read("src/adapters/angular-bridge.ts");
 const vueBridgeSource = read("src/adapters/vue-bridge.ts");
 const safariSource = read("src/adapters/safari.ts");
 const sessionSource = read("src/core/session-manager.ts");
+const extractedSessionReplayPath = join(root, "src/core/session-replay.ts");
+const sessionReplaySource = existsSync(extractedSessionReplayPath) ? readFileSync(extractedSessionReplayPath, "utf8") : "";
 const chromiumSource = read("src/adapters/chromium.ts");
 const vitePluginSource = read("src/adapters/vite-plugin.ts");
 const nextSource = read("src/adapters/next.ts");
@@ -257,12 +277,12 @@ check(safariSource.includes("profile isolation"), "Safari adapter must disclose 
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");
 check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"), "Post-fix verification must require the complete polarity-aware failure signature to be absent");
 check(sessionSource.includes("owned adapter was made unusable before lease release"), "Cancelled adapter work must poison the session before releasing its lease");
-check(sessionSource.includes("resetReplayForAttempt") && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
+check((sessionSource.includes("resetReplayForAttempt") || (sessionSource.includes("replay.resetForAttempt") && sessionReplaySource.includes("resetForAttempt"))) && sessionSource.includes("attemptId: context.attemptId ?? null"), "Verification replay must reset per attempt and retain attempt provenance");
 check(mcpSource.includes("locatorSchema") && mcpSource.includes("checkpoints") && mcpSource.includes("failureViewports"), "MCP schemas must expose the exact locator/checkpoint/matrix contract");
 check(mcpSource.includes("PACKAGE_NAME") && mcpSource.includes("PACKAGE_VERSION"), "MCP server metadata must derive from package metadata");
 check(read("src/core/process-registry.ts").includes("PACKAGE_VERSION") && !read("src/core/process-registry.ts").includes('version: "0.3.1"'), "Process records and cleanup reports must derive from package metadata");
 check(mcpSource.includes("WEB_DEBUG_TOOL_ANNOTATIONS") && mcpSource.includes("web_issue_capture: { readOnlyHint: false"), "MCP tool effects must use the canonical annotation table");
-check(mcpSource.includes("outputSchema: toolOutputSchema") && mcpSource.includes("runWithProgress") && mcpSource.includes("ResourceTemplate"), "MCP tools must expose structured output, progress, and screenshot resources");
+check(mcpSource.includes("toolOutputSchemaFor") && mcpSource.includes("toolDataSchemas") && mcpSource.includes("runWithProgress") && mcpSource.includes("ResourceTemplate"), "MCP tools must expose tool-specific structured output, progress, and screenshot resources");
 check(read("bin/web-debug-mcp.mjs").includes('args[0] === "doctor"'), "Package binary must expose the bounded doctor command");
 check(read("scripts/live-smoke.mjs").includes("stopOwnedProcess") && read("scripts/live-next-smoke.mjs").includes("waitForHttpReady"), "Live smokes must use bounded readiness and awaited teardown helpers");
 check(read("docs/COMPATIBILITY.md").includes("Verified locally") && read("docs/demos/agent-evaluation.md").includes("npm run eval:catalog") && read("docs/demos/agent-evaluation.md").includes("npm run eval:grade"), "Compatibility and agent task-evaluation contracts must remain discoverable");
@@ -283,7 +303,8 @@ check(read("README.md").includes("codex mcp add"), "README must document Codex M
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
-check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("0.5.0-next.0") && !read("README.md").includes("#main"), "README must document the immutable final release runtime");
+check(read("README.md").includes("manual-parity-qualification") && read("README.md").includes("non-executable metadata"), "README must document the second qualification skill and native-runner boundary");
+check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("0.6.0-next.0") && !read("README.md").includes("#main"), "README must document the immutable final release runtime");
 check(read("README.md").includes("no separate MCP setup is required"), "README must explain that separate MCP setup is unnecessary");
 check(read("README.md").includes("Install in Claude Code"), "README must document Claude Code plugin installation");
 check(read("README.md").includes("/plugin marketplace add MarlonJD/web-debug-mcp"), "README must document the Claude Code marketplace command");
@@ -293,6 +314,8 @@ check(read("README.md").includes("GPL-3.0-or-later"), "README must declare the p
 check(read("README.md").includes("does not export or import YAML/JSON scenario files"), "README must keep portable YAML/JSON scenarios out of scope");
 const scenarioPersistenceBoundary = read("docs/design-docs/scenario-persistence-boundary.md");
 check(scenarioPersistenceBoundary.includes('persistence: "in-memory"') && scenarioPersistenceBoundary.includes("repository's native test suite"), "Scenario persistence boundary must keep scenarios session-only and durable tests repository-native");
+const manualParityBoundary = read("docs/design-docs/manual-parity-qualification.md");
+check(manualParityBoundary.includes("repository-native tests") && manualParityBoundary.includes("does not contribute a qualifying evidence facet") && manualParityBoundary.includes("never imported by `web_repro_record`"), "Manual-parity design must preserve native execution and diagnostic-only MCP evidence");
 const demoDocs = read("docs/demos/comparison.md");
 check(demoDocs.includes("complex-logic-fix"), "comparison demo docs must describe the complex logic repair");
 check(demoDocs.includes("complex-async-fix"), "comparison demo docs must describe the async repair");

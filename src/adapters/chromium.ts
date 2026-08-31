@@ -59,6 +59,7 @@ import type {
   EvaluationResult,
   SnapshotOptions,
 } from "./browser.js";
+import { chromiumRuntimeCapabilities } from "./runtime-capabilities.js";
 
 interface RemoteObject {
   type?: string;
@@ -374,6 +375,7 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   targetIdentity(): string | null { return this.targetId; }
   browserVersion(): string | null { return this.version; }
+  runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser); }
 
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
@@ -525,7 +527,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         } catch (error) {
           retainScreenshot = false;
           await unlink(path).catch(() => undefined);
-          warnings.push(`Screenshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
+          warnings.push("Screenshot unavailable: browser capture failed without exposing the local artifact path.");
           screenshotPath = null;
         }
       }

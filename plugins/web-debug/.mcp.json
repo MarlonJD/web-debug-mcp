@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "web-debug-mcp@0.5.0"
+        "web-debug-mcp@0.6.0"
       ],
       "startup_timeout_sec": 20,
       "tool_timeout_sec": 150

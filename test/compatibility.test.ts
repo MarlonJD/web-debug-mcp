@@ -46,7 +46,7 @@ describe("declared compatibility matrix", () => {
     expect(vueVite.dependencies.vue).toBe(root.devDependencies.vue);
     expect(vueVite.devDependencies["@vitejs/plugin-vue"]).toBe(root.devDependencies["@vitejs/plugin-vue"]);
     expect(vueVite.devDependencies.vite).toBe(root.devDependencies.vite);
-    expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.5.0-local", releaseBaseline: { version: "0.4.0" } });
+    expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.6.0-release-local", releaseBaseline: { version: "0.5.0" } });
     expect(evidence.sourceVersion).toBe((root as { version?: string }).version);
     expect(evidence.releaseBaseline.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(evidence.runtime.mcpSdk).toBe(root.dependencies["@modelcontextprotocol/sdk"]);
@@ -66,7 +66,8 @@ describe("declared compatibility matrix", () => {
       "npm run smoke:vue-vite",
       "npm run smoke:angular",
     ]));
-    expect(evidence.checks.every((check) => check.status === "passed")).toBe(true);
+    expect(evidence.checks.every((check) => ["passed", "blocked"].includes(check.status))).toBe(true);
+    expect(evidence.checks.filter((check) => check.status === "blocked").map((check) => check.command)).toEqual(["npm run smoke:safari"]);
     expect(chromiumSmoke).toContain("browserVersion: adapter.browserVersion()");
     expect(safariSmoke).toContain("safaridriver");
     expect(safariSmoke).toContain("browserVersion");

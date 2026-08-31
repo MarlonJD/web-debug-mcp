@@ -10,18 +10,42 @@ import { ArtifactStore, createServer } from "../src/index.js";
 import { enforceSessionArtifactPolicy, MAX_SESSION_SCREENSHOTS } from "../src/core/artifact-store.js";
 import type { ProcessRegistry } from "../src/core/process-registry.js";
 import type { SessionManager } from "../src/core/session-manager.js";
+import { CAPTURE_ARTIFACT } from "../src/core/session-evidence.js";
+import { chromiumRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
 
 describe("MCP screenshot resource registration", () => {
   it("returns and reads a non-enumerable opaque screenshot resource", async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-resource-test-"));
     const screenshotPath = join(artifactDir, "capture.png");
     await writeFile(screenshotPath, Buffer.from("resource-png"));
+    const projectCapabilities = { browserTarget: true, react: false, angular: false, vue: false, vite: false, next: false, serverRuntime: false };
+    const runtimeCapabilities = chromiumRuntimeCapabilities(true);
     const manager = {
-      capture: async () => ({
-        schemaVersion: 3,
-        browser: { screenshotPath },
-        session: { artifactDir },
-      }),
+      capture: async () => {
+        const capture: Record<PropertyKey, unknown> = {
+          schemaVersion: 4,
+          profile: "full",
+          capturedAt: "2026-08-30T00:00:00.000Z",
+          cursor: "00000000-0000-4000-8000-000000000003",
+          session: { id: "00000000-0000-4000-8000-000000000001", url: "http://127.0.0.1:4173/", status: "ready", target: null, projectCapabilities, runtimeCapabilities },
+          project: { frameworks: ["vanilla"], confidence: "high", ambiguous: false, projectCapabilities },
+          summary: {
+            title: "Fixture", viewport: null, bodyText: "Fixture", domElements: 0,
+            console: { total: 0, errors: 0, warnings: 0, latestErrors: [] },
+            network: { total: 0, failed: 0, pending: 0, latestFailures: [] },
+            debugger: { paused: false, reason: null, callFrames: 0, breakpoints: 0 },
+            runtimes: { react: "not-detected", angular: "not-detected", vue: "not-detected", next: "not-detected", vite: "not-detected", accessibility: "present" },
+            replay: { frames: 0, truncated: false, oldestIndex: null, newestIndex: null },
+            observations: null,
+          },
+          redaction: { applied: true, policy: "default-sensitive-fields" },
+          warnings: [],
+          truncation: { applied: false, omittedSurfaces: [] },
+          details: { screenshot: { status: "captured" } },
+        };
+        capture[CAPTURE_ARTIFACT] = { path: screenshotPath, artifactDir };
+        return capture;
+      },
     } as unknown as SessionManager;
     const requestAccounting: string[] = [];
     let failEndRequest = false;
@@ -36,7 +60,7 @@ describe("MCP screenshot resource registration", () => {
     try {
       const result = await client.callTool({
         name: "web_issue_capture",
-        arguments: { sessionId: "00000000-0000-4000-8000-000000000001", captureScreenshot: true },
+        arguments: { sessionId: "00000000-0000-4000-8000-000000000001", view: { profile: "full" } },
       });
       expect(result.isError).not.toBe(true);
       const envelope = (result as { structuredContent?: { artifacts?: Array<{ uri: string }> } }).structuredContent;

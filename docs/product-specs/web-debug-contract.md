@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-The immutable package/plugin release is `0.5.0`. It adds locally verified Angular/Vue evidence, complete raw sensitive-field redaction for the reviewed header/key-value family, and idempotent process-registry session reconciliation without changing the 13-tool catalog.
+The immutable package/plugin release is `0.6.0`. It changes capture and capability wire contracts, adds a second qualification workflow skill, and keeps the 13-tool MCP catalog unchanged.
 
 ## User outcome
 
@@ -12,9 +12,13 @@ The MCP catalog remains 13 tools. Inputs are Zod-validated. Handler outputs use 
 
 Browser actions are carried by `web_browser_action`, not new tools: navigate, click, fill, press from a fixed key allowlist, exact select, declared checked state, hover, scroll-into-view, observable wait, and reload. Public replay never restores fill/select values.
 
-The current scenario and verification data contract is schema version 4. It removes legacy duplicate fields and alternate viewport input shapes; callers must branch on `schemaVersion` rather than infer shape from package version.
+The scenario and verification data contract is schema version 5. Environment fingerprints include project detection confidence and negotiated runtime capability states; callers must branch on `schemaVersion` rather than infer shape from package version.
 
-Issue evidence is schema version 3. `BrowserSnapshot` and `ReplayFrame` contain canonical nullable `react`, `angular`, and `vue` page-runtime fields. Angular/Vue enrichment is Chromium development-only, checks-only attempts return null fields, paused captures are explicitly stale, and Safari remains generic browser evidence.
+Authoritative issue evidence is schema version 4. Public manual capture is also schema version 4 but uses a profile wrapper: `summary` by default, explicit `full`, selected `include`, or current changed surfaces through a reusable session-bound `delta` cursor. Summary produces no screenshot; full and explicit screenshot inclusion opt into pixels, while existing auth/private-input suppression still wins. Local screenshot paths never cross the capture wire boundary. Angular/Vue enrichment remains Chromium development-only, checks-only attempts return null fields, paused captures are explicitly stale, and Safari remains generic browser evidence.
+
+Project detection schema 2 reports project kind, confidence, provenance, ambiguity, weak candidate signals, bounded declared-workspace candidates, and `projectCapabilities`. A live session summary schema 2 separately reports adapter-negotiated `runtimeCapabilities`; project dependencies never claim that Safari exposes a JavaScript debugger, semantic locator, accessibility, TLS/auth, or matrix surface.
+
+Every public tool advertises and enforces a concrete data schema. A handler result that drifts from its advertised shape becomes bounded `RESULT_SCHEMA_VIOLATION`; deep bounded runtime/upstream payloads remain JSON leaves while stable tool and capture-profile structure is explicit.
 
 ## Trust and lifecycle
 

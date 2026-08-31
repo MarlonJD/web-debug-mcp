@@ -32,7 +32,7 @@ export interface DoctorCheck {
 }
 
 export interface DoctorReport {
-  schemaVersion: 1;
+  schemaVersion: 2;
   version: string;
   ok: boolean;
   checkedAt: string;
@@ -79,7 +79,9 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   let project: ProjectDescriptor | null = null;
   try {
     project = detectProject(options.projectRoot);
-    checks.push({ id: "project", status: "pass", message: `Detected ${project.frameworks.join(", ") || "generic"} project markers.` });
+    checks.push(project.projectCapabilities.browserTarget
+      ? { id: "project", status: "pass", message: `Confirmed ${project.frameworks.join(", ")} application markers at the exact root.` }
+      : { id: "project", status: "warn", message: `The exact root is ${project.kind} with ${project.confidence} detection confidence; no framework adapter was selected.`, recovery: project.workspace.candidates.length > 0 ? "Pass --project-root for one exact reported workspace candidate." : "Pass --project-root for the exact local web application directory." });
   } catch (error) {
     checks.push({ id: "project", status: "fail", message: boundedError(error), recovery: "Pass --project-root for the exact local web application directory." });
   }
@@ -110,7 +112,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     checks.push({ id: "target-url", status: "skipped", message: "No --url was supplied; runtime target readiness was not checked." });
   }
 
-  if (project?.capabilities.vite) {
+  if (project?.projectCapabilities.vite) {
     if (!options.url || !targetReady) checks.push({ id: "vite", status: "skipped", message: "Vite readiness needs a validated reachable loopback --url." });
     else {
       try {
@@ -124,7 +126,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     }
   }
 
-  if (project?.capabilities.next) {
+  if (project?.projectCapabilities.next) {
     if (!options.url || !targetReady) checks.push({ id: "next", status: "skipped", message: "Next runtime readiness needs a validated reachable loopback --url." });
     else {
       try {
@@ -139,7 +141,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     version: PACKAGE_VERSION,
     ok: checks.every((check) => check.status !== "fail"),
     checkedAt: new Date().toISOString(),
@@ -151,7 +153,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
 
 export function doctorArgumentFailure(error: unknown): DoctorReport {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     version: PACKAGE_VERSION,
     ok: false,
     checkedAt: new Date().toISOString(),

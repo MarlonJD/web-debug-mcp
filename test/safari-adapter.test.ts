@@ -37,6 +37,7 @@ describe("Safari WebDriver adapter", () => {
       expect(target.isolated).toBe(false);
       expect(target.viewport).toEqual({ width: 1280, height: 800 });
       expect(adapter.browserVersion()).toBe("26.5.2");
+      expect(adapter.runtimeCapabilities()).toMatchObject({ transport: "safari-webdriver", console: { state: "unsupported" }, network: { state: "degraded" }, javascriptDebugger: { state: "unsupported" } });
       expect(snapshot.dom.bodyText).toContain("Payment submitted");
       expect(snapshot.console).toEqual([]);
       expect(snapshot.warnings[0]).toContain("Safari WebDriver does not expose Chromium CDP");
@@ -267,7 +268,7 @@ describe("Safari WebDriver adapter", () => {
             data: JSON.stringify({
               type: "event",
               method: "network.responseCompleted",
-              params: { response: { request: "request-1", status: 200 } },
+              params: { request: { request: "request-1", url: "http://127.0.0.1:4176/app.js", method: "GET" }, response: { status: 200 } },
             }),
           } as MessageEvent);
         });
@@ -315,6 +316,7 @@ describe("Safari WebDriver adapter", () => {
         status: 200,
         ok: true,
       }]);
+      expect(adapter.runtimeCapabilities()).toMatchObject({ console: { state: "supported" }, network: { state: "degraded", provenance: ["safari-bidi", "performance-resource-timing"] }, evaluation: { state: "degraded" } });
       await adapter.close();
     } finally {
       vi.unstubAllGlobals();

@@ -5,6 +5,7 @@ import type {
   BrowserSnapshot,
   BrowserTarget,
   BrowserEngine,
+  BrowserRuntimeCapabilities,
   Framework,
   DebuggerBreakpoint,
   DebuggerSnapshot,
@@ -66,6 +67,8 @@ export interface BrowserAdapter {
   targetIdentity?(): string | null;
   /** Browser version or transport capability metadata, when available. */
   browserVersion?(): string | null;
+  /** Capabilities negotiated from the selected live browser transport. */
+  runtimeCapabilities(): BrowserRuntimeCapabilities;
   setBreakpoint(input: {
     sourceUrl: string;
     line: number;

@@ -952,7 +952,7 @@ async function runMcp(definition, url, actionId) {
 
     const flowStartedAt = performance.now();
     for (const action of definition.actions) await manager.act(session.id, action);
-    const captured = await manager.capture(session.id, true);
+    const captured = await manager.capture(session.id, { profile: "full" });
     const verifyMs = elapsed(flowStartedAt);
     // These simple comparison scenarios are evidence captures, not fix
     // claims. Repair scenarios below are the only examples that use a
@@ -969,7 +969,7 @@ async function runMcp(definition, url, actionId) {
     if (definition.postActions) {
       const postStartedAt = performance.now();
       for (const action of definition.postActions) await manager.act(session.id, action);
-      postFlow = await manager.capture(session.id, false);
+      postFlow = await manager.capture(session.id, { profile: "include", surfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "replay"] });
       postFlow = { evidence: postFlow, elapsedMs: elapsed(postStartedAt) };
     }
 
@@ -989,7 +989,7 @@ async function runMcp(definition, url, actionId) {
       checks: verification.postFix.attempts.at(-1)?.checks ?? [],
       evidence: mcpEvidence(definition, verification, evidence, postFlow?.evidence ?? null),
       inspections: Object.keys(inspections).length > 0 ? inspections : undefined,
-      capabilities: project.capabilities,
+      capabilities: project.projectCapabilities,
       target: session.target,
     };
   } finally {
@@ -1031,19 +1031,22 @@ function baselineEvidence(definition, snapshot, consoleEntries, network, inspect
 
 function mcpEvidence(definition, verification, evidence, actionEvidence) {
   const initialEvidence = verification.evidence.baseline ?? verification.evidence.postFix ?? evidence;
-  const react = definition.id === "react-render-cause" ? (evidence.browser.react ?? initialEvidence.browser.react) : null;
-  const vite = definition.id === "react-render-cause" ? (evidence.browser.vite ?? initialEvidence.browser.vite) : null;
-  const nextRuntime = definition.id === "next-server-action" ? (actionEvidence?.browser.next ?? evidence.browser.next) : null;
+  const evidenceDetails = evidence.details ?? {};
+  const initialDetails = initialEvidence.details ?? {};
+  const actionDetails = actionEvidence?.details ?? {};
+  const react = definition.id === "react-render-cause" ? (evidenceDetails.react ?? initialDetails.react) : null;
+  const vite = definition.id === "react-render-cause" ? (evidenceDetails.vite ?? initialDetails.vite) : null;
+  const nextRuntime = definition.id === "next-server-action" ? (actionDetails.next ?? evidenceDetails.next) : null;
   const reactComponent = findComponent(react?.components ?? [], "CheckoutForm");
   const next = nextRuntime;
   const actionExecution = next?.serverActionExecutions?.find((execution) => execution.request?.method === "POST") ?? null;
   const coverage = {
-    dom: Boolean(evidence.browser.dom),
-    console: Array.isArray(evidence.browser.console),
-    network: Array.isArray(evidence.browser.network),
-    screenshot: Boolean(evidence.browser.screenshotPath ?? initialEvidence.browser.screenshotPath),
-    debuggerSnapshot: Boolean(evidence.browser.debugger ?? initialEvidence.browser.debugger),
-    replay: initialEvidence.replay.frames.length > 0,
+    dom: Boolean(evidenceDetails.dom),
+    console: Array.isArray(evidenceDetails.console),
+    network: Array.isArray(evidenceDetails.network),
+    screenshot: evidenceDetails.screenshot?.status === "captured" || initialDetails.screenshot?.status === "captured",
+    debuggerSnapshot: Boolean(evidenceDetails.debugger ?? initialDetails.debugger),
+    replay: (initialDetails.replay?.frames.length ?? 0) > 0,
     redactionPolicy: initialEvidence.redaction.applied === true,
     reactRuntime: Boolean(react?.detected),
     renderCause: Boolean(reactComponent?.renderCause),
@@ -1056,12 +1059,12 @@ function mcpEvidence(definition, verification, evidence, actionEvidence) {
 
   return {
     coverage,
-    bodyText: evidence.browser.dom.bodyText.slice(0, 500),
-    consoleErrorCount: evidence.browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length,
-    networkCount: evidence.browser.network.length,
-    replayFrames: initialEvidence.replay.frames.length,
-    replayInputSanitized: replayInputSanitized(initialEvidence.replay.frames),
-    warnings: [...new Set([...initialEvidence.browser.warnings, ...evidence.browser.warnings])],
+    bodyText: evidenceDetails.dom.bodyText.slice(0, 500),
+    consoleErrorCount: evidenceDetails.console.filter((entry) => entry.level === "error" || entry.level === "pageerror").length,
+    networkCount: evidenceDetails.network.length,
+    replayFrames: initialDetails.replay.frames.length,
+    replayInputSanitized: replayInputSanitized(initialDetails.replay.frames),
+    warnings: [...new Set([...initialEvidence.warnings, ...evidence.warnings])],
     react: react
       ? {
           commitCount: react.commitCount,

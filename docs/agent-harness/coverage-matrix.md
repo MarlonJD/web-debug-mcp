@@ -2,7 +2,7 @@
 
 Use this matrix to prove that the repository implements every applicable harness-engineering capability. A document name alone is not evidence.
 
-The checked-in `0.4.0` attested source and direct-child commits are recorded in `certification.json` and Git parent history. Those HMAC-consistent rows are historical after final `0.5.0` source changes. The native gate checks structural freshness only; no current `CERT000` is claimed until a fresh owner-key overlay is created and externally verified.
+The checked-in `0.4.0` attested source and direct-child commits are recorded in `certification.json` and Git parent history. Those HMAC-consistent rows are historical after final `0.5.0` and `0.6.0` changes. The native gate checks structural freshness only; no current `CERT000` is claimed until a fresh owner-key overlay is created and externally verified.
 
 Revalidated after the public README and GitHub repository metadata positioning update.
 

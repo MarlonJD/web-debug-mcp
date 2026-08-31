@@ -5,6 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
+| [Release Web Debug 0.6.0 and update Codex](active/complete-0-6-0-release.md) | Platform Engineering | implementing | 2026-08-31 | Promote the frozen source-next and qualification skill, run final release gates, publish npm/GitHub, and update the installed Codex plugin |
 <!-- harness:plans:active:end -->
 
 ## Completed
@@ -12,6 +13,8 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
+| [Make capture concise, typed, and runtime-aware](completed/capture-contract-and-runtime-capabilities.md) | 2026-08-31 | Added compact capture profiles, concrete tool schemas, confidence-aware detection, negotiated runtime capabilities, and focused SessionManager modules without publishing | 155 tests; typecheck/build; native/formal harness; exact 152-entry archive/fresh-prefix 13-schema handshake; Chromium/framework/local-fidelity smokes; six-scenario demo; Safari fresh live blocked after two wait timeouts |
+| [Add reviewed manual-parity qualification guidance](completed/manual-parity-qualification-skill.md) | 2026-08-31 | Added a separately routed qualification skill with candidate/reviewer gates, native-runner ownership, non-executable metadata, case-scoped evidence, digest chaining, and diagnostic-only Web Debug escalation | 31 files/149 tests; typecheck/build; native harness 572; both skill validators; plugin validator; adversarial containment/verdict tests; independent forward-tests and final adversarial review |
 | [Complete the 0.5.0 security and plugin release](completed/complete-0-5-0-release.md) | 2026-08-31 | Reviewed redaction and registry defects fixed; final npm/GitHub/Codex plugin and MCP identities converged on immutable 0.5.0 | 124 tests; typecheck/build; native/formal harness; plugin/skill validators; prod audit; Node 20/22/24 handshakes; seven live smokes; six-scenario demo; exact local/public archive; GitHub/npm/dist-tags/Codex verification |
 | [Complete the 0.4.0 release and harness migration](completed/complete-0-4-0-release.md) | 2026-08-29 | Formal harness debt cleared; immutable npm/GitHub `0.4.0` and Codex plugin published with exact local/public evidence | 106 tests; typecheck/build; native/formal harness; plugin validator; five live smokes; six-scenario demo; local/public 13-tool handshakes; release/plugin identity equality |
 | [Add bounded Angular and Vue 3 runtime evidence](completed/angular-vue-support.md) | 2026-08-30 | Source-only `0.5.0-next.0` adds bounded Angular 21 and Vue 3 Chromium runtime evidence without changing the immutable `0.4.0` release/plugin | 117 tests; typecheck/build; native harness `542` with stale-candidate certification; Angular/Vue and all existing live smokes; package dry-run |

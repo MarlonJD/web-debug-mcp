@@ -22,13 +22,17 @@ import type {
   EvidenceBundle,
   PublicReproScenario,
   VerificationResult,
+  CaptureView,
+  IssueCaptureResult,
 } from "./domain/types.js";
-import { BROWSER_PRESS_KEYS, MAX_MCP_OPERATION_MS } from "./domain/types.js";
+import { BROWSER_PRESS_KEYS, CAPTURE_SURFACES, MAX_MCP_OPERATION_MS } from "./domain/types.js";
 import { SessionManager } from "./core/session-manager.js";
 import { ProcessRegistry } from "./core/process-registry.js";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./core/version.js";
 import { ArtifactStore, type ScreenshotCandidate } from "./core/artifact-store.js";
-import { errorToolResult, successToolResult, toolOutputSchema } from "./core/mcp-response.js";
+import { errorToolResult, successToolResult, toolOutputSchemaFor } from "./core/mcp-response.js";
+import { CAPTURE_ARTIFACT, type InternalIssueCaptureResult } from "./core/session-evidence.js";
+import { toolDataSchemas } from "./domain/wire-schemas.js";
 
 export { ArtifactStore, ProcessRegistry, SessionManager };
 
@@ -134,6 +138,32 @@ const buildReferenceSchema = z.object({
 }).strict();
 
 const levelSchema = z.enum(["quick", "standard", "strict"]);
+const captureSurfaceSchema = z.enum(CAPTURE_SURFACES);
+const captureSurfacesSchema = z.array(captureSurfaceSchema).min(1).max(CAPTURE_SURFACES.length).refine(
+  (surfaces) => new Set(surfaces).size === surfaces.length,
+  { message: "Capture surfaces must be unique." },
+);
+const captureViewSchema = z.discriminatedUnion("profile", [
+  z.object({ profile: z.literal("summary") }).strict(),
+  z.object({ profile: z.literal("full") }).strict(),
+  z.object({ profile: z.literal("include"), surfaces: captureSurfacesSchema }).strict(),
+  z.object({ profile: z.literal("delta"), cursor: z.string().min(1).max(200), surfaces: captureSurfacesSchema.optional() }).strict(),
+]);
+const toolOutputSchemas = {
+  web_project_detect: toolOutputSchemaFor(toolDataSchemas.web_project_detect),
+  web_session_start: toolOutputSchemaFor(toolDataSchemas.web_session_start),
+  web_session_status: toolOutputSchemaFor(toolDataSchemas.web_session_status),
+  web_browser_action: toolOutputSchemaFor(toolDataSchemas.web_browser_action),
+  web_issue_capture: toolOutputSchemaFor(toolDataSchemas.web_issue_capture),
+  web_next_inspect: toolOutputSchemaFor(toolDataSchemas.web_next_inspect),
+  web_replay_seek: toolOutputSchemaFor(toolDataSchemas.web_replay_seek),
+  web_breakpoint_set: toolOutputSchemaFor(toolDataSchemas.web_breakpoint_set),
+  web_debug_control: toolOutputSchemaFor(toolDataSchemas.web_debug_control),
+  web_debug_evaluate: toolOutputSchemaFor(toolDataSchemas.web_debug_evaluate),
+  web_repro_record: toolOutputSchemaFor(toolDataSchemas.web_repro_record),
+  web_fix_verify: toolOutputSchemaFor(toolDataSchemas.web_fix_verify),
+  web_session_close: toolOutputSchemaFor(toolDataSchemas.web_session_close),
+} as const;
 
 const nextInspectionSchema = z.union([
   z.object({
@@ -151,12 +181,12 @@ const nextInspectionSchema = z.union([
 
 export function createServer(manager = new SessionManager(), registry?: ProcessRegistry, artifactStore = new ArtifactStore()): McpServer {
   const activeSessionCount = () => manager.list().length;
-  const respondFor = <T>(operation: () => T | Promise<T>, screenshots?: (value: T) => ScreenshotCandidate[]) => respond(operation, registry, artifactStore, activeSessionCount, screenshots);
+  const respondFor = <T>(toolName: keyof typeof toolDataSchemas, operation: () => T | Promise<T>, screenshots?: (value: T) => ScreenshotCandidate[]) => respond(operation, registry, artifactStore, activeSessionCount, toolDataSchemas[toolName], screenshots);
   const server = new McpServer(
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
       instructions:
-        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
+        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -182,13 +212,13 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
   server.registerTool(
     "web_project_detect",
     {
-      title: "Detect web project capabilities",
-      description: "Inspect known project markers and report supported browser/framework capabilities without starting a process.",
+      title: "Detect web project eligibility",
+      description: "Inspect the exact root, distinguish confirmed application markers from weak dependency candidates, and report bounded workspace candidates without starting a process or selecting a child.",
       inputSchema: z.object({ projectRoot: z.string().min(1).max(4_096).default(DEFAULT_PROJECT_ROOT) }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_project_detect,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_project_detect,
     },
-    async ({ projectRoot }) => respondFor(() => manager.detect(projectRoot)),
+    async ({ projectRoot }) => respondFor("web_project_detect", () => manager.detect(projectRoot)),
   );
 
   server.registerTool(
@@ -210,22 +240,22 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         tls: z.enum(["strict", "allow-insecure-loopback"]).default("strict"),
         authFixture: z.object({ kind: z.literal("playwrightStorageState"), path: z.string().min(1).max(2_048) }).strict().optional(),
       }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_session_start,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_session_start,
     },
-    async (input, extra) => respondFor(() => manager.start(input, requestContext(extra.signal))),
+    async (input, extra) => respondFor("web_session_start", () => manager.start(input, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_session_status",
     {
       title: "Read web debug session status",
-      description: "List active sessions or read one session summary.",
+      description: "List active sessions or read one summary with separate project eligibility and negotiated live runtime capabilities.",
       inputSchema: z.object({ sessionId: z.string().uuid().optional() }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_session_status,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_session_status,
     },
-    async ({ sessionId }) => respondFor(() => (sessionId ? manager.status(sessionId) : manager.list())),
+    async ({ sessionId }) => respondFor("web_session_status", () => (sessionId ? manager.status(sessionId) : manager.list())),
   );
 
   server.registerTool(
@@ -234,24 +264,24 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       title: "Perform bounded browser action",
       description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits.",
       inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_browser_action,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_browser_action,
     },
-    async ({ sessionId, action }, extra) => respondFor(() => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
+    async ({ sessionId, action }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_issue_capture",
     {
       title: "Capture bounded web issue evidence",
-      description: "Combine browser state, DOM summary, console, network metadata, debugger/framework evidence, computed Chromium accessibility diagnostics, replay state, and an optional screenshot into one redacted evidence bundle. Auth-seeded sessions suppress screenshots.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), captureScreenshot: z.boolean().default(true) }),
-      outputSchema: toolOutputSchema,
+      description: "Capture redacted browser evidence with a compact summary by default, or explicitly request full, selected, or cursor-based changed surfaces. Screenshots are opt-in through full/include and remain suppressed for private input or auth-seeded sessions.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), view: captureViewSchema.default({ profile: "summary" }) }).strict(),
+      outputSchema: toolOutputSchemas.web_issue_capture,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_issue_capture,
     },
-    async ({ sessionId, captureScreenshot }, extra) => respondFor(
-      () => manager.capture(sessionId, captureScreenshot, requestContext(extra.signal)),
-      (value) => screenshotCandidatesFromEvidence(value, "issue-capture"),
+    async ({ sessionId, view }, extra) => respondFor("web_issue_capture",
+      () => manager.capture(sessionId, view as CaptureView, requestContext(extra.signal)),
+      (value) => screenshotCandidatesFromCapture(value),
     ),
   );
 
@@ -261,10 +291,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       title: "Inspect Next.js runtime",
       description: "Compile one Next.js route or resolve one Server Action through the selected local Next development server.",
       inputSchema: z.object({ sessionId: z.string().uuid(), inspection: nextInspectionSchema }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_next_inspect,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_next_inspect,
     },
-    async ({ sessionId, inspection }, extra) => respondFor(() => manager.inspectNext(sessionId, inspection as NextInspection, requestContext(extra.signal))),
+    async ({ sessionId, inspection }, extra) => respondFor("web_next_inspect", () => manager.inspectNext(sessionId, inspection as NextInspection, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -273,10 +303,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       title: "Seek captured web replay frame",
       description: "Return one retained, redacted replay frame; set restore=true to replay its safely restorable actions into the browser and mutate live state.",
       inputSchema: z.object({ sessionId: z.string().uuid(), frameIndex: z.number().int().min(0).max(10_000), restore: z.boolean().default(false) }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_replay_seek,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_replay_seek,
     },
-    async ({ sessionId, frameIndex, restore }, extra) => respondFor(() => manager.seekReplay(sessionId, frameIndex, restore, requestContext(extra.signal))),
+    async ({ sessionId, frameIndex, restore }, extra) => respondFor("web_replay_seek", () => manager.seekReplay(sessionId, frameIndex, restore, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -290,10 +320,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         line: z.number().int().min(1),
         column: z.number().int().min(1).optional(),
       }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_breakpoint_set,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_breakpoint_set,
     },
-    async ({ sessionId, sourceUrl, line, column }, extra) => respondFor(() => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
+    async ({ sessionId, sourceUrl, line, column }, extra) => respondFor("web_breakpoint_set", () => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -305,10 +335,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         sessionId: z.string().uuid(),
         action: z.enum(["resume", "stepOver", "stepInto", "stepOut"]),
       }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_debug_control,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_debug_control,
     },
-    async ({ sessionId, action }, extra) => respondFor(() => manager.control(sessionId, action, requestContext(extra.signal))),
+    async ({ sessionId, action }, extra) => respondFor("web_debug_control", () => manager.control(sessionId, action, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -321,10 +351,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         expression: z.string().min(1).max(5_000),
         allowSideEffects: z.boolean().default(false),
       }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_debug_evaluate,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_debug_evaluate,
     },
-    async ({ sessionId, expression, allowSideEffects }, extra) => respondFor(() => manager.evaluate(sessionId, expression, allowSideEffects, requestContext(extra.signal))),
+    async ({ sessionId, expression, allowSideEffects }, extra) => respondFor("web_debug_evaluate", () => manager.evaluate(sessionId, expression, allowSideEffects, requestContext(extra.signal))),
   );
 
   server.registerTool(
@@ -351,11 +381,11 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
           readyCheck: scenarioCheckSchema.optional(),
         }).strict().optional(),
       }).strict(),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_repro_record,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_repro_record,
     },
     async ({ sessionId, name, url, actions, failureSignature, acceptanceChecks, regressionChecks, checkpoints, viewports, failureViewports, risks, requestedLevel, buildReference, serverStateReset }, extra) =>
-      respondFor(() => runWithProgress(extra, "baseline", (operation) => manager.recordScenario({
+      respondFor("web_repro_record", () => runWithProgress(extra, "baseline", (operation) => manager.recordScenario({
         sessionId,
         name,
         url,
@@ -384,10 +414,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         requestedLevel: levelSchema.optional(),
         buildReference: buildReferenceSchema.optional(),
       }).strict(),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_fix_verify,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_fix_verify,
     },
-    async ({ sessionId, scenarioId, requestedLevel, buildReference }, extra) => respondFor(
+    async ({ sessionId, scenarioId, requestedLevel, buildReference }, extra) => respondFor("web_fix_verify",
       () => runWithProgress(extra, "post-fix", (operation) => manager.verifyScenario({ sessionId, scenarioId, requestedLevel: requestedLevel as VerificationLevel | undefined, buildReference }, operation)),
       (value) => screenshotCandidatesFromVerification(value),
     ),
@@ -399,10 +429,10 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
       title: "Close web debug session",
       description: "Close the selected session and release any browser resources owned by it.",
       inputSchema: z.object({ sessionId: z.string().uuid(), artifactPolicy: z.enum(["retain", "delete"]).default("retain") }),
-      outputSchema: toolOutputSchema,
+      outputSchema: toolOutputSchemas.web_session_close,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_session_close,
     },
-    async ({ sessionId, artifactPolicy }) => respondFor(() => manager.close(sessionId, artifactPolicy)),
+    async ({ sessionId, artifactPolicy }) => respondFor("web_session_close", () => manager.close(sessionId, artifactPolicy)),
   );
 
   return server;
@@ -448,13 +478,14 @@ async function respond<T>(
   registry: ProcessRegistry | undefined,
   artifactStore: ArtifactStore,
   activeSessionCount: () => number,
+  dataSchema: z.ZodType,
   screenshots?: (value: T) => ScreenshotCandidate[],
 ) {
   let accounted = false;
   try {
     if (registry) { await registry.beginRequest(); accounted = true; }
     const value = await operation();
-    return await successToolResult(value, artifactStore, screenshots?.(value) ?? []);
+    return await successToolResult(value, artifactStore, screenshots?.(value) ?? [], dataSchema);
   } catch (error) {
     return errorToolResult(error);
   } finally {
@@ -468,6 +499,11 @@ function screenshotCandidatesFromEvidence(evidence: EvidenceBundle | null | unde
   const artifactDir = candidate?.session?.artifactDir;
   if (!path || !artifactDir) return [];
   return [{ path, artifactDir, name: `${name}.png` }];
+}
+
+function screenshotCandidatesFromCapture(result: IssueCaptureResult): ScreenshotCandidate[] {
+  const artifact = (result as InternalIssueCaptureResult)[CAPTURE_ARTIFACT];
+  return artifact ? [{ path: artifact.path, artifactDir: artifact.artifactDir, name: "issue-capture.png" }] : [];
 }
 
 function screenshotCandidatesFromScenario(scenario: PublicReproScenario): ScreenshotCandidate[] {

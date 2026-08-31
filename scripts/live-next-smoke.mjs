@@ -37,13 +37,14 @@ try {
   await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "#health-button" } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "[role=status]" }, property: "text", expected: "Healthy", timeoutMs: 5_000 });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "[data-testid='health-request-settled']" }, property: "text", expected: "Health request settled", timeoutMs: 5_000 });
-  const verificationEvidence = await manager.capture(session.id, true);
+  const verificationCapture = await manager.capture(session.id, { profile: "full" });
+  const verificationEvidence = verificationCapture.details;
   await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "#payment-button" } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "#server-action-status" }, property: "text", expected: "Submitted", timeoutMs: 5_000 });
-  const actionCapture = await manager.capture(session.id, false);
+  const actionCapture = await manager.capture(session.id, { profile: "include", surfaces: ["dom", "console", "network", "next", "replay"] });
   if (!verificationEvidence) throw new Error("Next evidence capture returned no evidence.");
-  const nextEvidence = verificationEvidence.browser.next;
-  const actionNextEvidence = actionCapture.browser.next;
+  const nextEvidence = verificationEvidence.next;
+  const actionNextEvidence = actionCapture.details.next;
   const routes = nextEvidence?.routes;
   const projectMetadata = nextEvidence?.projectMetadata;
   const compilationIssues = nextEvidence?.compilationIssues;
@@ -54,7 +55,7 @@ try {
   const requestInsights = actionNextEvidence?.requestInsights;
   const requestTraces = actionNextEvidence?.requestTraces;
   const assertions = {
-    flowCaptured: verificationEvidence.redaction.applied === true,
+    flowCaptured: verificationCapture.redaction.applied === true,
     nextDetected: nextEvidence?.detected === true,
     nextEndpoint: nextEvidence?.endpoint.endsWith("/_next/mcp") ?? false,
     routeHome: hasRoute(routes, "/"),
@@ -69,9 +70,9 @@ try {
     requestInsights: isRecord(requestInsights) && Array.isArray(requestInsights.requests) && requestInsights.requests.length > 0,
     requestTraces: Array.isArray(requestTraces) && requestTraces.length > 0 && requestTraces.some((trace) => Array.isArray(trace.spans) && trace.spans.length > 0 && typeof trace.durationMs === "number"),
     serverActionTraceLinked: isRecord(actionExecution?.trace) && Array.isArray(actionExecution.trace.spans) && actionExecution.trace.spans.some((span) => span.name === "POST" || span.attributes?.["http.method"] === "POST"),
-    serverRenderedText: verificationEvidence.browser.dom.bodyText.includes("Next server component ready"),
-    clientRenderedText: verificationEvidence.browser.dom.bodyText.includes("Healthy"),
-    consoleClean: verificationEvidence.browser.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
+    serverRenderedText: verificationEvidence.dom.bodyText.includes("Next server component ready"),
+    clientRenderedText: verificationEvidence.dom.bodyText.includes("Healthy"),
+    consoleClean: verificationEvidence.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
   };
   const passed = Object.values(assertions).every(Boolean);
   process.stdout.write(`${JSON.stringify({
@@ -85,8 +86,8 @@ try {
     requestTraces,
     actionNextEvidence,
     logTail,
-    bodyText: verificationEvidence.browser.dom.bodyText,
-    console: verificationEvidence.browser.console,
+    bodyText: verificationEvidence.dom.bodyText,
+    console: verificationEvidence.console,
   }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;
 } finally {

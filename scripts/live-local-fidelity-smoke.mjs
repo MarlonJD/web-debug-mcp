@@ -103,9 +103,10 @@ try {
   const session = await manager.start({ projectRoot: root, url, executablePath: browserPath, headless: true, tls: "allow-insecure-loopback", authFixture: { kind: "playwrightStorageState", path: authPath } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "#guard" }, property: "text", expected: "blocked:blocked", timeoutMs: 5_000 });
   const serviceWorkerCount = await manager.evaluate(session.id, "navigator.serviceWorker.getRegistrations().then((items) => items.length)", true);
-  const evidence = await manager.capture(session.id, true);
-  const emittedLocator = evidence.browser.accessibility?.suggestions.find((suggestion) => suggestion.uniqueAtCapture && suggestion.locator.kind === "role" && suggestion.locator.name === "Review Inspector team")?.locator;
-  if (!emittedLocator) throw new Error(`Expected one live-validated computed-name locator suggestion: ${JSON.stringify(evidence.browser.accessibility?.suggestions ?? [])}`);
+  const capture = await manager.capture(session.id, { profile: "full" });
+  const evidence = capture.details;
+  const emittedLocator = evidence.accessibility?.suggestions.find((suggestion) => suggestion.uniqueAtCapture && suggestion.locator.kind === "role" && suggestion.locator.name === "Review Inspector team")?.locator;
+  if (!emittedLocator) throw new Error(`Expected one live-validated computed-name locator suggestion: ${JSON.stringify(evidence.accessibility?.suggestions ?? [])}`);
   await manager.act(session.id, { kind: "click", locator: emittedLocator });
   const emittedLocatorRoundTrip = new URL(manager.status(session.id).url).pathname === "/lead-inspector";
   await manager.act(session.id, { kind: "navigate", url });
@@ -138,13 +139,13 @@ try {
   });
   fixed = true;
   const verification = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id, buildReference: { source: "caller", value: "local-fidelity-fixed" } });
-  const axNodes = evidence.browser.accessibility?.nodes ?? [];
+  const axNodes = evidence.accessibility?.nodes ?? [];
   const computedName = axNodes.some((node) => node.role === "button" && node.name === "Review Inspector team");
   const implicitStatus = axNodes.some((node) => node.role === "status" && node.role !== "region");
   const originGuard = leakRequests === 0 && leakUpgrades === 0 && serviceWorkerCount.value === 0;
   const output = {
     passed: strictRejected && redirectRejected && session.authFixture === "seeded-disposable" && session.tls === "allow-insecure-loopback"
-      && evidence.browser.screenshotPath === null && evidence.browser.accessibility !== null && computedName && implicitStatus
+      && evidence.screenshot?.status === "suppressed" && evidence.accessibility !== null && computedName && implicitStatus
       && emittedLocatorRoundTrip && popupRejected && originGuard && scenario.baseline.status === "reproduced" && Boolean(scenario.baseline.evidence)
       && verification.outcome === "verified" && Boolean(verification.evidence.postFix),
     assertions: {
@@ -152,8 +153,8 @@ try {
       redirectRejected,
       seededMode: session.authFixture === "seeded-disposable",
       tlsMode: session.tls === "allow-insecure-loopback",
-      screenshotSuppressed: evidence.browser.screenshotPath === null,
-      accessibility: Boolean(evidence.browser.accessibility),
+      screenshotSuppressed: evidence.screenshot?.status === "suppressed",
+      accessibility: Boolean(evidence.accessibility),
       computedName,
       implicitStatus,
       emittedLocatorRoundTrip,
@@ -165,7 +166,7 @@ try {
       matrixVerification: verification.outcome === "verified",
       matrixVerificationEvidence: Boolean(verification.evidence.postFix),
     },
-    warnings: evidence.browser.warnings,
+    warnings: capture.warnings,
   };
   process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
   await manager.closeAll();

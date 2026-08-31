@@ -24,6 +24,7 @@ describe("doctor CLI contract", () => {
       browser: "chromium",
       executablePath: process.execPath,
     });
+    expect(report.schemaVersion).toBe(2);
     expect(report.ok).toBe(true);
     expect(report.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "node", status: "pass" }),
@@ -31,6 +32,13 @@ describe("doctor CLI contract", () => {
       expect.objectContaining({ id: "browser", status: "warn" }),
       expect.objectContaining({ id: "target-url", status: "skipped" }),
     ]));
+  });
+
+  it("warns instead of promoting fixture-only root dependencies to application readiness", async () => {
+    const report = await runDoctor({ projectRoot: ".", browser: "chromium", executablePath: process.execPath });
+    expect(report.ok).toBe(true);
+    expect(report.project).toMatchObject({ kind: "library", confidence: "low", frameworks: [], projectCapabilities: { browserTarget: false } });
+    expect(report.checks).toContainEqual(expect.objectContaining({ id: "project", status: "warn", message: expect.stringContaining("no framework adapter") }));
   });
 
   it("documents the CLI and warns when Safari BiDi lacks a WebSocket runtime", async () => {

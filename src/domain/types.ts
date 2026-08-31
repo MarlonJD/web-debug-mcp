@@ -86,12 +86,7 @@ export interface ViewportSize {
 }
 
 export interface ProjectCapabilities {
-  browser: boolean;
-  javascriptDebugger: boolean;
-  console: boolean;
-  network: boolean;
-  dom: boolean;
-  screenshots: boolean;
+  browserTarget: boolean;
   react: boolean;
   angular: boolean;
   vue: boolean;
@@ -100,13 +95,86 @@ export interface ProjectCapabilities {
   serverRuntime: boolean;
 }
 
+export type DetectionConfidence = "high" | "medium" | "low" | "none";
+export type DetectionSignalSource = "config" | "entry" | "script" | "dependency" | "devDependency" | "peerDependency";
+
+export interface DetectionSignal {
+  source: DetectionSignalSource;
+  value: string;
+}
+
+export interface FrameworkDetection {
+  framework: Framework;
+  confidence: Exclude<DetectionConfidence, "none">;
+  selected: boolean;
+  provenance: DetectionSignal[];
+}
+
+export interface WorkspaceCandidate {
+  projectRoot: string;
+  frameworks: Framework[];
+  confidence: DetectionConfidence;
+  ambiguous: boolean;
+  markers: string[];
+}
+
+export interface WorkspaceDiscovery {
+  declared: boolean;
+  candidates: WorkspaceCandidate[];
+  truncated: boolean;
+  unsupportedPatterns: string[];
+}
+
 export interface ProjectDescriptor {
+  schemaVersion: 2;
   projectRoot: string;
   packageManager: "npm" | "pnpm" | "yarn" | "bun" | null;
+  kind: "application" | "workspace" | "library" | "unknown";
   frameworks: Framework[];
   markers: string[];
-  capabilities: ProjectCapabilities;
+  confidence: DetectionConfidence;
+  ambiguous: boolean;
+  frameworkDetections: FrameworkDetection[];
+  workspace: WorkspaceDiscovery;
+  projectCapabilities: ProjectCapabilities;
   warnings: string[];
+}
+
+export type RuntimeCapabilityState = "supported" | "degraded" | "unsupported";
+export type RuntimeCapabilityProvenance =
+  | "playwright"
+  | "chromium-cdp"
+  | "safari-webdriver"
+  | "safari-bidi"
+  | "performance-resource-timing"
+  | "session-policy";
+
+export interface RuntimeCapability {
+  state: RuntimeCapabilityState;
+  provenance: RuntimeCapabilityProvenance[];
+  reason?: string;
+}
+
+export interface BrowserRuntimeCapabilities {
+  schemaVersion: 1;
+  browser: BrowserEngine;
+  transport: "chromium-launch" | "chromium-cdp-attach" | "safari-webdriver";
+  actions: RuntimeCapability;
+  locators: {
+    css: RuntimeCapability;
+    semantic: RuntimeCapability;
+  };
+  dom: RuntimeCapability;
+  console: RuntimeCapability;
+  network: RuntimeCapability;
+  screenshots: RuntimeCapability;
+  javascriptDebugger: RuntimeCapability;
+  evaluation: RuntimeCapability;
+  accessibility: RuntimeCapability;
+  pageRuntimeEnrichment: RuntimeCapability;
+  viewportMatrix: RuntimeCapability;
+  tlsBypass: RuntimeCapability;
+  authSeeding: RuntimeCapability;
 }
 
 export interface BrowserTarget {
@@ -133,6 +201,7 @@ export interface BrowserTarget {
 }
 
 export interface DebugSessionSummary {
+  schemaVersion: 2;
   id: string;
   projectRoot: string;
   url: string;
@@ -140,7 +209,8 @@ export interface DebugSessionSummary {
   createdAt: string;
   artifactDir: string;
   target: BrowserTarget | null;
-  capabilities: ProjectCapabilities;
+  projectCapabilities: ProjectCapabilities;
+  runtimeCapabilities: BrowserRuntimeCapabilities | null;
   warnings: string[];
   /** Public mode metadata; paths and parsed auth values stay private. */
   tls?: "strict" | "allow-insecure-loopback";
@@ -546,7 +616,7 @@ export interface BrowserObservations {
 }
 
 export interface EvidenceBundle {
-  schemaVersion: 3;
+  schemaVersion: 4;
   attemptId?: string;
   phase?: "baseline" | "post-fix" | "manual";
   capturedAt: string;
@@ -559,6 +629,112 @@ export interface EvidenceBundle {
     policy: "default-sensitive-fields";
   };
   truncation?: { optional?: boolean };
+}
+
+export const CAPTURE_SURFACES = [
+  "dom",
+  "console",
+  "network",
+  "debugger",
+  "react",
+  "angular",
+  "vue",
+  "next",
+  "vite",
+  "accessibility",
+  "replay",
+  "screenshot",
+] as const;
+export type CaptureSurface = typeof CAPTURE_SURFACES[number];
+
+export type CaptureView =
+  | { profile: "summary" }
+  | { profile: "full" }
+  | { profile: "include"; surfaces: CaptureSurface[] }
+  | { profile: "delta"; cursor: string; surfaces?: CaptureSurface[] };
+
+export interface CaptureSummary {
+  title: string;
+  viewport: ViewportSize | null;
+  bodyText: string;
+  domElements: number;
+  console: {
+    total: number;
+    errors: number;
+    warnings: number;
+    latestErrors: ConsoleEntry[];
+  };
+  network: {
+    total: number;
+    failed: number;
+    pending: number;
+    latestFailures: NetworkEntry[];
+  };
+  debugger: {
+    paused: boolean;
+    reason: string | null;
+    callFrames: number;
+    breakpoints: number;
+  };
+  runtimes: Record<"react" | "angular" | "vue" | "next" | "vite" | "accessibility", "present" | "not-detected" | "unavailable">;
+  replay: {
+    frames: number;
+    truncated: boolean;
+    oldestIndex: number | null;
+    newestIndex: number | null;
+  };
+  observations: BrowserObservations | null;
+}
+
+export interface CaptureDetails {
+  dom?: DomSnapshot;
+  console?: ConsoleEntry[];
+  network?: NetworkEntry[];
+  debugger?: DebuggerSnapshot;
+  react?: ReactSnapshot | null;
+  angular?: AngularSnapshot | null;
+  vue?: VueSnapshot | null;
+  next?: NextSnapshot | null;
+  vite?: ViteSnapshot | null;
+  accessibility?: AccessibilityDiagnostics | null;
+  replay?: ReplayTimeline;
+  screenshot?: { status: "captured" | "suppressed" | "unavailable" };
+}
+
+export interface IssueCaptureResult {
+  schemaVersion: 4;
+  profile: "summary" | "full" | "include" | "delta";
+  capturedAt: string;
+  cursor: string;
+  session: {
+    id: string;
+    url: string;
+    status: SessionStatus;
+    target: Pick<BrowserTarget, "browser" | "remote" | "viewport" | "isolated" | "mode"> | null;
+    projectCapabilities: ProjectCapabilities;
+    runtimeCapabilities: BrowserRuntimeCapabilities | null;
+  };
+  project: {
+    frameworks: Framework[];
+    confidence: DetectionConfidence;
+    ambiguous: boolean;
+    projectCapabilities: ProjectCapabilities;
+  };
+  summary: CaptureSummary;
+  redaction: {
+    applied: true;
+    policy: "default-sensitive-fields";
+  };
+  warnings: string[];
+  truncation: {
+    applied: boolean;
+    omittedSurfaces: CaptureSurface[];
+  };
+  includedSurfaces?: CaptureSurface[];
+  fromCursor?: string;
+  changedSurfaces?: CaptureSurface[];
+  unchangedSurfaces?: CaptureSurface[];
+  details?: CaptureDetails;
 }
 
 export type ScenarioCheck =
@@ -670,9 +846,12 @@ export interface BuildReference {
 }
 
 export interface EnvironmentFingerprint {
-  schemaVersion: 2;
+  schemaVersion: 3;
   projectRoot: string;
   descriptor: string;
+  projectFrameworks: Framework[];
+  projectConfidence: DetectionConfidence;
+  projectAmbiguous: boolean;
   origin: string;
   path: string;
   browser: BrowserEngine | null;
@@ -684,6 +863,8 @@ export interface EnvironmentFingerprint {
   viewport: ViewportSize | null;
   tls: "strict" | "allow-insecure-loopback";
   authFixture: "seeded-disposable" | "none";
+  runtimeTransport: BrowserRuntimeCapabilities["transport"] | null;
+  runtimeCapabilityStates: Record<string, RuntimeCapabilityState>;
   nodeVersion: string;
   platform: string;
   architecture: string;
@@ -704,7 +885,7 @@ export interface ScenarioBaseline {
 }
 
 export interface PublicReproScenario {
-  schemaVersion: 4;
+  schemaVersion: 5;
   id: string;
   sessionId: string;
   name: string;
@@ -814,7 +995,7 @@ export interface RateSummary {
 }
 
 export interface VerificationResult {
-  schemaVersion: 4;
+  schemaVersion: 5;
   outcome: VerificationOutcome;
   level: VerificationLevel;
   requestedLevel: VerificationLevel;

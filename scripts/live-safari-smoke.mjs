@@ -31,22 +31,23 @@ try {
   await manager.evaluate(session.id, "console.info('Safari BiDi smoke event')", true);
   await manager.act(session.id, { kind: "click", locator: { kind: "css", value: "#submit" } });
   await manager.act(session.id, { kind: "wait", locator: { kind: "css", value: "#status" }, property: "text", expected: "Payment submitted", timeoutMs: 5_000 });
-  const verificationEvidence = await manager.capture(session.id, true);
-  if (!verificationEvidence) {
+  const verificationCapture = await manager.capture(session.id, { profile: "full" });
+  if (!verificationCapture) {
     throw new Error("Safari WebDriver evidence capture returned no evidence.");
   }
-  const evidence = verificationEvidence.browser;
+  const evidence = verificationCapture.details;
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
-    flowCaptured: verificationEvidence.redaction.applied === true,
+    flowCaptured: verificationCapture.redaction.applied === true,
     safariTarget: session.target?.browser === "safari",
-    profileBoundary: session.target?.isolated === false && evidence.warnings.some((warning) => warning.includes("profile isolation")),
+    runtimeNegotiated: session.runtimeCapabilities?.transport === "safari-webdriver" && session.runtimeCapabilities.javascriptDebugger.state === "unsupported" && session.runtimeCapabilities.locators.semantic.state === "unsupported",
+    profileBoundary: session.target?.isolated === false && verificationCapture.warnings.some((warning) => warning.includes("profile isolation")),
     domEvidence: evidence.dom.bodyText.includes("Payment submitted"),
-    screenshot: Boolean(evidence.screenshotPath),
+    screenshot: evidence.screenshot?.status === "captured",
     networkEvidence: evidence.network.length > 0,
-    networkSourceDisclosed: !usesPerformanceNetwork || evidence.warnings.some((warning) => warning.includes("Performance Resource Timing")),
+    networkSourceDisclosed: !usesPerformanceNetwork || verificationCapture.warnings.some((warning) => warning.includes("Performance Resource Timing")),
     bidiConsoleEvidence: evidence.console.some((entry) => entry.text.includes("Safari BiDi smoke event")),
-    debuggerUnavailableIsExplicit: evidence.debugger.paused === false && evidence.warnings.some((warning) => warning.includes("JavaScript debugger")),
+    debuggerUnavailableIsExplicit: evidence.debugger.paused === false && verificationCapture.warnings.some((warning) => warning.includes("JavaScript debugger")),
   };
   const passed = Object.values(assertions).every(Boolean);
   const status = passed ? "verified" : assertions.bidiConsoleEvidence ? "failed" : "blocked";
@@ -58,13 +59,13 @@ try {
     assertions,
     browserVersion,
     target: session.target,
-    warnings: evidence.warnings,
+    warnings: verificationCapture.warnings,
     networkCount: evidence.network.length,
     networkSample: evidence.network.slice(0, 5),
     networkSource: usesPerformanceNetwork ? "performance-resource-timing" : "webdriver-bidi",
     consoleCount: evidence.console.length,
     bodyText: evidence.dom.bodyText,
-    screenshotPath: evidence.screenshotPath,
+    screenshot: evidence.screenshot,
   }, null, 2)}\n`);
   if (!passed) process.exitCode = status === "blocked" ? 2 : 1;
 } catch (error) {

@@ -9,27 +9,155 @@ import { describe, expect, it } from "vitest";
 import { createServer } from "../src/index.js";
 import { ProcessRegistry } from "../src/core/process-registry.js";
 import type { SessionManager } from "../src/core/session-manager.js";
+import { chromiumRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
 
 const SESSION_ID = "00000000-0000-4000-8000-000000000001";
 const SCENARIO_ID = "00000000-0000-4000-8000-000000000002";
+const PROJECT_CAPABILITIES = { browserTarget: true, react: false, angular: false, vue: false, vite: false, next: false, serverRuntime: false };
+const RUNTIME_CAPABILITIES = chromiumRuntimeCapabilities(true);
+const TARGET = { browser: "chromium" as const, remote: false, url: "http://127.0.0.1:4173/", title: "Fixture", viewport: { width: 1_440, height: 900 }, isolated: false, mode: "attach" as const, targetId: "route-tab" };
+const CAPTURE_TARGET = { browser: TARGET.browser, remote: TARGET.remote, viewport: TARGET.viewport, isolated: TARGET.isolated, mode: TARGET.mode };
+const PROJECT = {
+  schemaVersion: 2 as const,
+  projectRoot: "/project",
+  packageManager: null,
+  kind: "application" as const,
+  frameworks: ["vanilla" as const],
+  markers: ["index.html"],
+  confidence: "high" as const,
+  ambiguous: false,
+  frameworkDetections: [{ framework: "vanilla" as const, confidence: "high" as const, selected: true, provenance: [{ source: "entry" as const, value: "index.html" }] }],
+  workspace: { declared: false, candidates: [], truncated: false, unsupportedPatterns: [] },
+  projectCapabilities: PROJECT_CAPABILITIES,
+  warnings: [],
+};
+
+function sessionResult(id = SESSION_ID, status: "ready" | "closed" = "ready") {
+  return {
+    schemaVersion: 2 as const,
+    id,
+    projectRoot: "/project",
+    url: "http://127.0.0.1:4173/",
+    status,
+    createdAt: "2026-08-30T00:00:00.000Z",
+    artifactDir: "/tmp/web-debug-route",
+    target: status === "closed" ? null : TARGET,
+    projectCapabilities: PROJECT_CAPABILITIES,
+    runtimeCapabilities: RUNTIME_CAPABILITIES,
+    warnings: [],
+    tls: "strict" as const,
+    authFixture: "none" as const,
+    artifactState: "retained" as const,
+  };
+}
+
+const REPLAY_FRAME = {
+  index: 0,
+  attemptId: null,
+  capturedAt: "2026-08-30T00:00:00.000Z",
+  trigger: "capture" as const,
+  action: null,
+  url: TARGET.url,
+  title: TARGET.title,
+  dom: { bodyText: "Fixture", elements: [] },
+  console: [],
+  network: [],
+  debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
+  react: null,
+  angular: null,
+  vue: null,
+};
+const FINGERPRINT = {
+  schemaVersion: 3 as const,
+  projectRoot: "/project",
+  descriptor: "vanilla",
+  projectFrameworks: ["vanilla" as const],
+  projectConfidence: "high" as const,
+  projectAmbiguous: false,
+  origin: "http://127.0.0.1:4173",
+  path: "/",
+  browser: "chromium" as const,
+  browserVersion: "route",
+  adapterMode: "attach" as const,
+  targetId: "route-tab",
+  remote: false,
+  isolated: false,
+  viewport: TARGET.viewport,
+  tls: "strict" as const,
+  authFixture: "none" as const,
+  runtimeTransport: "chromium-cdp-attach" as const,
+  runtimeCapabilityStates: { dom: "supported" as const },
+  nodeVersion: process.version,
+  platform: process.platform,
+  architecture: process.arch,
+};
+
+function scenarioResult() {
+  return {
+    schemaVersion: 5 as const,
+    id: SCENARIO_ID,
+    sessionId: SESSION_ID,
+    name: "route test",
+    url: TARGET.url,
+    actions: [],
+    failureSignature: [],
+    acceptanceChecks: [],
+    regressionChecks: [],
+    checkpoints: [],
+    viewports: [],
+    authFixture: "none" as const,
+    tls: "strict" as const,
+    risks: {},
+    requestedLevel: "quick" as const,
+    buildReference: { source: "unavailable" },
+    environmentFingerprint: FINGERPRINT,
+    contractHash: "a".repeat(64),
+    persistence: "in-memory" as const,
+    createdAt: "2026-08-30T00:00:00.000Z",
+    baseline: { status: "reproduced" as const, level: "quick" as const, flaky: false, budget: {}, attempts: [], observedRate: {}, evidence: null, warnings: [], termination: "decisive-match" },
+  };
+}
+
+function captureResult() {
+  return {
+    schemaVersion: 4 as const,
+    profile: "summary" as const,
+    capturedAt: "2026-08-30T00:00:00.000Z",
+    cursor: "00000000-0000-4000-8000-000000000003",
+    session: { id: SESSION_ID, url: TARGET.url, status: "ready" as const, target: CAPTURE_TARGET, projectCapabilities: PROJECT_CAPABILITIES, runtimeCapabilities: RUNTIME_CAPABILITIES },
+    project: { frameworks: ["vanilla" as const], confidence: "high" as const, ambiguous: false, projectCapabilities: PROJECT_CAPABILITIES },
+    summary: {
+      title: "Fixture", viewport: TARGET.viewport, bodyText: "Fixture", domElements: 0,
+      console: { total: 0, errors: 0, warnings: 0, latestErrors: [] },
+      network: { total: 0, failed: 0, pending: 0, latestFailures: [] },
+      debugger: { paused: false, reason: null, callFrames: 0, breakpoints: 0 },
+      runtimes: { react: "not-detected" as const, angular: "not-detected" as const, vue: "not-detected" as const, next: "not-detected" as const, vite: "not-detected" as const, accessibility: "present" as const },
+      replay: { frames: 1, truncated: false, oldestIndex: 0, newestIndex: 0 },
+      observations: null,
+    },
+    redaction: { applied: true as const, policy: "default-sensitive-fields" as const },
+    warnings: [],
+    truncation: { applied: false, omittedSurfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "replay", "screenshot"] },
+  };
+}
 
 class RoutingManager {
   readonly calls: Array<{ method: string; args: unknown[] }> = [];
 
-  detect(...args: unknown[]) { return this.record("detect", args, { projectRoot: "/project", frameworks: ["vanilla"] }); }
-  start(...args: unknown[]) { return this.record("start", args, { id: SESSION_ID, status: "ready" }); }
+  detect(...args: unknown[]) { return this.record("detect", args, PROJECT); }
+  start(...args: unknown[]) { return this.record("start", args, sessionResult()); }
   list(...args: unknown[]) { return this.record("list", args, []); }
-  status(...args: unknown[]) { return this.record("status", args, { id: SESSION_ID, status: "ready" }); }
+  status(...args: unknown[]) { return this.record("status", args, sessionResult()); }
   act(...args: unknown[]) { return this.record("act", args, { kind: "press", url: "http://127.0.0.1:4173/", title: "Fixture" }); }
-  capture(...args: unknown[]) { return this.record("capture", args, { schemaVersion: 3, browser: { screenshotPath: null }, session: { artifactDir: "/tmp/unused" } }); }
-  inspectNext(...args: unknown[]) { return this.record("inspectNext", args, { detected: true, kind: "compileRoute", result: null, warnings: [] }); }
-  seekReplay(...args: unknown[]) { return this.record("seekReplay", args, { sessionId: SESSION_ID, restored: false }); }
+  capture(...args: unknown[]) { return this.record("capture", args, captureResult()); }
+  inspectNext(...args: unknown[]) { return this.record("inspectNext", args, { detected: true, endpoint: "http://127.0.0.1:4173/_next", kind: "compileRoute", result: null, warnings: [] }); }
+  seekReplay(...args: unknown[]) { return this.record("seekReplay", args, { sessionId: SESSION_ID, frame: REPLAY_FRAME, restored: false, availableFrames: 1, oldestFrameIndex: 0, newestFrameIndex: 0 }); }
   setBreakpoint(...args: unknown[]) { return this.record("setBreakpoint", args, { id: "bp", sourceUrl: "app.js", line: 1, column: null }); }
   control(...args: unknown[]) { return this.record("control", args, { paused: false, reason: null, callFrames: [], breakpoints: [] }); }
   evaluate(...args: unknown[]) { return this.record("evaluate", args, { value: 2, type: "number", description: null }); }
-  recordScenario(...args: unknown[]) { return this.record("recordScenario", args, { id: SCENARIO_ID, baseline: { evidence: null } }); }
-  verifyScenario(...args: unknown[]) { return this.record("verifyScenario", args, { outcome: "verified", evidence: { baseline: null, postFix: null } }); }
-  close(...args: unknown[]) { return this.record("close", args, { id: SESSION_ID, status: "closed" }); }
+  recordScenario(...args: unknown[]) { return this.record("recordScenario", args, scenarioResult()); }
+  verifyScenario(...args: unknown[]) { return this.record("verifyScenario", args, { schemaVersion: 5, outcome: "verified", level: "quick", requestedLevel: "quick", escalations: [], flaky: false, scenario: scenarioResult(), baseline: {}, postFix: {}, observedRates: {}, budget: {}, cleanup: {}, evidence: { baseline: null, postFix: null }, environmentFingerprint: FINGERPRINT, contractHash: "a".repeat(64), buildReference: {}, isolation: {}, persistence: "in-memory", warnings: [], termination: "all-required-passes", truncation: {} }); }
+  close(...args: unknown[]) { return this.record("close", args, sessionResult(SESSION_ID, "closed")); }
 
   private record(method: string, args: unknown[], result: unknown) {
     this.calls.push({ method, args });
@@ -38,13 +166,13 @@ class RoutingManager {
 }
 
 class LifecycleManager {
-  private readonly active = new Map<string, { id: string; status: "ready" }>();
-  private readonly closed = new Map<string, { id: string; status: "closed"; warnings: string[] }>();
+  private readonly active = new Map<string, ReturnType<typeof sessionResult>>();
+  private readonly closed = new Map<string, ReturnType<typeof sessionResult>>();
   private nextId = 1;
 
   start() {
     const suffix = String(this.nextId++).padStart(12, "0");
-    const session = { id: `00000000-0000-4000-8000-${suffix}`, status: "ready" as const };
+    const session = sessionResult(`00000000-0000-4000-8000-${suffix}`);
     this.active.set(session.id, session);
     return session;
   }
@@ -55,7 +183,7 @@ class LifecycleManager {
     const existing = this.active.get(sessionId);
     if (existing) {
       this.active.delete(sessionId);
-      const closed = { id: sessionId, status: "closed" as const, warnings: [] };
+      const closed = sessionResult(sessionId, "closed");
       this.closed.set(sessionId, closed);
       return closed;
     }
@@ -108,7 +236,7 @@ describe("all public MCP handler routes", () => {
       const start = manager.calls.find((call) => call.method === "start")?.args[0] as Record<string, unknown>;
       expect(start).toMatchObject({ browser: "chromium", headless: true, allowRemote: false, tls: "strict" });
       const capture = manager.calls.find((call) => call.method === "capture")?.args;
-      expect(capture?.[1]).toBe(true);
+      expect(capture?.[1]).toEqual({ profile: "summary" });
       const replay = manager.calls.find((call) => call.method === "seekReplay")?.args;
       expect(replay?.[2]).toBe(false);
       const evaluate = manager.calls.find((call) => call.method === "evaluate")?.args;
@@ -136,6 +264,22 @@ describe("all public MCP handler routes", () => {
       expect(result.isError).toBe(true);
       expect((result as { structuredContent?: { error?: { code?: string } } }).structuredContent?.error?.code).toBe("RESULT_LIMIT_EXCEEDED");
       expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(8 * 1024);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it("rejects a handler result that drifts from its advertised tool-specific schema", async () => {
+    const manager = { detect: () => ({ projectRoot: "/project", frameworks: ["vanilla"] }) } as unknown as SessionManager;
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager);
+    const client = new Client({ name: "routing-schema-drift-test", version: "1.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const result = await client.callTool({ name: "web_project_detect", arguments: { projectRoot: "/project" } });
+      expect(result.isError).toBe(true);
+      expect((result as { structuredContent?: { error?: { code?: string } } }).structuredContent?.error?.code).toBe("RESULT_SCHEMA_VIOLATION");
     } finally {
       await client.close();
       await server.close();

@@ -2,26 +2,28 @@
 
 ## Evidence bundle
 
-Every tool advertises one output schema and, after input validation reaches its handler, returns `{ ok, data, error, artifacts, warnings }` under MCP `structuredContent`. `data` is authoritative; text content is a bounded preview. Requests rejected earlier by the MCP SDK use its protocol-validation error shape without tool `structuredContent`. Expected handler failures use `ok: false`, `isError: true`, a stable code, and no partial success data.
+Every tool advertises and enforces a concrete tool-specific output data schema and, after input validation reaches its handler, returns `{ ok, data, error, artifacts, warnings }` under MCP `structuredContent`. `data` is authoritative; text content is a bounded preview. Requests rejected earlier by the MCP SDK use its protocol-validation error shape without tool `structuredContent`. Expected handler failures use `ok: false`, `isError: true`, a stable code, and no partial success data; handler/schema drift is `RESULT_SCHEMA_VIOLATION`.
 
-`web_issue_capture` returns a versioned evidence bundle under `data` with:
+`web_issue_capture` returns capture schema 4 under `data`. Its default summary is capped at 16 KiB and produces no pixels; explicit full, selected include, and cursor-based delta profiles expose bounded detail. The result carries:
 
-- project capabilities and warnings;
-- session ID, target URL, isolation state, and artifact directory;
+- confirmed project capabilities separately from negotiated live runtime capabilities;
+- session ID, target URL, and isolation state without the private artifact directory;
 - bounded DOM summary and page text;
 - bounded console and network metadata, with Safari network provenance disclosed as BiDi or Performance Resource Timing;
-- screenshot path when capture succeeds plus an opaque `web-debug://artifact/...` resource; small pixels may also be inline;
+- screenshot status when explicitly requested plus an opaque `web-debug://artifact/...` resource; local screenshot paths never enter capture data and small pixels may also be inline;
 - debugger pause reason, call frames, scopes, and redacted locals;
-- evidence `schemaVersion: 3` and nullable React, Angular, and Vue page-runtime snapshots; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
+- authoritative evidence `schemaVersion: 4` and nullable React, Angular, and Vue page-runtime snapshots; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
 - explicit redaction policy and truncation warnings.
 - a bounded `replay` timeline whose fill/select actions are sanitised and whose frames are inspectable or safely restorable through `web_replay_seek`.
 - verification attempt frames are capture-only, carry `attemptId`, and are reset per attempt; ordinary manual action frames retain their existing restore behavior.
 - actions and checks carry exact CSS/role/text/label/test-id locators; live semantic values come from fresh `probe` observations rather than DOM summaries.
 - computed Chromium accessibility diagnostics are bounded and suggestions report `matchCount` plus `uniqueAtCapture` only. Named checkpoints and viewport matrices are nested lightweight summaries; auth-seeded captures disclose screenshot suppression.
 
-Adaptive verification returns a versioned scenario/result contract with separate `failureSignature`, `acceptanceChecks`, and `regressionChecks`. Outcomes are exactly `verified`, `failed`, or `inconclusive`; the result carries canonical `level`/`requestedLevel` fields, total phase budgets, `escalations`, baseline and post-fix attempt summaries, decisive rates, environment fingerprint, sanitized contract hash, untrusted build references, reset/isolation facts, deferred five-second cleanup status, and bounded representative evidence under `evidence`. Required URL/DOM/console checks expose `pass`, `fail`, or `unavailable` together with `fresh`/`stale`/`unknown` freshness and provenance. No result contains raw fill/select values or a root-level legacy `passed`/`checks` field. Canonical data, preview, artifact blocks, and the complete MCP result are capped; overflow is an error rather than a truncated success.
+Adaptive verification returns scenario/result schema 5 with separate `failureSignature`, `acceptanceChecks`, and `regressionChecks`. Outcomes are exactly `verified`, `failed`, or `inconclusive`; the result carries canonical `level`/`requestedLevel` fields, total phase budgets, `escalations`, baseline and post-fix attempt summaries, decisive rates, project/runtime-aware environment fingerprint, sanitized contract hash, untrusted build references, reset/isolation facts, deferred five-second cleanup status, and bounded representative evidence under `evidence`. Required URL/DOM/console checks expose `pass`, `fail`, or `unavailable` together with `fresh`/`stale`/`unknown` freshness and provenance. No result contains raw fill/select values or a root-level legacy `passed`/`checks` field. Canonical data, preview, artifact blocks, and the complete MCP result are capped; overflow is an error rather than a truncated success.
 
 The scenario/result contract is an MCP response for the owning live session, not a portable test artifact. The project intentionally has no YAML/JSON scenario export/import contract or standalone CI runner; repository-native tests own durable regression coverage.
+
+Manual-parity qualification uses a separate, non-executable schema for reviewed baselines, crosswalks, and native-runner records. Its coverage, execution, and stability axes do not alter MCP scenario outcomes. Web Debug artifact references may appear only as diagnostics and never convert a qualification result to PASS.
 
 ## Handoff labels
 

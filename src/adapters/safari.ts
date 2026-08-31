@@ -29,6 +29,7 @@ import type {
   EvaluationResult,
   SnapshotOptions,
 } from "./browser.js";
+import { safariRuntimeCapabilities } from "./runtime-capabilities.js";
 
 const DEFAULT_DRIVER_ENDPOINT = "http://127.0.0.1:4444";
 const MAX_REQUEST_MS = 5_000;
@@ -159,6 +160,7 @@ export class SafariAdapter implements BrowserAdapter {
 
   targetIdentity(): string | null { return this.sessionId; }
   browserVersion(): string | null { return this.browserVersionValue; }
+  runtimeCapabilities() { return safariRuntimeCapabilities(this.bidi !== null); }
 
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
@@ -307,7 +309,7 @@ export class SafariAdapter implements BrowserAdapter {
         const data = await this.screenshot(context);
         await writeFile(screenshotPath, Buffer.from(data, "base64"));
       } catch (error) {
-        warnings.push(`Safari screenshot unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+        warnings.push("Safari screenshot unavailable: WebDriver capture failed without exposing the local artifact path.");
       }
     }
 
@@ -426,9 +428,10 @@ export class SafariAdapter implements BrowserAdapter {
       return;
     }
     if (event.method === "network.responseCompleted") {
+      const request = params.request;
       const response = params.response;
-      if (!isRecord(response) || typeof response.request !== "string") return;
-      const entry = this.networkEntries.get(response.request);
+      if (!isRecord(request) || typeof request.request !== "string" || !isRecord(response)) return;
+      const entry = this.networkEntries.get(request.request);
       if (!entry) return;
       entry.status = typeof response.status === "number" ? response.status : null;
       entry.ok = typeof entry.status === "number" ? entry.status >= 200 && entry.status < 400 : null;

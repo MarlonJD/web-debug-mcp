@@ -39,34 +39,40 @@ try {
   await waitForHttpReady(url, vite, { label: "React/Vite fixture", timeoutMs: 15_000 });
 
   verificationSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
+  const defaultSummary = await manager.capture(verificationSession.id);
   await manager.act(verificationSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
-  const verificationEvidence = await manager.capture(verificationSession.id, true);
+  const verificationCapture = await manager.capture(verificationSession.id, { profile: "full" });
+  const verificationEvidence = verificationCapture.details;
   if (!verificationEvidence) throw new Error("React/Vite evidence capture returned no evidence.");
-  const verifiedComponent = findComponent(verificationEvidence.browser.react?.components ?? [], "CheckoutForm");
-  const viteEvidence = verificationEvidence.browser.vite;
+  const verifiedComponent = findComponent(verificationEvidence.react?.components ?? [], "CheckoutForm");
+  const viteEvidence = verificationEvidence.vite;
   const appModule = viteEvidence?.modules.find((module) => module.url.includes("/src/App.jsx"));
   const appTransform = appModule?.transform;
-  const replaySeek = await manager.seekReplay(verificationSession.id, 0);
-  const replayRestore = await manager.seekReplay(verificationSession.id, 0, true);
+  const actionFrameIndex = verificationEvidence.replay.frames.find((frame) => frame.trigger === "action")?.index;
+  if (actionFrameIndex === undefined) throw new Error("React/Vite replay did not retain the submitted action frame.");
+  const replaySeek = await manager.seekReplay(verificationSession.id, actionFrameIndex);
+  const replayRestore = await manager.seekReplay(verificationSession.id, actionFrameIndex, true);
   await manager.close(verificationSession.id);
 
   breakpointSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
   const breakpoint = await manager.setBreakpoint(breakpointSession.id, { sourceUrl, line: 17 });
   await manager.act(breakpointSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
-  const paused = await manager.capture(breakpointSession.id, true);
-  const pausedFrame = paused.browser.debugger.callFrames.find((frame) => frame.url.includes("/src/App.jsx"));
-  const pausedComponent = findComponent(paused.browser.react?.components ?? [], "CheckoutForm");
+  const pausedCapture = await manager.capture(breakpointSession.id, { profile: "full" });
+  const paused = pausedCapture.details;
+  const pausedFrame = paused.debugger.callFrames.find((frame) => frame.url.includes("/src/App.jsx"));
+  const pausedComponent = findComponent(paused.react?.components ?? [], "CheckoutForm");
   await manager.control(breakpointSession.id, "resume");
   await manager.act(breakpointSession.id, { kind: "wait", locator: { kind: "css", value: "[data-testid='react-commit-ready']" }, property: "text", expected: "Committed", timeoutMs: 5_000 });
-  const after = await manager.capture(breakpointSession.id, false);
-  const afterComponent = findComponent(after.browser.react?.components ?? [], "CheckoutForm");
-  const lastCommit = after.browser.react?.commits.at(-1);
+  const afterCapture = await manager.capture(breakpointSession.id, { profile: "include", surfaces: ["dom", "console", "react", "vite", "replay"] });
+  const after = afterCapture.details;
+  const afterComponent = findComponent(after.react?.components ?? [], "CheckoutForm");
+  const lastCommit = after.react?.commits.at(-1);
   originalApp = await readFile(appPath, "utf8");
   try {
     await writeFile(appPath, originalApp.replace("Checkout fixture", "Checkout fixture HMR"));
     appMutated = true;
     await waitForViteTransformDiff(url);
-    hmrEvidence = (await manager.capture(breakpointSession.id, false)).browser.vite;
+    hmrEvidence = (await manager.capture(breakpointSession.id, { profile: "include", surfaces: ["vite"] })).details.vite;
   } finally {
     if (appMutated && originalApp !== null) {
       await writeFile(appPath, originalApp);
@@ -75,18 +81,20 @@ try {
   }
 
   const assertions = {
-    flowCaptured: verificationEvidence.redaction.applied === true,
+    compactDefaultSummary: defaultSummary.profile === "summary" && defaultSummary.details === undefined && Buffer.byteLength(JSON.stringify(defaultSummary)) < 16 * 1024,
+    projectRuntimeSeparated: verificationSession.projectCapabilities.react === true && verificationSession.runtimeCapabilities?.javascriptDebugger.state === "supported",
+    flowCaptured: verificationCapture.redaction.applied === true,
     reactDetected: Boolean(verifiedComponent),
-    submittedText: verificationEvidence.browser.dom.bodyText.includes("Payment submitted: 249.90"),
+    submittedText: verificationEvidence.dom.bodyText.includes("Payment submitted: 249.90"),
     submittedState: componentContainsValue(afterComponent, true),
     renderCause: afterComponent?.renderCause === "state" || afterComponent?.renderCause === "props+state",
     renderCauseDetails: (afterComponent?.hookChanges ?? []).includes(1) && (afterComponent?.propChanges ?? []).length === 0,
     flamegraphDurations: typeof afterComponent?.treeDurationMs === "number" && typeof afterComponent?.selfDurationMs === "number",
-    flamegraphView: (after.browser.react?.flamegraph.length ?? 0) >= 2 && after.browser.react?.flamegraph.some((node) => node.name === "CheckoutForm" && node.depth >= 1),
-    commitProfiler: (after.browser.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
-    profilerMode: after.browser.react?.profiler.mode === "devtools-hook",
+    flamegraphView: (after.react?.flamegraph.length ?? 0) >= 2 && after.react?.flamegraph.some((node) => node.name === "CheckoutForm" && node.depth >= 1),
+    commitProfiler: (after.react?.commits.length ?? 0) >= 2 && (lastCommit?.changedComponentCount ?? 0) > 0,
+    profilerMode: after.react?.profiler.mode === "devtools-hook",
     replayTimeline: verificationEvidence.replay.frames.length >= 2,
-    replaySeek: replaySeek.frame.index === 0 && replaySeek.frame.trigger === "action",
+    replaySeek: replaySeek.frame.index === actionFrameIndex && replaySeek.frame.trigger === "action",
     replayRestore: replayRestore.restored === true,
     viteDetected: viteEvidence?.detected === true,
     viteModuleGraph: (viteEvidence?.moduleCount ?? 0) > 0,
@@ -95,11 +103,11 @@ try {
     hmrActive: viteEvidence?.hmr.active === true,
     viteTransformDiff: isRecord(hmrEvidence) && isRecord(hmrEvidence.hmr) && isRecord(hmrEvidence.hmr.lastUpdate) && isRecord(hmrEvidence.hmr.lastUpdate.transformDiff) && typeof hmrEvidence.hmr.lastUpdate.transformDiff.patch === "string" && hmrEvidence.hmr.lastUpdate.transformDiff.patch.includes("@@"),
     viteTransformProvenance: isRecord(hmrEvidence) && isRecord(hmrEvidence.hmr) && isRecord(hmrEvidence.hmr.lastUpdate) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance.before) && isRecord(hmrEvidence.hmr.lastUpdate.transformProvenance.after) && typeof hmrEvidence.hmr.lastUpdate.transformProvenance.before.codeLength === "number" && typeof hmrEvidence.hmr.lastUpdate.transformProvenance.after.codeLength === "number",
-    paused: paused.browser.debugger.paused,
+    paused: paused.debugger.paused,
     source: pausedFrame?.url.includes("/src/App.jsx") ?? false,
     sourceLine: pausedFrame?.line === 17,
-    screenshot: Boolean(paused.browser.screenshotPath),
-    consoleClean: noConsoleErrors(paused.browser.console) && noConsoleErrors(after.browser.console),
+    screenshot: pausedCapture.details.screenshot?.status === "captured",
+    consoleClean: noConsoleErrors(paused.console) && noConsoleErrors(after.console),
   };
   const passed = Object.values(assertions).every(Boolean);
   process.stdout.write(`${JSON.stringify({
@@ -107,9 +115,9 @@ try {
     assertions,
     breakpoint,
     pausedFrame,
-    pausedConsole: paused.browser.console,
-    afterConsole: after.browser.console,
-    reactAfter: after.browser.react,
+    pausedConsole: paused.console,
+    afterConsole: after.console,
+    reactAfter: after.react,
     replaySeek,
     appModule,
     hmrEvidence,

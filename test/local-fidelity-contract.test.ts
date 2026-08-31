@@ -15,6 +15,7 @@ import { aggregateAttempt, aggregateBaselineWithFailureViewports, aggregatePhase
 import { ProcessRegistry, cleanupRegistry, inspectProcessIdentity, processIdentityMatches } from "../src/core/process-registry.js";
 import { SafariAdapter } from "../src/adapters/safari.js";
 import { SessionManager } from "../src/core/session-manager.js";
+import { chromiumRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
 
 const execFile = promisify(execFileCallback);
 
@@ -110,10 +111,11 @@ describe("0.3.x local fidelity contracts", () => {
       failureViewports: ["mobile"],
     });
     expect(scenario.baseline.status).toBe("reproduced");
-    expect(scenario.baseline.evidence?.schemaVersion).toBe(3);
+    expect(scenario.baseline.evidence?.schemaVersion).toBe(4);
     expect(scenario.baseline.attempts[0]?.viewports).toHaveLength(2);
     expect(scenario.baseline.attempts[0]?.checkpoints?.length).toBeGreaterThan(0);
-    expect(scenario.environmentFingerprint.schemaVersion).toBe(2);
+    expect(scenario.environmentFingerprint.schemaVersion).toBe(3);
+    expect(scenario.baseline.evidence?.session.target?.targetId).toBe("matrix-2");
     expect(manager.status(session.id).target?.targetId).toBe(targetId);
     expect(adapters).toHaveLength(3);
     const changedScope = await manager.recordScenario({
@@ -129,10 +131,10 @@ describe("0.3.x local fidelity contracts", () => {
     });
     expect(changedScope.contractHash).not.toBe(scenario.contractHash);
     const verification = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
-    expect(verification.schemaVersion).toBe(4);
-    expect(verification.evidence.postFix?.schemaVersion).toBe(3);
-    const evidence = await manager.capture(session.id, false);
-    expect(evidence.schemaVersion).toBe(3);
+    expect(verification.schemaVersion).toBe(5);
+    expect(verification.evidence.postFix?.schemaVersion).toBe(4);
+    const evidence = await manager.capture(session.id, { profile: "summary" });
+    expect(evidence.schemaVersion).toBe(4);
     await manager.close(session.id);
   });
 
@@ -268,6 +270,7 @@ class MatrixAdapter {
   async probe(locator: any, properties: string[]): Promise<any> { const text = this.viewport.width < 500 ? "Bug" : "Healthy"; return { locator, properties, observedAt: new Date().toISOString(), provenance: "browser", count: 1, visible: true, enabled: true, checked: false, text, warnings: [] }; }
   targetIdentity(): string { return this.target.targetId; }
   browserVersion(): string { return "matrix"; }
+  runtimeCapabilities() { return chromiumRuntimeCapabilities(false); }
   async setBreakpoint(): Promise<any> { return { id: "matrix", sourceUrl: "", line: 1, column: null }; }
   async control(): Promise<any> { return { paused: false, reason: null, callFrames: [], breakpoints: [] }; }
   async evaluate(): Promise<any> { return { value: null, type: "object", description: null }; }

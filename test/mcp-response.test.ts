@@ -3,35 +3,40 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { MAX_RESULT_BYTES } from "../src/domain/types.js";
 import { ArtifactStore } from "../src/core/artifact-store.js";
 import { WebDebugError } from "../src/core/errors.js";
-import { errorToolResult, successToolResult, toolOutputSchema } from "../src/core/mcp-response.js";
+import { errorToolResult, successToolResult, toolOutputSchemaFor } from "../src/core/mcp-response.js";
+
+const jsonToolOutputSchema = toolOutputSchemaFor(z.json());
 
 describe("MCP structured response and screenshot artifacts", () => {
   it("returns one canonical structured value and rejects oversized data", async () => {
-    const result = await successToolResult({ status: "ready" }, new ArtifactStore());
-    expect(toolOutputSchema.parse(result.structuredContent)).toMatchObject({ ok: true, data: { status: "ready" }, artifacts: [] });
+    const statusSchema = z.object({ status: z.literal("ready") }).strict();
+    const result = await successToolResult({ status: "ready" }, new ArtifactStore(), [], statusSchema);
+    expect(toolOutputSchemaFor(statusSchema).parse(result.structuredContent)).toMatchObject({ ok: true, data: { status: "ready" }, artifacts: [] });
+    await expect(successToolResult({ status: "wrong" }, new ArtifactStore(), [], statusSchema)).rejects.toMatchObject({ code: "RESULT_SCHEMA_VIOLATION" });
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(MAX_RESULT_BYTES);
     await expect(successToolResult({ blob: "x".repeat(MAX_RESULT_BYTES) }, new ArtifactStore())).rejects.toMatchObject({ code: "RESULT_LIMIT_EXCEEDED" });
 
     const error = errorToolResult(new WebDebugError("TEST_ERROR", "failed", { blob: "x".repeat(MAX_RESULT_BYTES) }));
     expect(error.isError).toBe(true);
     expect(Buffer.byteLength(JSON.stringify(error))).toBeLessThanOrEqual(MAX_RESULT_BYTES);
-    expect(toolOutputSchema.parse(error.structuredContent)).toMatchObject({ ok: false, error: { code: "TEST_ERROR" } });
+    expect(jsonToolOutputSchema.parse(error.structuredContent)).toMatchObject({ ok: false, error: { code: "TEST_ERROR" } });
 
     const wideError = errorToolResult(new WebDebugError("WIDE_ERROR", "failed", Object.fromEntries(
       Array.from({ length: 18 }, (_, index) => [`field-${index}`, "x".repeat(8_000)]),
     )));
     expect(Buffer.byteLength(JSON.stringify(wideError))).toBeLessThanOrEqual(MAX_RESULT_BYTES);
-    expect(toolOutputSchema.parse(wideError.structuredContent)).toMatchObject({ ok: false, error: { code: "WIDE_ERROR" } });
+    expect(jsonToolOutputSchema.parse(wideError.structuredContent)).toMatchObject({ ok: false, error: { code: "WIDE_ERROR" } });
 
     const longIdentityError = errorToolResult(new WebDebugError("X".repeat(101), "m".repeat(501)));
-    expect(toolOutputSchema.safeParse(longIdentityError.structuredContent).success).toBe(true);
+    expect(jsonToolOutputSchema.safeParse(longIdentityError.structuredContent).success).toBe(true);
 
     const nonJsonError = errorToolResult(new WebDebugError("NON_JSON", "bad details", { count: 1n, value: Number.POSITIVE_INFINITY }));
-    expect(toolOutputSchema.safeParse(nonJsonError.structuredContent).success).toBe(true);
+    expect(jsonToolOutputSchema.safeParse(nonJsonError.structuredContent).success).toBe(true);
     expect((nonJsonError.structuredContent as { warnings?: string[] }).warnings).toContainEqual(expect.stringContaining("not JSON-serializable"));
 
     const credentialError = errorToolResult(new WebDebugError(
@@ -58,7 +63,7 @@ describe("MCP structured response and screenshot artifacts", () => {
       await writeFile(expiring, Buffer.from("expiring-png"));
       const store = new ArtifactStore(() => now);
       const result = await successToolResult({ screenshot: true }, store, [{ path: screenshot, artifactDir: root, name: "capture.png" }]);
-      const envelope = toolOutputSchema.parse(result.structuredContent);
+      const envelope = jsonToolOutputSchema.parse(result.structuredContent);
       expect(envelope.artifacts).toHaveLength(1);
       expect(envelope.artifacts[0]?.delivery).toBe("inline");
       expect(result.content.some((item) => item.type === "image")).toBe(true);
@@ -121,6 +126,8 @@ describe("MCP structured response and screenshot artifacts", () => {
       ], 0);
       expect(prepared.descriptors).toEqual([]);
       expect(prepared.warnings).toHaveLength(2);
+      expect(JSON.stringify(prepared.warnings)).not.toContain(root);
+      expect(JSON.stringify(prepared.warnings)).not.toContain(outsideRoot);
       const overLimit = await store.prepare([{ path: huge, artifactDir: root, name: "huge.png" }], 0);
       expect(overLimit.descriptors).toEqual([]);
       expect(overLimit.warnings.join(" ")).toContain("limit");
