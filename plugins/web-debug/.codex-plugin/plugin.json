@@ -1,7 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.6.0+codex.20260831002920",
-  "sourceVersion": "0.7.0-next.0",
+  "version": "0.7.0+codex.20260831150253",
   "description": "Evidence-first local web debugging and reviewed manual-parity qualification around native test workflows.",
   "author": {
     "name": "Marlon J.D.",
@@ -24,7 +23,8 @@
     "regression-testing",
     "replay",
     "manual-parity",
-    "qualification"
+    "qualification",
+    "webmcp"
   ],
   "skills": "./skills/",
   "interface": {
@@ -46,7 +46,8 @@
       "Compare deterministic test evidence with Web Debug browser evidence.",
       "Diagnose this flow with Web Debug semantic locators and named checkpoints.",
       "Turn these approved manual cases into traceable native qualification coverage.",
-      "Create a candidate manual-parity baseline from this PRD and role matrix without self-approving it."
+      "Create a candidate manual-parity baseline from this PRD and role matrix without self-approving it.",
+      "Author the smallest approved WebMCP tool and write its native hybrid contract test."
     ],
     "brandColor": "#2563EB"
   },

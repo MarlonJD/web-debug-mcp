@@ -17,10 +17,10 @@ Safari MCP failed the full transport cutover gate, but its handle-scoped tab lif
 
 ## Progress
 
-- [x] (2026-08-31) Reviewed the caller-provided Safari 27 gate and selected only tools with explicit owned handles.
-- [x] (2026-08-31) Added one focused workflow reference and concise routing instructions.
-- [x] (2026-08-31) Added deterministic skill/harness checks and updated only affected architecture/security/compatibility wording.
-- [x] (2026-08-31) Ran skill, focused, full, typecheck/build, harness, and diff gates; completed with literal `not live-run on this host` status.
+- [x] (2026-08-31 14:15Z) Reviewed the caller-provided Safari 27 gate and selected only tools with explicit owned handles.
+- [x] (2026-08-31 14:25Z) Added one focused workflow reference and concise routing instructions.
+- [x] (2026-08-31 14:30Z) Added deterministic skill/harness checks and updated only affected architecture/security/compatibility wording.
+- [x] (2026-08-31 14:37Z) Ran skill, focused, full, typecheck/build, harness, and diff gates; completed with literal `not live-run on this host` status.
 
 ## Surprises & Discoveries
 
@@ -49,6 +49,12 @@ Add `plugins/web-debug/skills/web-debug-workflow/references/safari-mcp-diagnosti
 
 Add deterministic checks that require the safe allowlist, forbid ambient/full-detail tools, preserve diagnostic-only/native-runner wording, and keep exactly 13 public Web Debug MCP tools. Update only durable text that currently implies Safari MCP is unusable rather than rejected for full cutover.
 
+## Concrete Steps
+
+1. Add one Safari MCP diagnostic reference under `web-debug-workflow` and route to it conditionally.
+2. Freeze the exact handle-scoped allowlist and forbidden ambient/full-detail tools in focused tests and the native harness.
+3. Update affected architecture/security/compatibility wording and run skill, focused, full, type/build, harness, and diff gates.
+
 ## Validation and Acceptance
 
 ```bash
@@ -67,11 +73,17 @@ Acceptance requires no core TypeScript/runtime changes, no new public MCP tool, 
 
 The implementation changes instructions, tests, and documentation only. If validation fails, correct or remove only this plan's exact edits. Do not touch existing source-next runtime changes. Future skill execution must close only its own tab and must not enumerate, switch, inspect, or close user tabs.
 
+## Artifacts and Notes
+
+- Safari 27 gate summary: [`../evidence/safari-27-mcp-feasibility-2026-08-31.json`](../evidence/safari-27-mcp-feasibility-2026-08-31.json).
+- Safe subset: owned `create_tab`, `navigate_to_url`, console/network summaries, and `close_tab`; no live execution claimed on this Safari 26 host.
+
 ## Interfaces and Dependencies
 
 Add no dependency, script, generator, adapter, transport, server, or public schema. The existing Web Debug MCP remains at exactly 13 tools. Safari MCP stays external and optional.
 
 ## Revision History
 
-- (2026-08-31) Change: Created the plan. Reason: Reuse the safe Safari MCP subset without weakening the rejected full-cutover decision.
-- (2026-08-31) Change: Completed the handle-scoped optional diagnostic route, mechanical policy checks, and bounded documentation. Reason: Preserve useful Safari MCP console/network summaries without adding a second internal transport or evidence authority.
+- (2026-08-31 14:15Z) Change: Created the plan. Reason: Reuse the safe Safari MCP subset without weakening the rejected full-cutover decision.
+- (2026-08-31 14:37Z) Change: Completed the handle-scoped optional diagnostic route, mechanical policy checks, and bounded documentation. Reason: Preserve useful Safari MCP console/network summaries without adding a second internal transport or evidence authority.
+  Semantic-Review: reviewer=Web Debug maintainers; reviewed-at=2026-08-31 14:37Z; content-sha256=dd0ddee9820ee7fc3fc687b5f842d435d59b2711f66e023ffbe187cbd8fc6d94; evidence=Reviewed the exact owned-handle allowlist, forbidden tools, separate-session labeling, diagnostic-only qualification boundary, validators, full suite, harness, and diff evidence.

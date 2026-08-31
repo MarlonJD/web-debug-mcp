@@ -21,17 +21,17 @@ The smallest complete vertical slice is one source-backed fixture capability who
 
 ## Progress
 
-- [x] (2026-08-31) Agreed the browser, skill, safety, simplicity, native-runner, and forward-only Safari 27 product boundaries.
-- [x] (2026-08-31) Created the active umbrella ExecPlan and registry entry before implementation.
-- [x] (2026-08-31) Completed the two independent `gpt-5.6-sol` plan reviews. Both returned NO-GO/repair-required; their merged packet contained no unresolved disagreement.
-- [x] (2026-08-31) Repaired this plan in the requested separate `gpt-5.6-sol` `xhigh` pass. The plan now has independent hard Chrome and Safari feasibility gates, a direct-only WebMCP contract, exact wire/version effects, and explicit rollback rules.
-- [x] (2026-08-31) Passed the real Chrome 151 WebMCP feasibility probe in both headless and visible command-owned sessions. The enabled `WebMCP` flag exposed `document.modelContext`, same-origin registration/discovery, `window === window`, and the documented JSON-string `executeTool(tool, argumentsJson, { signal })` call; the retained direct-only contract and smoke cover the safe vertical slice.
-- [x] (2026-08-31) Reviewed the caller-provided Safari 27.0 MCP feasibility artifact from the other MacBook Pro. The gate returned `failed`: 36/53 rows passed, 10 failed, and 7 were blocked; no Safari MCP runtime code was retained.
-- [x] (2026-08-31) Implemented and verified the direct-only Chromium WebMCP vertical slice: one fixture tool, bounded/redacted opaque result, visible UI plus independent read-back, non-restorable replay, screenshot suppression, fixed errors, and exact source-next schemas.
-- [x] (2026-08-31) Rejected the Safari MCP cutover because the gate failed owned-handle, schema strictness, origin quarantine, bounds, freshness, and native parity requirements. `SafariAdapter` keeps WebDriver/BiDi as its sole transport.
-- [x] (2026-08-31) Added the minimal `webmcp-tool-authoring` skill/reference, updated manual-parity routing, and added direct-action exclusion/adversarial contract tests.
-- [x] (2026-08-31) Ran all eight disposable target-repository behavioral/adversarial cases with generated decision artifacts, a command-owned native-runner stub where applicable, and the existing validator. UI-sufficient/no-tool, approved capability gap, lying `readOnlyHint`, Safari without WebMCP, and native-runner ownership produced native-runner PASS with validator `ok: true`; candidate-only remained `crosswalkReady: false` with no native run; tool/domain disagreement and mutation timeout produced native-runner `inconclusive` with validator-computed `inconclusive`. No diagnostic/tool output was promoted to qualification evidence.
-- [x] (2026-08-31) Updated source-next contracts and ran deterministic tests, Chrome/WebDriver live smokes, skill validation, isolated local-pack handshake, harness, and cleanup checks. Safari MCP cutover remains blocked and no candidate Safari transport was retained.
+- [x] (2026-08-31 11:30Z) Agreed the browser, skill, safety, simplicity, native-runner, and forward-only Safari 27 product boundaries.
+- [x] (2026-08-31 11:45Z) Created the active umbrella ExecPlan and registry entry before implementation.
+- [x] (2026-08-31 12:10Z) Completed the two independent `gpt-5.6-sol` plan reviews. Both returned NO-GO/repair-required; their merged packet contained no unresolved disagreement.
+- [x] (2026-08-31 12:30Z) Repaired this plan in the requested separate `gpt-5.6-sol` `xhigh` pass. The plan now has independent hard Chrome and Safari feasibility gates, a direct-only WebMCP contract, exact wire/version effects, and explicit rollback rules.
+- [x] (2026-08-31 13:05Z) Passed the real Chrome 151 WebMCP feasibility probe in both headless and visible command-owned sessions. The enabled `WebMCP` flag exposed `document.modelContext`, same-origin registration/discovery, `window === window`, and the documented JSON-string `executeTool(tool, argumentsJson, { signal })` call; the retained direct-only contract and smoke cover the safe vertical slice.
+- [x] (2026-08-31 13:20Z) Reviewed the caller-provided Safari 27.0 MCP feasibility artifact from the other MacBook Pro. The gate returned `failed`: 36/53 rows passed, 10 failed, and 7 were blocked; no Safari MCP runtime code was retained.
+- [x] (2026-08-31 13:35Z) Implemented and verified the direct-only Chromium WebMCP vertical slice: one fixture tool, bounded/redacted opaque result, visible UI plus independent read-back, non-restorable replay, screenshot suppression, fixed errors, and exact source-next schemas.
+- [x] (2026-08-31 13:40Z) Rejected the Safari MCP cutover because the gate failed owned-handle, schema strictness, origin quarantine, bounds, freshness, and native parity requirements. `SafariAdapter` keeps WebDriver/BiDi as its sole transport.
+- [x] (2026-08-31 13:50Z) Added the minimal `webmcp-tool-authoring` skill/reference, updated manual-parity routing, and added direct-action exclusion/adversarial contract tests.
+- [x] (2026-08-31 14:05Z) Ran all eight disposable target-repository behavioral/adversarial cases with generated decision artifacts, a command-owned native-runner stub where applicable, and the existing validator. UI-sufficient/no-tool, approved capability gap, lying `readOnlyHint`, Safari without WebMCP, and native-runner ownership produced native-runner PASS with validator `ok: true`; candidate-only remained `crosswalkReady: false` with no native run; tool/domain disagreement and mutation timeout produced native-runner `inconclusive` with validator-computed `inconclusive`. No diagnostic/tool output was promoted to qualification evidence.
+- [x] (2026-08-31 14:10Z) Updated source-next contracts and ran deterministic tests, Chrome/WebDriver live smokes, skill validation, isolated local-pack handshake, harness, and cleanup checks. Safari MCP cutover remains blocked and no candidate Safari transport was retained.
 
 ## Surprises & Discoveries
 
@@ -77,7 +77,7 @@ Validation record: `npm test` passed (32 files/161 tests), `npm run typecheck` p
 
 The released baseline is `0.6.0`. `package.json`, `package-lock.json`, release-identity tests, README, compatibility/reliability evidence, harness rules, and the repository plugin source currently assume that final identity. Implementation must separate the local `0.7.0-next.0` source from the immutable npm/GitHub/installed-plugin `0.6.0` baseline rather than relabeling old evidence.
 
-## Frozen WebMCP Contract
+### Frozen WebMCP Contract
 
 The public direct action added to `web_browser_action` is exactly:
 
@@ -128,7 +128,7 @@ Sort tools by `origin`, then `name`; keep at most 16. Bound origin to 2,048 char
 
 Capability provenance adds only `webmcp-page-api`. It means a structurally callable page API was observed, not that Chrome supplied an unmodified native implementation. Fake/page-patched API tests must receive the same truthful label. `readOnlyHint` is captured as untrusted metadata only and never enables restore, retry, scenario use, screenshot capture, or weaker independent evidence.
 
-## Public Schema and Source-Identity Cascade
+### Public Schema and Source-Identity Cascade
 
 This source-only change deliberately bumps nested public shapes together:
 
@@ -291,7 +291,7 @@ No branch operation, release, npm publish, GitHub write, Codex/plugin install, m
 - Existing qualification boundary: [`../../design-docs/manual-parity-qualification.md`](../../design-docs/manual-parity-qualification.md)
 - Existing scenario boundary: [`../../design-docs/scenario-persistence-boundary.md`](../../design-docs/scenario-persistence-boundary.md)
 
-## Safari MCP feasibility/parity prompt for the other MacBook Pro
+### Safari MCP feasibility/parity prompt for the other MacBook Pro
 
 The following bounded, read-only prompt is prepared for a Codex task on a separate MacBook Pro. It must not be treated as evidence until the returned artifact is reviewed against this plan:
 
@@ -315,6 +315,7 @@ The 13 public MCP tool names remain stable. Public direct action, target, runtim
 
 ## Revision History
 
-- (2026-08-31) Change: Created the active plan from the agreed WebMCP, Safari MCP, hybrid authoring, security, simplicity, and verification decisions. Reason: Establish a restartable implementation contract before independent review.
-- (2026-08-31) Change: Repaired the plan after two independent NO-GO reviews and the merged `gpt-5.6-sol` repair packet. Reason: Make WebMCP direct-only and non-restorable, freeze result/capture/version contracts, add real-browser adversarial gates, authorize only a forward Safari 27 cutover, preserve qualification/native-runner authority, and prevent blocked Safari from being reported as implemented.
-- (2026-08-31) Change: Completed the plan after reviewing the caller-provided Safari 27 MCP artifact and rejecting cutover. Reason: The Chrome/skill/source-next work passed locally, while Safari MCP failed the frozen safety/parity gate; keeping WebDriver/BiDi and retaining no Safari MCP runtime is the plan's truthful terminal outcome.
+- (2026-08-31 11:45Z) Change: Created the active plan from the agreed WebMCP, Safari MCP, hybrid authoring, security, simplicity, and verification decisions. Reason: Establish a restartable implementation contract before independent review.
+- (2026-08-31 12:30Z) Change: Repaired the plan after two independent NO-GO reviews and the merged `gpt-5.6-sol` repair packet. Reason: Make WebMCP direct-only and non-restorable, freeze result/capture/version contracts, add real-browser adversarial gates, authorize only a forward Safari 27 cutover, preserve qualification/native-runner authority, and prevent blocked Safari from being reported as implemented.
+- (2026-08-31 14:10Z) Change: Completed the plan after reviewing the caller-provided Safari 27 MCP artifact and rejecting cutover. Reason: The Chrome/skill/source-next work passed locally, while Safari MCP failed the frozen safety/parity gate; keeping WebDriver/BiDi and retaining no Safari MCP runtime is the plan's truthful terminal outcome.
+  Semantic-Review: reviewer=Web Debug maintainers; reviewed-at=2026-08-31 14:10Z; content-sha256=03b903af0d506cdbafe864eb03dd8a38be73107c7abd07c6e37a4089739b3057; evidence=Reviewed both independent plan audits, repaired direct-only contracts, Chrome live WebMCP, Safari gate rejection, eight behavioral cases, full deterministic/live gates, package handshake, and cleanup evidence.

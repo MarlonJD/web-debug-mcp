@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-The local source-next identity is `0.7.0-next.0`; the immutable package/plugin release remains `0.6.0`. This increment adds a direct-only WebMCP action, capture metadata, and a third authoring skill while keeping the 13-tool MCP catalog unchanged.
+The immutable package/plugin release is `0.7.0`. It adds a direct-only WebMCP action, capture metadata, and a third authoring skill while keeping the 13-tool MCP catalog unchanged.
 
 ## User outcome
 

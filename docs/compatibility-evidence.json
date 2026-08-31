@@ -1,12 +1,12 @@
 {
   "schemaVersion": 2,
-  "scope": "0.7.0-next.0-source-local",
+  "scope": "0.7.0-final-local",
   "observedAt": "2026-08-31T03:41:00+03:00",
-  "sourceVersion": "0.7.0-next.0",
+  "sourceVersion": "0.7.0",
   "releaseBaseline": {
-    "version": "0.5.0",
-    "commit": "4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b",
-    "archiveShasum": "e5bc37a37ad6f8efb35b79944ce6548e5aaa1068"
+    "version": "0.6.0",
+    "commit": "36716cb66e487d320f3bcab576ff32262c41ec52",
+    "archiveShasum": "3dc99d7ed5959359999f435136b5dc0aac4b26cb"
   },
   "runtime": {
     "node": "24.18.0",
@@ -25,10 +25,10 @@
     "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "155/155 deterministic tests including capture profiles/cursors, tool-specific schemas, detection/runtime negotiation, extracted replay/scenario modules, manual-parity validation, and prior security/lifecycle contracts" },
-    { "command": "final exact archive handshake under Node 24.18.0", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas from a clean prefix" },
-    { "command": "final 0.6.0 archive handshake under Node 20.20.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
-    { "command": "final 0.6.0 archive handshake under Node 22.23.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
+    { "command": "npm test", "status": "passed", "signal": "161/161 deterministic tests including WebMCP direct-only contracts, three-skill routing, capture profiles/cursors, tool-specific schemas, detection/runtime negotiation, manual-parity validation, and prior security/lifecycle contracts" },
+    { "command": "final exact archive handshake under Node 24.18.0", "status": "not-run", "signal": "Final 0.7.0 archive will be built once from the clean release commit" },
+    { "command": "final 0.7.0 archive handshake under Node 20.20.2", "status": "not-run", "signal": "Pending exact final archive" },
+    { "command": "final 0.7.0 archive handshake under Node 22.23.2", "status": "not-run", "signal": "Pending exact final archive" },
     { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
     { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 151 WebMCP direct action, opaque bounded result, independent DOM/oracle read-back, replay non-restorability, and post-call screenshot suppression" },
     { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
@@ -38,15 +38,15 @@
     { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action, DOM, screenshot, BiDi console, Performance Resource Timing network fallback, origin/profile warnings, and cleanup" },
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" },
     { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-4 project/runtime-aware fingerprints" },
-    { "command": "public npm 0.6.0 fresh-cache handshake", "status": "passed", "signal": "empty prefix/cache installed 96 packages and returned 0.6.0, 13 tools, and 13 concrete data schemas" },
+    { "command": "public npm 0.7.0 fresh-cache handshake", "status": "not-run", "signal": "Pending immutable publication" },
     { "command": "Safari 27 MCP feasibility on caller-provided other MacBook", "status": "failed", "signal": "Safari 27.0 Safari/1.0.0 MCP initialized; strict cutover matrix returned 36 passed, 10 failed, and 7 blocked. No runtime code was retained; only the handle-scoped external diagnostic subset remains candidate-only" },
-    { "command": "Codex plugin update", "status": "not-run", "signal": "Immutable installed/released 0.6.0 plugin was not contacted or mutated; repository plugin source carries sourceVersion 0.7.0-next.0" }
+    { "command": "Codex plugin update", "status": "not-run", "signal": "Pending public 0.7.0 package and remote marketplace refresh; verified local source-next remains installed for rollback" }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Node 20.20.2, 22.23.2, and 24.18.0 all passed exact final 0.6.0 archive handshakes; broader deterministic/live browser jobs used Node 24.18.0.",
+    "Node 20.20.2, 22.23.2, and 24.18.0 final archive handshakes are required before publication; broader deterministic/live browser jobs use Node 24.18.0.",
     "Safari 26.6.2 WebDriver is verified locally; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
     "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
-    "Source-next 0.7.0-next.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover was rejected and optional external diagnostics remain separate from product evidence."
+    "Final 0.7.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover was rejected and optional external diagnostics remain separate from product evidence."
   ]
 }

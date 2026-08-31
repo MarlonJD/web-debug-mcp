@@ -17,11 +17,11 @@ Deliver the verified `0.7.0-next.0` source-next work to `origin/main` and replac
 
 ## Progress
 
-- [x] (2026-08-31) Verified current GitHub CLI authentication, `main` branch, remote, installed plugin `0.6.0+codex.20260831002920`, and configured remote marketplace.
-- [x] (2026-08-31) Built and packed the verified source-next package into stable prefix `/Users/marlonjd/.codex/local-runtimes/web-debug-source-next/b58bf248e9846fa201947b17dfcf1e6de47b9ed3`; MCP handshake returned `0.7.0-next.0`, exact 13 tools, and 13 concrete schemas.
-- [x] (2026-08-31) Created and validated local `web-debug-source-next` marketplace overlay with all three skills and the exact local runtime command.
-- [x] (2026-08-31) Replaced installed `web-debug@web-debug` with enabled `web-debug@web-debug-source-next` `0.7.0-next.0+codex.20260831144834`; the released plugin remains available for rollback and only one `web-debug-mcp` registration is enabled.
-- [x] (2026-08-31) Repository gates passed; committed source-next as `6f97199` with `feat!: add direct WebMCP actions and hybrid authoring` and pushed `main`. Final plan metadata is delivered in a follow-up docs commit, after which local/remote SHA equality is rechecked.
+- [x] (2026-08-31 14:39Z) Verified current GitHub CLI authentication, `main` branch, remote, installed plugin `0.6.0+codex.20260831002920`, and configured remote marketplace.
+- [x] (2026-08-31 14:43Z) Built and packed the verified source-next package into stable prefix `/Users/marlonjd/.codex/local-runtimes/web-debug-source-next/b58bf248e9846fa201947b17dfcf1e6de47b9ed3`; MCP handshake returned `0.7.0-next.0`, exact 13 tools, and 13 concrete schemas.
+- [x] (2026-08-31 14:48Z) Created and validated local `web-debug-source-next` marketplace overlay with all three skills and the exact local runtime command.
+- [x] (2026-08-31 14:50Z) Replaced installed `web-debug@web-debug` with enabled `web-debug@web-debug-source-next` `0.7.0-next.0+codex.20260831144834`; the released plugin remains available for rollback and only one `web-debug-mcp` registration is enabled.
+- [x] (2026-08-31 14:53Z) Repository gates passed; committed source-next as `6f97199` with `feat!: add direct WebMCP actions and hybrid authoring` and pushed `main`. Final plan metadata was delivered in follow-up `c13975d`, and local/remote `main` equality was verified.
 
 ## Surprises & Discoveries
 
@@ -49,6 +49,13 @@ Snapshot installed plugin and marketplace JSON. Build a stable local marketplace
 
 Record bounded evidence, complete this plan, commit all repository changes with Conventional Commit messages, and push current `main` using sanitized GitHub authentication. Verify `origin/main` equals local `HEAD`. Do not publish, tag, or open a GitHub release.
 
+## Concrete Steps
+
+1. Pack and install one exact source-next archive into a content-addressed local runtime prefix.
+2. Handshake the installed binary for version, exact tool set, and concrete schemas.
+3. Build/validate a local marketplace overlay, replace the released plugin, and verify one enabled plugin/MCP registration with three skills.
+4. Commit/push source-next and verify local/remote `main` equality while preserving the released marketplace rollback path.
+
 ## Validation and Acceptance
 
 ```bash
@@ -66,12 +73,19 @@ Acceptance requires a stable installed runtime handshake returning `0.7.0-next.0
 
 Use content-derived stable paths and refuse path drift. Remove only the exact source-next overlay/runtime created by this plan. Before replacing the installed plugin, retain prior identity `web-debug@web-debug` `0.6.0+codex.20260831002920`. Rollback removes the source-next plugin and local marketplace, then reinstalls the released plugin from the unchanged remote marketplace. Never delete broad Codex cache/config directories.
 
+## Artifacts and Notes
+
+- Source commit: `6f97199`; completion commit: `c13975d`; local/remote `main` equality verified.
+- Tarball/runtime shasum: `b58bf248e9846fa201947b17dfcf1e6de47b9ed3`.
+- Installed plugin: `web-debug@web-debug-source-next` `0.7.0-next.0+codex.20260831144834`; released `0.6.0` remained available for rollback.
+
 ## Interfaces and Dependencies
 
 Use existing Node/npm/Codex/GitHub CLIs and the existing MCP SDK. Add no repository dependency or public runtime. Local overlay files are installation state, not repository source.
 
 ## Revision History
 
-- (2026-08-31) Change: Created the plan. Reason: Deliver the verified source-next runtime and skills to Codex without an unauthorized public release.
-- (2026-08-31) Change: Completed local pack, handshake, marketplace overlay, plugin replacement, and duplicate-registration verification. Reason: Install the verified source-next runtime and skills without publishing npm or mutating the public marketplace.
-- (2026-08-31) Change: Committed and pushed the source-next implementation, then completed the plan. Reason: Deliver the authorized repository and local Codex update while preserving a released-plugin rollback path.
+- (2026-08-31 14:39Z) Change: Created the plan. Reason: Deliver the verified source-next runtime and skills to Codex without an unauthorized public release.
+- (2026-08-31 14:50Z) Change: Completed local pack, handshake, marketplace overlay, plugin replacement, and duplicate-registration verification. Reason: Install the verified source-next runtime and skills without publishing npm or mutating the public marketplace.
+- (2026-08-31 14:54Z) Change: Committed and pushed the source-next implementation, then completed the plan. Reason: Deliver the authorized repository and local Codex update while preserving a released-plugin rollback path.
+  Semantic-Review: reviewer=Web Debug maintainers; reviewed-at=2026-08-31 14:54Z; content-sha256=7cfece9f90c978e597a4705110a143d8c470673f2cd891812eb99b23b2b82c23; evidence=Reviewed exact source commits, local tarball/runtime handshake, one installed plugin/MCP registration with three skills, rollback availability, and local/remote main equality.

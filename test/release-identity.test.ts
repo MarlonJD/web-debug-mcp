@@ -21,12 +21,11 @@ describe("release identity", () => {
     const claudeMarketplace = JSON.parse(await readFile(".claude-plugin/marketplace.json", "utf8")) as { plugins: Array<{ name: string; version: string }> };
 
     expect(PACKAGE_VERSION).toBe(packageJson.version);
-    expect(packageJson.webDebug.releaseStatus).toBe("source-next");
+    expect(packageJson.webDebug.releaseStatus).toBe("final");
     const releasedPluginVersion = packageJson.webDebug.releasedPluginRuntimeVersion;
-    expect(PACKAGE_VERSION).toBe("0.7.0-next.0");
-    expect(packageJson.webDebug.releasedPackageVersion).toBe("0.6.0");
-    expect(releasedPluginVersion).toBe("0.6.0");
-    expect(releasedPluginVersion).not.toBe(PACKAGE_VERSION);
+    expect(PACKAGE_VERSION).toBe("0.7.0");
+    expect(packageJson.webDebug.releasedPackageVersion).toBe("0.7.0");
+    expect(releasedPluginVersion).toBe(PACKAGE_VERSION);
     expect(packageLock.version).toBe(PACKAGE_VERSION);
     expect(packageLock.packages[""]?.version).toBe(PACKAGE_VERSION);
     expect(pluginMcp.mcpServers["web-debug-mcp"]?.args).toContain(`web-debug-mcp@${releasedPluginVersion}`);
