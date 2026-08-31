@@ -33,6 +33,7 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 - Fresh Chromium, React/Vite, Next, Vue, Angular, local-fidelity, and comparison flows passed. Safari WebDriver opened but two source-next fixture waits timed out; stable release must either obtain a fresh pass after the final fixes or retain a literal scoped blocker without claiming fresh Safari capture evidence.
 - Critical new source, extracted modules, tests, and the manual-parity skill are untracked. They must be explicitly audited and staged before building the release archive so the Git tag and tarball cannot diverge.
 - The host Python lacks `yaml`; skill/plugin validation succeeds through isolated `uv run --with pyyaml` without changing repository dependencies.
+- npm owner authentication and package ownership succeed, but immutable publish requires a browser-authorized one-time CLI session. Two generated web-auth sessions expired without user approval; no npm package or dist-tag write occurred, and Codex plugin installation remains intentionally deferred until the runtime is public.
 
 ## Decision Log
 
@@ -92,6 +93,8 @@ Before Codex mutation, retain the exact installed `0.5.0+codex.20260830202439` v
 - GitHub preflight: keyring account `MarlonJD`; `v0.6.0` tag/release absent.
 - Codex rollback baseline: one installed/enabled `web-debug@web-debug` at `0.5.0+codex.20260830202439`, bundled MCP `web-debug-mcp@0.5.0`.
 - Frozen final archive candidate: `/tmp/web-debug-release-0.6.0.1i5DPT/web-debug-mcp-0.6.0.tgz`; 152 entries; npm shasum `3dc99d7ed5959359999f435136b5dc0aac4b26cb`; integrity `sha512-TfdFeIU2RUdqYkvm4ojQoHyUNVbc1cuK/RRL7DI1fvpeliAngj5gzRRZZG3F/X0Rng0bK03QMIqTM6sUMMQ+xQ==`; Node 20/22/24 each returned `0.6.0`, 13 tools, and 13 concrete schemas.
+- Frozen/pushed release source: `36716cb66e487d320f3bcab576ff32262c41ec52`; remote `main` and peeled annotated `v0.6.0` agree. GitHub release is public at `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.6.0`.
+- Current external blocker: npm `0.6.0` remains absent after two expired web-auth sessions; npm `latest`/`next` and installed Codex plugin therefore remain `0.5.0`.
 - Official plugin packaging guidance: <https://developers.openai.com/plugins/build/plugins>.
 
 ## Interfaces and Dependencies
