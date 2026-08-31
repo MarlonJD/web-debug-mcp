@@ -15,8 +15,8 @@ const SESSION_ID = "00000000-0000-4000-8000-000000000001";
 const SCENARIO_ID = "00000000-0000-4000-8000-000000000002";
 const PROJECT_CAPABILITIES = { browserTarget: true, react: false, angular: false, vue: false, vite: false, next: false, serverRuntime: false };
 const RUNTIME_CAPABILITIES = chromiumRuntimeCapabilities(true);
-const TARGET = { browser: "chromium" as const, remote: false, url: "http://127.0.0.1:4173/", title: "Fixture", viewport: { width: 1_440, height: 900 }, isolated: false, mode: "attach" as const, targetId: "route-tab" };
-const CAPTURE_TARGET = { browser: TARGET.browser, remote: TARGET.remote, viewport: TARGET.viewport, isolated: TARGET.isolated, mode: TARGET.mode };
+const TARGET = { schemaVersion: 1 as const, browser: "chromium" as const, remote: false, url: "http://127.0.0.1:4173/", title: "Fixture", viewport: { width: 1_440, height: 900 }, isolated: false, mode: "attach" as const, targetId: "route-tab" };
+const CAPTURE_TARGET = { schemaVersion: TARGET.schemaVersion, browser: TARGET.browser, remote: TARGET.remote, viewport: TARGET.viewport, isolated: TARGET.isolated, mode: TARGET.mode };
 const PROJECT = {
   schemaVersion: 2 as const,
   projectRoot: "/project",
@@ -34,7 +34,7 @@ const PROJECT = {
 
 function sessionResult(id = SESSION_ID, status: "ready" | "closed" = "ready") {
   return {
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     id,
     projectRoot: "/project",
     url: "http://127.0.0.1:4173/",
@@ -68,7 +68,7 @@ const REPLAY_FRAME = {
   vue: null,
 };
 const FINGERPRINT = {
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   projectRoot: "/project",
   descriptor: "vanilla",
   projectFrameworks: ["vanilla" as const],
@@ -94,7 +94,7 @@ const FINGERPRINT = {
 
 function scenarioResult() {
   return {
-    schemaVersion: 5 as const,
+    schemaVersion: 6 as const,
     id: SCENARIO_ID,
     sessionId: SESSION_ID,
     name: "route test",
@@ -120,7 +120,7 @@ function scenarioResult() {
 
 function captureResult() {
   return {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     profile: "summary" as const,
     capturedAt: "2026-08-30T00:00:00.000Z",
     cursor: "00000000-0000-4000-8000-000000000003",
@@ -132,12 +132,13 @@ function captureResult() {
       network: { total: 0, failed: 0, pending: 0, latestFailures: [] },
       debugger: { paused: false, reason: null, callFrames: 0, breakpoints: 0 },
       runtimes: { react: "not-detected" as const, angular: "not-detected" as const, vue: "not-detected" as const, next: "not-detected" as const, vite: "not-detected" as const, accessibility: "present" as const },
-      replay: { frames: 1, truncated: false, oldestIndex: 0, newestIndex: 0 },
+      replay: { frames: 1, truncated: false, oldestIndex: 0, newestIndex: 0, restorable: true, restoreBlockedReason: null },
+      webmcp: { state: "unsupported" as const, callableTools: 0, truncated: false },
       observations: null,
     },
     redaction: { applied: true as const, policy: "default-sensitive-fields" as const },
     warnings: [],
-    truncation: { applied: false, omittedSurfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "replay", "screenshot"] },
+    truncation: { applied: false, omittedSurfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "replay", "screenshot", "webmcp"] },
   };
 }
 
@@ -148,15 +149,15 @@ class RoutingManager {
   start(...args: unknown[]) { return this.record("start", args, sessionResult()); }
   list(...args: unknown[]) { return this.record("list", args, []); }
   status(...args: unknown[]) { return this.record("status", args, sessionResult()); }
-  act(...args: unknown[]) { return this.record("act", args, { kind: "press", url: "http://127.0.0.1:4173/", title: "Fixture" }); }
+  act(...args: unknown[]) { return this.record("act", args, { schemaVersion: 1, kind: "press", url: "http://127.0.0.1:4173/", title: "Fixture" }); }
   capture(...args: unknown[]) { return this.record("capture", args, captureResult()); }
   inspectNext(...args: unknown[]) { return this.record("inspectNext", args, { detected: true, endpoint: "http://127.0.0.1:4173/_next", kind: "compileRoute", result: null, warnings: [] }); }
-  seekReplay(...args: unknown[]) { return this.record("seekReplay", args, { sessionId: SESSION_ID, frame: REPLAY_FRAME, restored: false, availableFrames: 1, oldestFrameIndex: 0, newestFrameIndex: 0 }); }
+  seekReplay(...args: unknown[]) { return this.record("seekReplay", args, { schemaVersion: 1, sessionId: SESSION_ID, frame: REPLAY_FRAME, restored: false, restorable: true, restoreBlockedReason: null, availableFrames: 1, oldestFrameIndex: 0, newestFrameIndex: 0 }); }
   setBreakpoint(...args: unknown[]) { return this.record("setBreakpoint", args, { id: "bp", sourceUrl: "app.js", line: 1, column: null }); }
   control(...args: unknown[]) { return this.record("control", args, { paused: false, reason: null, callFrames: [], breakpoints: [] }); }
   evaluate(...args: unknown[]) { return this.record("evaluate", args, { value: 2, type: "number", description: null }); }
   recordScenario(...args: unknown[]) { return this.record("recordScenario", args, scenarioResult()); }
-  verifyScenario(...args: unknown[]) { return this.record("verifyScenario", args, { schemaVersion: 5, outcome: "verified", level: "quick", requestedLevel: "quick", escalations: [], flaky: false, scenario: scenarioResult(), baseline: {}, postFix: {}, observedRates: {}, budget: {}, cleanup: {}, evidence: { baseline: null, postFix: null }, environmentFingerprint: FINGERPRINT, contractHash: "a".repeat(64), buildReference: {}, isolation: {}, persistence: "in-memory", warnings: [], termination: "all-required-passes", truncation: {} }); }
+  verifyScenario(...args: unknown[]) { return this.record("verifyScenario", args, { schemaVersion: 6, outcome: "verified", level: "quick", requestedLevel: "quick", escalations: [], flaky: false, scenario: scenarioResult(), baseline: {}, postFix: {}, observedRates: {}, budget: {}, cleanup: {}, evidence: { baseline: null, postFix: null }, environmentFingerprint: FINGERPRINT, contractHash: "a".repeat(64), buildReference: {}, isolation: {}, persistence: "in-memory", warnings: [], termination: "all-required-passes", truncation: {} }); }
   close(...args: unknown[]) { return this.record("close", args, sessionResult(SESSION_ID, "closed")); }
 
   private record(method: string, args: unknown[], result: unknown) {

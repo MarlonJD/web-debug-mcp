@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Version `0.6.0` is the current package and plugin runtime. It keeps the 13-tool catalog while adding compact capture profiles, concrete per-tool result schemas, confidence-aware project detection, negotiated browser runtime capabilities, evidence schema 4, scenario/verification schema 5, and reviewed manual-parity qualification.
+This checkout is source-next `0.7.0-next.0`; the immutable package and plugin runtime remain `0.6.0`. It keeps the 13-tool catalog while adding a direct-only Chrome WebMCP action, untrusted discover-only capture metadata, source-next wire versions, and reviewed WebMCP authoring/qualification guidance.
 
 ## Install as an MCP server
 
@@ -45,11 +45,12 @@ This is the recommended single-install path for Codex and Claude Code. **Install
 
 The same plugin package supports both Codex and Claude Code. Codex reads the Codex plugin manifest, Claude Code reads the Claude Code plugin manifest, and both use the same workflow skills and MCP configuration.
 
-The plugin contains four pieces:
+The plugin contains five pieces:
 
 - the web-debug plugin manifest;
 - the web-debug-workflow skill, which owns isolated browser-bug reproduction and fix verification;
 - the manual-parity-qualification skill, which maps reviewed manual/product requirements to repository-native qualification tests and non-executable crosswalk/run metadata;
+- the webmcp-tool-authoring skill, which provides authority-gated, direct-only WebMCP product guidance;
 - a bundled .mcp.json connection that starts the existing web-debug-mcp server.
 
 The runtime flow is:
@@ -57,7 +58,7 @@ The runtime flow is:
 ~~~text
 install Web Debug plugin
         ↓
-Codex loads both skills and the bundled MCP connection
+Codex loads all three skills and the bundled MCP connection
         ↓
 bug diagnosis → Codex starts web-debug-mcp over local stdio on demand
         ↓
@@ -132,7 +133,7 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata, both skills, and bundled `web-debug-mcp@0.6.0` runtime.
+This command loads the repository's plugin metadata, all three source skills, and bundled `web-debug-mcp@0.6.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
@@ -241,7 +242,23 @@ The difference is both the target and the integration model:
 - A disclosed, bounded Performance Resource Timing fallback for Safari versions that do not emit network events.
 - JavaScript breakpoints, pause reasons, call frames, scope values, and guarded evaluation in Chromium.
 - Same-origin navigation and bounded console/network metadata with redaction.
+- Opt-in Chrome WebMCP page actions through `document.modelContext`: direct-only, explicit side-effect authorization, one attempt, opaque bounded string/null result, truthful `webmcp-page-api` provenance, and independent UI/domain evidence for mutations.
+- Discover-only bounded WebMCP metadata through capture; metadata, schemas, annotations, and descriptions remain untrusted page content.
 - Top-level redirects, clicks, reloads, and secondary pages stay on the selected origin. Chromium combines selected-target CDP interception with a context-wide frame-less-document fallback and revalidates every final state; in attach mode that fallback disables HTTP cache for sibling pages until close. Safari WebDriver verifies and quarantines escaped state immediately after navigation because its compatibility transport has no reliable pre-request interception.
+
+To exercise the page API locally, use a command-owned Chrome 151+ profile with the WebMCP testing flag enabled (`chrome://flags/#enable-webmcp-testing`). The direct action shape is bounded and explicit:
+
+```json
+{
+  "kind": "webmcp",
+  "origin": "http://127.0.0.1:4173",
+  "name": "submit_payment",
+  "arguments": { "amount": 249.9 },
+  "allowSideEffects": true
+}
+```
+
+The page API is not browser-native provenance. Every attempted call is treated as potentially mutating, executes once, is excluded from replay/scenario actions, marks the timeline non-restorable, and suppresses subsequent screenshots.
 
 ### React profiler and render-cause evidence
 
@@ -406,7 +423,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.6.0`. Disable the installed `0.6.0` plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.7.0-next.0`. Disable the installed `0.6.0` plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
 
 Then use the MCP client workflow:
 
@@ -473,16 +490,17 @@ Remote CDP or WebDriver attachment requires explicit opt-in and an approved targ
 - Console text, URLs, debugger locals, evaluated values, framework data, and replay frames are bounded and redacted.
 - Raw response bodies, cookies, authorization values, and browser storage are not collected by the core adapter.
 - Evaluation rejects side effects unless `allowSideEffects: true` is explicitly supplied.
+- Direct WebMCP actions require `allowSideEffects: true`, are never retried or stored as replay/scenario actions, mark the timeline non-restorable, and suppress later screenshots. `readOnlyHint` is untrusted metadata and never waives these rules.
 - Framework HTTP bodies, WebDriver responses, evaluated values, error details, structured data, and complete MCP results have byte budgets; overflow fails with a stable error instead of partial success.
 - The Vite plugin is development-only and local by design.
 
 ## Safari 27 note
 
-Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MCP server. Use that browser-native server when its DOM, network, console, and screenshot tools are the desired surface. This repository intentionally does not add a second public Safari MCP catalog; its WebDriver adapter remains the compatibility and single-facade path for older Safari versions and shared evidence orchestration.
+Safari 27 includes Apple’s official Safari MCP server. The reviewed Safari 27 artifact failed this project's full transport cutover gate, so WebDriver/BiDi remains the sole internal Safari transport. If Safari MCP is separately configured, the bundled workflow skill may use only its handle-scoped create/navigate/console-summary/network-summary/close subset in a separate diagnostic tab. Ambient tools, full request details, evidence merging, and qualification PASS remain prohibited.
 
 ## Verification status
 
-Final `0.6.0` release evidence is recorded in its release plan, including exact archive, public npm/GitHub, and installed Codex plugin identity. The checked-in historical certification window remains stale; this checkout does not claim a current `CERT000`. Local compatibility and release evidence are not provider or production authority, and no approved external remote-browser run is claimed.
+The immutable `0.6.0` release evidence remains recorded in its release plan, including exact archive, public npm/GitHub, and installed Codex plugin identity. This source-next checkout is not a release or installed-plugin update; its Chrome WebMCP smoke is verified locally, while the Safari MCP full cutover was rejected by the reviewed Safari 27 gate. The optional external diagnostic subset is contract-backed but not live-verified on this host. The checked-in historical certification window remains stale; this checkout does not claim a current `CERT000`.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 

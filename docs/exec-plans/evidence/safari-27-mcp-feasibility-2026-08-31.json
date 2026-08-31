@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "source": "caller-provided-other-macbook-pro",
+  "observedAt": "2026-08-31",
+  "status": "failed",
+  "finalCutover": "failed",
+  "browser": {
+    "safariVersion": "27.0",
+    "safariBuild": "22625.1.29.11.25",
+    "driverPath": "/usr/bin/safaridriver",
+    "driverVersionOutput": "Included with Safari 27.0 (22625.1.29.11.25)",
+    "compatibleHost": true
+  },
+  "mcp": {
+    "initialized": true,
+    "protocolVersion": "2024-11-05",
+    "server": "Safari/1.0.0",
+    "schemaCombinedSha256": "489c419787f9997a88fe8f69f5217fee8e4a8b4ce597c60c4ce39b2a25d7967b"
+  },
+  "summary": {
+    "rows": 53,
+    "passed": 36,
+    "failed": 10,
+    "blocked": 7
+  },
+  "decisiveFailures": [
+    "Required vendor object schemas permit unknown properties.",
+    "Several allowed tools have no owned-tab handle and depend on ambient state.",
+    "A different loopback origin was followed without an observed quarantine.",
+    "Non-screenshot output exceeded the 256 KiB product bound.",
+    "A decoded screenshot exceeded the 4 MiB product bound.",
+    "An inbound JSON-RPC line above 12 MiB was accepted without bounded rejection.",
+    "Console/network draining exposed no cursor or action-epoch freshness contract.",
+    "Native WebDriver parity remained blocked before operation evidence."
+  ],
+  "safety": {
+    "forbiddenToolCallLogEmpty": true,
+    "getNetworkRequestCallCount": 0,
+    "rawVendorResultRetention": false,
+    "runtimeCodeRetained": false,
+    "repositoryEdited": false,
+    "preexistingAutomationProcessesUntouched": true,
+    "ownedFixtureClosed": true,
+    "ownedTabClosed": true,
+    "ownedChildrenExited": true
+  },
+  "decision": "Reject Safari MCP cutover for this source-next release and retain Safari WebDriver/BiDi as the sole Safari transport."
+}

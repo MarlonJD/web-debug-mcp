@@ -30,6 +30,22 @@ export const MAX_RESULT_BYTES = 262_144;
 export const MAX_MCP_OPERATION_MS = 150_000;
 export const MAX_ACTION_WAIT_MS = 30_000;
 export const MAX_REPLAY_FRAMES = 8;
+export const MAX_WEBMCP_ARGUMENT_KEYS = 64;
+export const MAX_WEBMCP_ARGUMENT_DEPTH = 8;
+export const MAX_WEBMCP_ARGUMENT_NODES = 128;
+export const MAX_WEBMCP_ARGUMENT_KEY_CHARS = 100;
+export const MAX_WEBMCP_ARGUMENT_STRING_BYTES = 2_000;
+export const MAX_WEBMCP_ARGUMENT_BYTES = 16_384;
+export const MAX_WEBMCP_RESULT_BYTES = 8_192;
+export const MAX_WEBMCP_TOOLS = 16;
+export const MAX_WEBMCP_TOOL_ORIGIN_CHARS = 2_048;
+export const MAX_WEBMCP_TOOL_NAME_CHARS = 100;
+export const MAX_WEBMCP_TOOL_TITLE_CHARS = 200;
+export const MAX_WEBMCP_TOOL_DESCRIPTION_CHARS = 500;
+export const MAX_WEBMCP_SCHEMA_BYTES = 8_192;
+export const MAX_WEBMCP_DETAIL_BYTES = 32_768;
+
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export type BrowserLocator =
   | { kind: "css"; value: string }
@@ -147,7 +163,8 @@ export type RuntimeCapabilityProvenance =
   | "safari-webdriver"
   | "safari-bidi"
   | "performance-resource-timing"
-  | "session-policy";
+  | "session-policy"
+  | "webmcp-page-api";
 
 export interface RuntimeCapability {
   state: RuntimeCapabilityState;
@@ -156,7 +173,7 @@ export interface RuntimeCapability {
 }
 
 export interface BrowserRuntimeCapabilities {
-  schemaVersion: 1;
+  schemaVersion: 2;
   browser: BrowserEngine;
   transport: "chromium-launch" | "chromium-cdp-attach" | "safari-webdriver";
   actions: RuntimeCapability;
@@ -175,9 +192,11 @@ export interface BrowserRuntimeCapabilities {
   viewportMatrix: RuntimeCapability;
   tlsBypass: RuntimeCapability;
   authSeeding: RuntimeCapability;
+  webmcp: RuntimeCapability;
 }
 
 export interface BrowserTarget {
+  schemaVersion: 1;
   browser: BrowserEngine;
   remote: boolean;
   url: string;
@@ -201,7 +220,7 @@ export interface BrowserTarget {
 }
 
 export interface DebugSessionSummary {
-  schemaVersion: 2;
+  schemaVersion: 3;
   id: string;
   projectRoot: string;
   url: string;
@@ -232,7 +251,7 @@ export const BROWSER_PRESS_KEYS = [
 ] as const;
 export type BrowserPressKey = typeof BROWSER_PRESS_KEYS[number];
 
-export type BrowserAction =
+export type ReplayableBrowserAction =
   | { kind: "navigate"; url: string }
   | { kind: "click"; locator: BrowserLocator }
   | { kind: "fill"; locator: BrowserLocator; value: string }
@@ -243,6 +262,19 @@ export type BrowserAction =
   | { kind: "scroll"; locator: BrowserLocator }
   | { kind: "wait"; locator: BrowserLocator; property: LocatorProperty; expected: LocatorProbeValue; timeoutMs?: number }
   | { kind: "reload" };
+
+export interface WebMcpDirectAction {
+  kind: "webmcp";
+  origin: string;
+  name: string;
+  arguments: Record<string, JsonValue>;
+  allowSideEffects: true;
+  timeoutMs?: number;
+}
+
+export type DirectBrowserAction = ReplayableBrowserAction | WebMcpDirectAction;
+/** Internal alias retained for replay/scenario code; it intentionally excludes WebMCP. */
+export type BrowserAction = ReplayableBrowserAction;
 
 export interface OperationContext {
   signal?: AbortSignal;
@@ -267,11 +299,23 @@ export interface ScenarioProgressEvent {
   termination?: AttemptTermination | string;
 }
 
-export interface ActionResult {
-  kind: BrowserAction["kind"];
+export interface ReplayableActionResult {
+  schemaVersion: 1;
+  kind: ReplayableBrowserAction["kind"];
   url: string;
   title: string;
 }
+
+export interface WebMcpActionResult {
+  schemaVersion: 1;
+  kind: "webmcp";
+  url: string;
+  title: string;
+  toolResult: string | null;
+}
+
+export type ActionResult = ReplayableActionResult | WebMcpActionResult;
+export type BrowserActionResult = ActionResult;
 
 export interface ConsoleEntry {
   level: "log" | "info" | "debug" | "warning" | "error" | "pageerror";
@@ -491,7 +535,7 @@ export interface ReplayFrame {
   attemptId: string | null;
   capturedAt: string;
   trigger: "action" | "capture";
-  action: BrowserAction | null;
+  action: ReplayableBrowserAction | null;
   url: string;
   title: string;
   dom: DomSnapshot;
@@ -507,13 +551,18 @@ export interface ReplayTimeline {
   enabled: true;
   maxFrames: number;
   truncated: boolean;
+  restorable: boolean;
+  restoreBlockedReason: string | null;
   frames: ReplayFrame[];
 }
 
 export interface ReplaySeekResult {
+  schemaVersion: 1;
   sessionId: string;
   frame: ReplayFrame;
   restored: boolean;
+  restorable: boolean;
+  restoreBlockedReason: string | null;
   availableFrames: number;
   oldestFrameIndex: number;
   newestFrameIndex: number;
@@ -578,6 +627,27 @@ export interface ViteSnapshot {
   warnings: string[];
 }
 
+export interface WebMcpCaptureTool {
+  origin: string;
+  name: string;
+  title: string | null;
+  description: string;
+  inputSchemaJson: string | null;
+  annotations: {
+    readOnlyHint: boolean | null;
+    untrustedContentHint: boolean | null;
+  };
+  untrusted: true;
+}
+
+export interface WebMcpCaptureDetail {
+  provenance: "webmcp-page-api";
+  observedAt: string;
+  total: number;
+  truncated: boolean;
+  tools: WebMcpCaptureTool[];
+}
+
 export interface BrowserSnapshot {
   url: string;
   title: string;
@@ -592,6 +662,7 @@ export interface BrowserSnapshot {
   vue: VueSnapshot | null;
   next: NextSnapshot | null;
   vite: ViteSnapshot | null;
+  webmcp: WebMcpCaptureDetail | null;
   accessibility?: AccessibilityDiagnostics | null;
   warnings: string[];
   /** Lightweight observation provenance used by adaptive verification. */
@@ -644,6 +715,7 @@ export const CAPTURE_SURFACES = [
   "accessibility",
   "replay",
   "screenshot",
+  "webmcp",
 ] as const;
 export type CaptureSurface = typeof CAPTURE_SURFACES[number];
 
@@ -682,6 +754,13 @@ export interface CaptureSummary {
     truncated: boolean;
     oldestIndex: number | null;
     newestIndex: number | null;
+    restorable: boolean;
+    restoreBlockedReason: string | null;
+  };
+  webmcp: {
+    state: RuntimeCapabilityState;
+    callableTools: number;
+    truncated: boolean;
   };
   observations: BrowserObservations | null;
 }
@@ -699,10 +778,11 @@ export interface CaptureDetails {
   accessibility?: AccessibilityDiagnostics | null;
   replay?: ReplayTimeline;
   screenshot?: { status: "captured" | "suppressed" | "unavailable" };
+  webmcp?: WebMcpCaptureDetail | null;
 }
 
 export interface IssueCaptureResult {
-  schemaVersion: 4;
+  schemaVersion: 5;
   profile: "summary" | "full" | "include" | "delta";
   capturedAt: string;
   cursor: string;
@@ -710,7 +790,7 @@ export interface IssueCaptureResult {
     id: string;
     url: string;
     status: SessionStatus;
-    target: Pick<BrowserTarget, "browser" | "remote" | "viewport" | "isolated" | "mode"> | null;
+    target: Pick<BrowserTarget, "schemaVersion" | "browser" | "remote" | "viewport" | "isolated" | "mode"> | null;
     projectCapabilities: ProjectCapabilities;
     runtimeCapabilities: BrowserRuntimeCapabilities | null;
   };
@@ -763,7 +843,7 @@ export interface ScenarioRiskSignals {
 }
 
 export interface ServerStateResetContract {
-  action?: BrowserAction;
+  action?: ReplayableBrowserAction;
   readyCheck?: ScenarioCheck;
 }
 
@@ -846,7 +926,7 @@ export interface BuildReference {
 }
 
 export interface EnvironmentFingerprint {
-  schemaVersion: 3;
+  schemaVersion: 4;
   projectRoot: string;
   descriptor: string;
   projectFrameworks: Framework[];
@@ -885,12 +965,12 @@ export interface ScenarioBaseline {
 }
 
 export interface PublicReproScenario {
-  schemaVersion: 5;
+  schemaVersion: 6;
   id: string;
   sessionId: string;
   name: string;
   url: string;
-  actions: BrowserAction[];
+  actions: ReplayableBrowserAction[];
   failureSignature: FailureSignatureEntry[];
   acceptanceChecks: ScenarioCheck[];
   regressionChecks: ScenarioCheck[];
@@ -913,7 +993,7 @@ export interface PublicReproScenario {
 export interface PrivateReproScenario extends PublicReproScenario {
   /** Raw URL retained only in the private in-memory scenario for replay. */
   privateUrl: string;
-  privateActions: BrowserAction[];
+  privateActions: ReplayableBrowserAction[];
   privateAuthState?: PlaywrightStorageState;
 }
 
@@ -995,7 +1075,7 @@ export interface RateSummary {
 }
 
 export interface VerificationResult {
-  schemaVersion: 5;
+  schemaVersion: 6;
   outcome: VerificationOutcome;
   level: VerificationLevel;
   requestedLevel: VerificationLevel;

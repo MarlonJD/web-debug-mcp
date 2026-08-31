@@ -63,6 +63,9 @@ const requiredFiles = [
   "plugins/web-debug/skills/manual-parity-qualification/references/artifact-contract.md",
   "plugins/web-debug/skills/manual-parity-qualification/scripts/validate-manual-parity.mjs",
   "plugins/web-debug/skills/web-debug-workflow/SKILL.md",
+  "plugins/web-debug/skills/web-debug-workflow/references/safari-mcp-diagnostics.md",
+  "plugins/web-debug/skills/webmcp-tool-authoring/SKILL.md",
+  "plugins/web-debug/skills/webmcp-tool-authoring/references/tool-quality-and-security.md",
   "src/index.ts",
   "bin/web-debug-mcp.mjs",
   "src/core/session-manager.ts",
@@ -77,6 +80,7 @@ const requiredFiles = [
   "src/core/mcp-response.ts",
   "src/core/doctor.ts",
   "src/adapters/chromium.ts",
+  "src/adapters/webmcp.ts",
   "fixtures/vanilla/index.html",
   "fixtures/vanilla/app.js",
   "fixtures/react-vite/package.json",
@@ -112,6 +116,7 @@ const requiredFiles = [
   "fixtures/complex-vite/src/quote-api.js",
   "fixtures/complex-vite/src/styles.css",
   "scripts/live-smoke.mjs",
+  "scripts/live-webmcp-smoke.mjs",
   "scripts/live-react-vite-smoke.mjs",
   "scripts/serve-react-vite.mjs",
   "scripts/live-vue-vite-smoke.mjs",
@@ -155,6 +160,7 @@ const requiredFiles = [
   "test/managed-process.test.ts",
   "test/eval-contract.test.ts",
   "test/plugin-skill-contract.test.ts",
+  "test/webmcp.test.ts",
   "test/compatibility.test.ts",
   "tsconfig.test.json",
 ];
@@ -164,14 +170,14 @@ const registeredPlans = [...execPlanIndex.matchAll(/\]\(((?:active|completed)\/[
 check(registeredPlans.length > 0, "ExecPlan registry must link at least one active or completed plan");
 for (const registeredPlan of new Set(registeredPlans)) read(`docs/exec-plans/${registeredPlan}`);
 
-for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:react-vite", "smoke:vue-vite", "smoke:angular", "smoke:next", "smoke:safari", "smoke:local-fidelity", "serve:vue-vite", "serve:angular", "demo:compare", "eval:catalog", "eval:grade"]) {
+for (const scriptName of ["test", "typecheck", "build", "harness:check", "smoke:live", "smoke:webmcp", "smoke:react-vite", "smoke:vue-vite", "smoke:angular", "smoke:next", "smoke:safari", "smoke:local-fidelity", "serve:vue-vite", "serve:angular", "demo:compare", "eval:catalog", "eval:grade"]) {
   check(typeof packageJson.scripts?.[scriptName] === "string", `package.json is missing script: ${scriptName}`);
 }
 check(packageJson.name === "web-debug-mcp", "package.json name must remain web-debug-mcp");
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "released" && sourceVersion === "0.6.0" && releasedPluginVersion === sourceVersion, "final package and released plugin runtime metadata must agree on 0.6.0");
+check(packageJson.webDebug?.releaseStatus === "source-next" && sourceVersion === "0.7.0-next.0" && packageJson.webDebug?.releasedPackageVersion === "0.6.0" && releasedPluginVersion === "0.6.0", "source-next package metadata must separate 0.7.0-next.0 source from immutable 0.6.0 release/plugin runtime");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -191,6 +197,7 @@ const claudeManifest = claudeManifestText ? JSON.parse(claudeManifestText) : {};
 const claudeMarketplaceText = read(".claude-plugin/marketplace.json");
 const claudeMarketplace = claudeMarketplaceText ? JSON.parse(claudeMarketplaceText) : {};
 const pluginSkill = read("plugins/web-debug/skills/web-debug-workflow/SKILL.md");
+const safariMcpDiagnostics = read("plugins/web-debug/skills/web-debug-workflow/references/safari-mcp-diagnostics.md");
 const qualificationSkill = read("plugins/web-debug/skills/manual-parity-qualification/SKILL.md");
 const qualificationContract = read("plugins/web-debug/skills/manual-parity-qualification/references/artifact-contract.md");
 const qualificationValidator = read("plugins/web-debug/skills/manual-parity-qualification/scripts/validate-manual-parity.mjs");
@@ -204,7 +211,7 @@ const claudeMarketplaceEntry = claudeMarketplace.plugins?.find((entry) => entry?
 check(pluginManifest.name === "web-debug", "Codex plugin manifest name must remain web-debug");
 check(pluginManifest.mcpServers === "./.mcp.json", "Codex plugin must point to its bundled MCP configuration");
 check(pluginManifest.skills === "./skills/", "Codex plugin must expose its bundled skills directory");
-check(JSON.stringify(pluginSkillDirectories) === JSON.stringify(["manual-parity-qualification", "web-debug-workflow"]), "Plugin must expose exactly the two reviewed workflow skills");
+check(JSON.stringify(pluginSkillDirectories) === JSON.stringify(["manual-parity-qualification", "web-debug-workflow", "webmcp-tool-authoring"]), "Plugin must expose exactly the three reviewed workflow skills");
 check(Array.isArray(pluginManifest.interface?.defaultPrompt), "Codex plugin must expose starter prompts as an array");
 check(pluginManifest.interface?.defaultPrompt?.some((prompt) => typeof prompt === "string" && prompt.includes("manual-parity")), "Codex plugin prompts must expose manual-parity qualification");
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
@@ -222,7 +229,13 @@ check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code mar
 check(claudeMarketplaceEntry?.version === releasedPluginVersion && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the released plugin runtime");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
 check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
+check(pluginSkill.includes("references/safari-mcp-diagnostics.md") && safariMcpDiagnostics.includes("create_tab") && safariMcpDiagnostics.includes("navigate_to_url") && safariMcpDiagnostics.includes("browser_console_messages") && safariMcpDiagnostics.includes("list_network_requests") && safariMcpDiagnostics.includes("close_tab"), "Web Debug workflow must route the exact Safari MCP owned-handle diagnostic subset");
+check(safariMcpDiagnostics.includes("Do not call `list_tabs`, `switch_tab`, `get_network_request`") && safariMcpDiagnostics.includes("Never merge it into a Web Debug evidence bundle") && safariMcpDiagnostics.includes("qualification PASS"), "Safari MCP diagnostics must forbid ambient/full-detail tools and remain separate diagnostic-only evidence");
 check(qualificationSkill.includes("Never promote your own generated baseline") && qualificationSkill.includes("typed native test code") && qualificationSkill.includes("Web Debug diagnostics never award qualification PASS") && qualificationSkill.includes("record `inconclusive`"), "Qualification skill must preserve reviewer, native-runner, diagnostic-only, and ambiguous-mutation boundaries");
+const webmcpSkill = read("plugins/web-debug/skills/webmcp-tool-authoring/SKILL.md");
+const webmcpReference = read("plugins/web-debug/skills/webmcp-tool-authoring/references/tool-quality-and-security.md");
+check(webmcpSkill.includes("approved, reviewed product requirement") && webmcpSkill.includes("never retried") && webmcpSkill.includes("not replayable"), "WebMCP authoring skill must require authority and direct-only safety");
+check(webmcpReference.includes("independent authoritative state") && webmcpReference.includes("untrusted page content"), "WebMCP reference must preserve independent oracle and untrusted-content boundaries");
 check(qualificationContract.includes("non-executable metadata") && qualificationContract.includes("coverage") && qualificationContract.includes("execution") && qualificationContract.includes("stability") && qualificationContract.includes("structural-only"), "Qualification artifact contract must keep metadata non-executable and verdict axes explicit");
 check(qualificationValidator.includes("realpath") && qualificationValidator.includes("crosswalkDigest") && qualificationValidator.includes("ambiguous mutation certainty forces inconclusive execution") && !qualificationValidator.includes("playwright"), "Qualification validator must stay contained, drift-aware, mutation-safe, and independent of browser execution");
 
@@ -272,6 +285,8 @@ check(reactBridgeSource.includes("flamegraph"), "React bridge must expose the bo
 check(angularBridgeSource.includes("window.__WEB_DEBUG_ANGULAR__") && angularBridgeSource.includes("isFrameworkInternal"), "Angular bridge must expose bounded documented-global evidence without framework internals");
 check(vueBridgeSource.includes("window.__WEB_DEBUG_VUE__") && vueBridgeSource.includes("component:updated") && !vueBridgeSource.includes("__vueParentComponent"), "Vue bridge must use the bounded hook contract without a DOM-private fallback");
 check(chromiumSource.includes("bridgeScriptIdentifiers") && chromiumSource.includes("frameworks.has(\"angular\")") && chromiumSource.includes("frameworks.has(\"vue\")"), "Chromium must select and clean up Angular/Vue target-scoped bridges");
+check(chromiumSource.includes("WebMcpPageApi") && chromiumSource.includes("case \"webmcp\""), "Chromium must expose the bounded direct-only WebMCP page API path");
+check(read("src/adapters/webmcp.ts").includes("webmcp-page-api") && read("src/adapters/webmcp.ts").includes("executeTool(topLevelMatches[0], json"), "WebMCP adapter must retain truthful provenance and the documented JSON-string call convention");
 check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
 check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");

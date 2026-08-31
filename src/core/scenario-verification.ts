@@ -5,7 +5,7 @@ import type {
   AttemptSummary,
   AttemptTermination,
   BaselineStatus,
-  BrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BrowserObservations,
   BrowserSnapshot,
@@ -147,13 +147,13 @@ export function isolationResult(target: BrowserTarget | null, reset: "fresh" | "
   return { ...isolation, reset };
 }
 
-export function scrubChecks(checks: CheckObservation[], actions: BrowserAction[]): CheckObservation[] {
+export function scrubChecks(checks: CheckObservation[], actions: ReplayableBrowserAction[]): CheckObservation[] {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return checks;
   return checks.map((check) => replaceSecrets(check, secrets) as CheckObservation);
 }
 
-export function scrubVerificationResult(result: VerificationResult, actions: BrowserAction[]): VerificationResult {
+export function scrubVerificationResult(result: VerificationResult, actions: ReplayableBrowserAction[]): VerificationResult {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return result;
   const sanitized = cloneJson(result);

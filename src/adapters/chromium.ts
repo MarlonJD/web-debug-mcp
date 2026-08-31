@@ -15,7 +15,8 @@ import type {
 
 import type {
   ActionResult,
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
@@ -60,6 +61,7 @@ import type {
   SnapshotOptions,
 } from "./browser.js";
 import { chromiumRuntimeCapabilities } from "./runtime-capabilities.js";
+import { WebMcpPageApi } from "./webmcp.js";
 
 interface RemoteObject {
   type?: string;
@@ -146,6 +148,8 @@ export class ChromiumAdapter implements BrowserAdapter {
   private mainFrameNavigationHandler: ((frame: Frame) => void) | null = null;
   private readonly bridgeScriptIdentifiers: string[] = [];
   private mainFrameId: string | null = null;
+  private webmcp: WebMcpPageApi | null = null;
+  private webmcpAvailable: boolean | undefined;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
@@ -217,6 +221,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.browser = await chromium.launch({
         executablePath,
         headless: options.headless ?? true,
+        ...(process.env.WEB_DEBUG_ENABLE_WEBMCP_TESTING === "1" ? { args: ["--enable-features=WebMCP"] } : {}),
       });
       this.context = await this.browser.newContext({
         viewport: options.viewport ?? { width: 1440, height: 900 },
@@ -229,6 +234,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     this.installObservers(this.page);
+    this.webmcp = new WebMcpPageApi(this.page);
     this.cdp = await this.context.newCDPSession(this.page);
     await this.cdp.send("Page.enable");
     try {
@@ -276,6 +282,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
     if (this.navigationViolation) throw this.consumeNavigationViolation();
     this.assertFinalOrigin(this.page.url());
+    this.webmcpAvailable = await this.page.evaluate(() => {
+      const modelContext = (document as Document & { modelContext?: unknown }).modelContext as { getTools?: unknown; executeTool?: unknown } | undefined;
+      return Boolean(modelContext && typeof modelContext.getTools === "function" && typeof modelContext.executeTool === "function");
+    }).catch(() => false);
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
     const [react, angular, vue] = await Promise.all([
@@ -360,6 +370,8 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.frameworks.clear();
     this.lastKnownAngular = null;
     this.lastKnownVue = null;
+    this.webmcp = null;
+    this.webmcpAvailable = undefined;
     this.mainFrameId = null;
   }
 
@@ -375,9 +387,9 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   targetIdentity(): string | null { return this.targetId; }
   browserVersion(): string | null { return this.version; }
-  runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser); }
+  runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser, this.webmcpAvailable); }
 
-  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+  async act(action: DirectBrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
     const page = this.requirePage();
     if (this.pausedEvent) {
@@ -386,6 +398,17 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.assertSelectedTopLevelState();
     try {
       switch (action.kind) {
+        case "webmcp": {
+          if (!this.webmcp) throw new WebDebugError("WEBMCP_UNAVAILABLE", "The selected page does not expose a callable WebMCP API.");
+          const toolResult = await this.webmcp.execute(action, context);
+          return {
+            schemaVersion: 1,
+            kind: "webmcp",
+            url: safeUrl(page.url()),
+            title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
+            toolResult,
+          };
+        }
         case "navigate":
           assertAllowedUrl(action.url, this.allowRemote);
           if (this.baseOrigin) assertTopLevelOrigin(action.url, this.baseOrigin);
@@ -429,7 +452,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (this.navigationViolation) throw this.consumeNavigationViolation();
     this.assertFinalOrigin(page.url());
     const title = this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page);
-    return { kind: action.kind, url: safeUrl(page.url()), title };
+    return { schemaVersion: 1, kind: action.kind, url: safeUrl(page.url()), title };
   }
 
   async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
@@ -545,6 +568,17 @@ export class ChromiumAdapter implements BrowserAdapter {
     const accessibility = !this.pausedEvent && !options.checksOnly && options.accessibility === true
       ? await this.collectAccessibility(context, warnings)
       : null;
+    let webmcp = null;
+    if (!options.checksOnly && this.webmcp && this.webmcpAvailable === true && !this.pausedEvent) {
+      const optionalBudget = optionalBudgetMs(context, 1_000);
+      if (optionalBudget > 0) {
+        const inspected = await withTimeout(trackPending(this.webmcp.inspect(context), context), optionalBudget);
+        if (inspected) webmcp = inspected;
+        else warnings.push("WebMCP page metadata unavailable: optional discovery timed out.");
+      } else {
+        warnings.push("WebMCP page metadata unavailable: optional enrichment timed out.");
+      }
+    }
     const snapshot: BrowserSnapshot = {
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
@@ -564,6 +598,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       vue,
       next: null,
       vite: null,
+      webmcp,
       accessibility,
       warnings,
       observations: {
@@ -695,7 +730,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
   }
 
-  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+  private async waitForProbe(action: Extract<ReplayableBrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
     const timeout = boundedTimeout(action.timeoutMs);
     const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
     while (performance.now() <= deadline) {
@@ -965,6 +1000,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   private async target(): Promise<BrowserTarget> {
     const page = this.requirePage();
     return {
+      schemaVersion: 1,
       browser: "chromium",
       remote: this.remoteTarget,
       url: safeUrl(page.url()),

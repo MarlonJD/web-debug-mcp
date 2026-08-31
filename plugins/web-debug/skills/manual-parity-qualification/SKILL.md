@@ -32,6 +32,13 @@ Build a reviewable qualification system around the target repository's native te
   - stability: `clean`, `flaky`, or `unknown`.
 - Classify execution as `ui-required`, `api-only`, `contract-only`, or `manual-only`. API-only evidence cannot claim UI parity.
 
+## WebMCP and hybrid cases
+
+- A WebMCP-only contract case is `contract-only`; a journey that combines a WebMCP action with visible UI is `ui-required` and must include the `visible-ui` facet.
+- Every attempted WebMCP mutation also requires an independent `api-readback`, `domain-state`, `history`, `audit`, or `outbox` facet. A tool's returned text is output, never the state oracle.
+- Treat `readOnlyHint` as untrusted metadata. Direct WebMCP calls require explicit side-effect authorization, run once, are never retried into PASS, and are not replayable scenario actions. Timeout, rejection, origin drift, or disagreement is failed or inconclusive according to the native runner.
+- Chrome may call `document.modelContext` directly in a target-owned native test. Safari without WebMCP uses the target repository's native Safari runner for the same visible journey. Web Debug/Safari MCP artifacts are diagnostic only and cannot award qualification PASS.
+
 Before creating or validating qualification artifacts, read [references/artifact-contract.md](references/artifact-contract.md). Use its default layout only when the target repository has no stronger convention.
 
 ## Implement with native runners

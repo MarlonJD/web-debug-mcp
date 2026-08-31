@@ -1,8 +1,9 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.6.0",
+  "version": "0.7.0-next.0",
   "webDebug": {
-    "releaseStatus": "released",
+    "releaseStatus": "source-next",
+    "releasedPackageVersion": "0.6.0",
     "releasedPluginRuntimeVersion": "0.6.0"
   },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
@@ -55,6 +56,7 @@
     "dev": "tsx src/index.ts",
     "harness:check": "node scripts/harness-check.mjs",
     "smoke:live": "npm run build && node scripts/live-smoke.mjs",
+    "smoke:webmcp": "npm run build && node scripts/live-webmcp-smoke.mjs",
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
     "smoke:vue-vite": "npm run build && node scripts/live-vue-vite-smoke.mjs",

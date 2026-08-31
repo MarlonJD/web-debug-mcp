@@ -5,14 +5,14 @@ import type {
   CaptureSurface,
   CaptureSummary,
   CaptureView,
-  BrowserAction,
+  ReplayableBrowserAction,
   BrowserSnapshot,
   BrowserRuntimeCapabilities,
   BrowserObservations,
   EvidenceBundle,
   IssueCaptureResult,
 } from "../domain/types.js";
-import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES } from "../domain/types.js";
+import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES, MAX_WEBMCP_DETAIL_BYTES } from "../domain/types.js";
 import { WebDebugError } from "./errors.js";
 import { boundText } from "./redaction.js";
 import { actionSecrets, cloneJson, replaceSecrets } from "./private-values.js";
@@ -84,7 +84,7 @@ export function projectIssueCapture(input: {
   const selected = selectedSurfaces(view);
   const summary = captureSummary(evidence);
   const common: IssueCaptureResult = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     profile: view.profile,
     capturedAt: evidence.capturedAt,
     cursor,
@@ -93,6 +93,7 @@ export function projectIssueCapture(input: {
       url: evidence.session.url,
       status: evidence.session.status,
       target: evidence.session.target ? {
+        schemaVersion: evidence.session.target.schemaVersion,
         browser: evidence.session.target.browser,
         remote: evidence.session.target.remote,
         viewport: evidence.session.target.viewport,
@@ -181,6 +182,7 @@ function captureSurfaces(evidence: EvidenceBundle, screenshotStatus: NonNullable
     accessibility: evidence.browser.accessibility ?? null,
     replay: evidence.replay,
     screenshot: { status: screenshotStatus },
+    webmcp: evidence.browser.webmcp ?? null,
   };
 }
 
@@ -251,6 +253,13 @@ function captureSummary(evidence: EvidenceBundle): CaptureSummary {
       truncated: evidence.replay.truncated,
       oldestIndex: replayFrames[0]?.index ?? null,
       newestIndex: replayFrames.at(-1)?.index ?? null,
+      restorable: evidence.replay.restorable,
+      restoreBlockedReason: evidence.replay.restoreBlockedReason,
+    },
+    webmcp: {
+      state: evidence.session.runtimeCapabilities?.webmcp.state ?? "unsupported",
+      callableTools: browser.webmcp?.tools.length ?? 0,
+      truncated: browser.webmcp?.truncated ?? false,
     },
     observations: compactObservations(browser.observations),
   };
@@ -287,6 +296,7 @@ function compactRuntimeCapabilities(runtime: BrowserRuntimeCapabilities | null):
     compact.viewportMatrix,
     compact.tlsBypass,
     compact.authSeeding,
+    compact.webmcp,
   ]) delete capability.reason;
   return compact;
 }
@@ -346,6 +356,7 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     bounded.browser.accessibility.nodes = bounded.browser.accessibility.nodes.slice(0, 128);
     bounded.browser.accessibility.suggestions = bounded.browser.accessibility.suggestions.slice(0, 32);
   }
+  if (bounded.browser.webmcp) pruneWebMcpDetail(bounded.browser.webmcp);
   bounded.replay.frames = bounded.replay.frames.slice(-8);
   if (serializedBytes(bounded) > MAX_EVIDENCE_BUNDLE_BYTES) {
     optionalTruncated = true;
@@ -382,7 +393,7 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
   return bounded;
 }
 
-export function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]): EvidenceBundle {
+export function scrubEvidence(evidence: EvidenceBundle, actions: ReplayableBrowserAction[]): EvidenceBundle {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return evidence;
   const sanitized = replaceSecrets(evidence, secrets) as EvidenceBundle;
@@ -395,7 +406,7 @@ export function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]
   return sanitized;
 }
 
-export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: BrowserAction[]): BrowserSnapshot {
+export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: ReplayableBrowserAction[]): BrowserSnapshot {
   const secrets = actionSecrets(actions);
   return secrets.length === 0 ? browser : replaceSecrets(browser, secrets) as BrowserSnapshot;
 }
@@ -438,4 +449,13 @@ function pruneRequestInsights(value: unknown): unknown {
     const item = request as Record<string, unknown>;
     return [{ requestId: item.requestId ?? null, kind: item.kind ?? null, route: item.route ?? null, url: item.url ?? null, status: item.status ?? null, durationMs: item.durationMs ?? null }];
   }) };
+}
+
+function pruneWebMcpDetail(detail: NonNullable<BrowserSnapshot["webmcp"]>): void {
+  const serialized = () => serializedBytes(detail);
+  if (serialized() <= MAX_WEBMCP_DETAIL_BYTES) return;
+  detail.truncated = true;
+  for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.inputSchemaJson = null;
+  for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.description = "";
+  while (detail.tools.length > 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES) detail.tools.pop();
 }

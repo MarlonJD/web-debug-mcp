@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "scope": "0.6.0-release-local",
+  "scope": "0.7.0-next.0-source-local",
   "observedAt": "2026-08-31T03:41:00+03:00",
-  "sourceVersion": "0.6.0",
+  "sourceVersion": "0.7.0-next.0",
   "releaseBaseline": {
     "version": "0.5.0",
     "commit": "4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b",
@@ -30,21 +30,23 @@
     { "command": "final 0.6.0 archive handshake under Node 20.20.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
     { "command": "final 0.6.0 archive handshake under Node 22.23.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
     { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
+    { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 151 WebMCP direct action, opaque bounded result, independent DOM/oracle read-back, replay non-restorability, and post-call screenshot suppression" },
     { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
     { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
     { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR transform diff" },
     { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 development DOM-host component/state/change evidence with no Vite provenance claim" },
-    { "command": "npm run smoke:safari", "status": "blocked", "signal": "Safari 26.6.2 WebDriver opened, but the fixture wait condition exceeded 5 seconds on two isolated retries before capture; deterministic Safari capability/BiDi contracts pass and immutable 0.5.0 live evidence remains historical" },
+    { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action, DOM, screenshot, BiDi console, Performance Resource Timing network fallback, origin/profile warnings, and cleanup" },
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" },
-    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-3 project/runtime-aware fingerprints" },
+    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-4 project/runtime-aware fingerprints" },
     { "command": "public npm 0.6.0 fresh-cache handshake", "status": "passed", "signal": "empty prefix/cache installed 96 packages and returned 0.6.0, 13 tools, and 13 concrete data schemas" },
-    { "command": "Codex plugin update", "status": "passed", "signal": "one enabled 0.6.0+codex.20260831002920 plugin with two skills and bundled web-debug-mcp@0.6.0" }
+    { "command": "Safari 27 MCP feasibility on caller-provided other MacBook", "status": "failed", "signal": "Safari 27.0 Safari/1.0.0 MCP initialized; strict cutover matrix returned 36 passed, 10 failed, and 7 blocked. No runtime code was retained; only the handle-scoped external diagnostic subset remains candidate-only" },
+    { "command": "Codex plugin update", "status": "not-run", "signal": "Immutable installed/released 0.6.0 plugin was not contacted or mutated; repository plugin source carries sourceVersion 0.7.0-next.0" }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
     "Node 20.20.2, 22.23.2, and 24.18.0 all passed exact final 0.6.0 archive handshakes; broader deterministic/live browser jobs used Node 24.18.0.",
-    "Safari 26.6.2 final live rerun is blocked at the pre-capture fixture wait after two retries; deterministic adapter/runtime negotiation passes, but this run does not claim fresh Safari capture evidence.",
+    "Safari 26.6.2 WebDriver is verified locally; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
     "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
-    "Final 0.6.0 release evidence does not refresh HMAC certification or establish provider/production authority."
+    "Source-next 0.7.0-next.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover was rejected and optional external diagnostics remain separate from product evidence."
   ]
 }

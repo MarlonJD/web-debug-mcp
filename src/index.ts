@@ -9,7 +9,8 @@ import type { ServerNotification, ServerRequest, ToolAnnotations } from "@modelc
 import { z } from "zod";
 
 import type {
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   FailureSignatureEntry,
   NextInspection,
@@ -32,7 +33,7 @@ import { PACKAGE_NAME, PACKAGE_VERSION } from "./core/version.js";
 import { ArtifactStore, type ScreenshotCandidate } from "./core/artifact-store.js";
 import { errorToolResult, successToolResult, toolOutputSchemaFor } from "./core/mcp-response.js";
 import { CAPTURE_ARTIFACT, type InternalIssueCaptureResult } from "./core/session-evidence.js";
-import { toolDataSchemas } from "./domain/wire-schemas.js";
+import { directActionSchema, toolDataSchemas } from "./domain/wire-schemas.js";
 
 export { ArtifactStore, ProcessRegistry, SessionManager };
 
@@ -186,7 +187,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
       instructions:
-        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
+        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, bounded desktop/mobile matrices, and an opt-in direct-only WebMCP page action with truthful page-API provenance; auth-seeded or post-WebMCP sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, matrix, and WebMCP capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -262,19 +263,19 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     "web_browser_action",
     {
       title: "Perform bounded browser action",
-      description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema }),
+      description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload with exact locators, or execute one explicitly authorized direct WebMCP page tool. WebMCP calls are bounded, opaque, non-replayable, and never retried.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), action: directActionSchema }),
       outputSchema: toolOutputSchemas.web_browser_action,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_browser_action,
     },
-    async ({ sessionId, action }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
+    async ({ sessionId, action }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as DirectBrowserAction, requestContext(extra.signal))),
   );
 
   server.registerTool(
     "web_issue_capture",
     {
       title: "Capture bounded web issue evidence",
-      description: "Capture redacted browser evidence with a compact summary by default, or explicitly request full, selected, or cursor-based changed surfaces. Screenshots are opt-in through full/include and remain suppressed for private input or auth-seeded sessions.",
+      description: "Capture redacted browser evidence with a compact summary by default, or explicitly request full, selected, or cursor-based changed surfaces. WebMCP metadata is discover-only and untrusted; screenshots are opt-in through full/include and remain suppressed for private input, auth-seeded sessions, or any session after a direct WebMCP attempt.",
       inputSchema: z.object({ sessionId: z.string().uuid(), view: captureViewSchema.default({ profile: "summary" }) }).strict(),
       outputSchema: toolOutputSchemas.web_issue_capture,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_issue_capture,
@@ -389,7 +390,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         sessionId,
         name,
         url,
-        actions: actions as BrowserAction[],
+        actions: actions as ReplayableBrowserAction[],
         failureSignature: failureSignature as FailureSignatureEntry[],
         acceptanceChecks: acceptanceChecks as ScenarioCheck[],
         regressionChecks: regressionChecks as ScenarioCheck[] | undefined,
@@ -399,7 +400,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         risks: risks as ScenarioRiskSignals | undefined,
         requestedLevel: requestedLevel as VerificationLevel | undefined,
         buildReference,
-        serverStateReset: serverStateReset as { action?: BrowserAction; readyCheck?: ScenarioCheck } | undefined,
+        serverStateReset: serverStateReset as { action?: ReplayableBrowserAction; readyCheck?: ScenarioCheck } | undefined,
       }, operation)), (value) => screenshotCandidatesFromScenario(value)),
   );
 

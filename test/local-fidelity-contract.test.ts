@@ -114,7 +114,7 @@ describe("0.3.x local fidelity contracts", () => {
     expect(scenario.baseline.evidence?.schemaVersion).toBe(4);
     expect(scenario.baseline.attempts[0]?.viewports).toHaveLength(2);
     expect(scenario.baseline.attempts[0]?.checkpoints?.length).toBeGreaterThan(0);
-    expect(scenario.environmentFingerprint.schemaVersion).toBe(3);
+    expect(scenario.environmentFingerprint.schemaVersion).toBe(4);
     expect(scenario.baseline.evidence?.session.target?.targetId).toBe("matrix-2");
     expect(manager.status(session.id).target?.targetId).toBe(targetId);
     expect(adapters).toHaveLength(3);
@@ -131,10 +131,10 @@ describe("0.3.x local fidelity contracts", () => {
     });
     expect(changedScope.contractHash).not.toBe(scenario.contractHash);
     const verification = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
-    expect(verification.schemaVersion).toBe(5);
+    expect(verification.schemaVersion).toBe(6);
     expect(verification.evidence.postFix?.schemaVersion).toBe(4);
     const evidence = await manager.capture(session.id, { profile: "summary" });
-    expect(evidence.schemaVersion).toBe(4);
+    expect(evidence.schemaVersion).toBe(5);
     await manager.close(session.id);
   });
 

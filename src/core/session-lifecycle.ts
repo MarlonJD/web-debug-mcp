@@ -21,7 +21,7 @@ export function normalizeTarget(target: BrowserTarget, browser: "chromium" | "sa
   if (target.url.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "The final browser target URL exceeded 2,048 characters.");
   const mode = target.mode ?? (browser === "safari" ? "webdriver" : options.cdpEndpoint ? "attach" : "launch");
   const isolated = target.isolated && mode === "launch";
-  return { ...target, browser: target.browser ?? browser, url: safeUrl(target.url), title: boundText(target.title, 300), mode, isolated, isolation: target.isolation ?? { browserProcess: isolated, context: isolated, profile: isolated, storage: isolated, cache: isolated, serviceWorkers: isolated, navigation: isolated, serverState: false } };
+  return { ...target, schemaVersion: 1, browser: target.browser ?? browser, url: safeUrl(target.url), title: boundText(target.title, 300), mode, isolated, isolation: target.isolation ?? { browserProcess: isolated, context: isolated, profile: isolated, storage: isolated, cache: isolated, serviceWorkers: isolated, navigation: isolated, serverState: false } };
 }
 
 export function cloneSummary(summary: DebugSessionSummary, secrets: string[] = []): DebugSessionSummary {
@@ -66,6 +66,7 @@ export function runtimeCapabilityStates(runtime: DebugSessionSummary["runtimeCap
     viewportMatrix: runtime.viewportMatrix.state,
     tlsBypass: runtime.tlsBypass.state,
     authSeeding: runtime.authSeeding.state,
+    webmcp: runtime.webmcp.state,
   };
 }
 
@@ -81,6 +82,7 @@ export function runtimeCapabilityWarnings(runtime: NonNullable<DebugSessionSumma
     ["viewport matrix", runtime.viewportMatrix],
     ["TLS bypass", runtime.tlsBypass],
     ["auth seeding", runtime.authSeeding],
+    ["WebMCP page API", runtime.webmcp],
   ] as const;
   return entries.flatMap(([name, capability]) => capability.state === "supported"
     ? []

@@ -23,7 +23,7 @@ describe("MCP screenshot resource registration", () => {
     const manager = {
       capture: async () => {
         const capture: Record<PropertyKey, unknown> = {
-          schemaVersion: 4,
+          schemaVersion: 5,
           profile: "full",
           capturedAt: "2026-08-30T00:00:00.000Z",
           cursor: "00000000-0000-4000-8000-000000000003",
@@ -35,7 +35,8 @@ describe("MCP screenshot resource registration", () => {
             network: { total: 0, failed: 0, pending: 0, latestFailures: [] },
             debugger: { paused: false, reason: null, callFrames: 0, breakpoints: 0 },
             runtimes: { react: "not-detected", angular: "not-detected", vue: "not-detected", next: "not-detected", vite: "not-detected", accessibility: "present" },
-            replay: { frames: 0, truncated: false, oldestIndex: null, newestIndex: null },
+            replay: { frames: 0, truncated: false, oldestIndex: null, newestIndex: null, restorable: true, restoreBlockedReason: null },
+            webmcp: { state: "unsupported", callableTools: 0, truncated: false },
             observations: null,
           },
           redaction: { applied: true, policy: "default-sensitive-fields" },

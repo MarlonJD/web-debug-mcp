@@ -12,7 +12,8 @@ Every tool advertises and enforces a concrete tool-specific output data schema a
 - bounded console and network metadata, with Safari network provenance disclosed as BiDi or Performance Resource Timing;
 - screenshot status when explicitly requested plus an opaque `web-debug://artifact/...` resource; local screenshot paths never enter capture data and small pixels may also be inline;
 - debugger pause reason, call frames, scopes, and redacted locals;
-- authoritative evidence `schemaVersion: 4` and nullable React, Angular, and Vue page-runtime snapshots; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
+- authoritative evidence `schemaVersion: 4` and public issue captures `schemaVersion: 5`, with nullable React, Angular, Vue, and discover-only WebMCP page metadata; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
+- WebMCP metadata is labeled `webmcp-page-api` and `untrusted: true`; direct actions use a separate non-replayable action type, execute once only with explicit side-effect authorization, and mark the timeline non-restorable with later screenshots suppressed;
 - explicit redaction policy and truncation warnings.
 - a bounded `replay` timeline whose fill/select actions are sanitised and whose frames are inspectable or safely restorable through `web_replay_seek`.
 - verification attempt frames are capture-only, carry `attemptId`, and are reset per attempt; ordinary manual action frames retain their existing restore behavior.

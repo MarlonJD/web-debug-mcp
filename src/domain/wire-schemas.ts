@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CAPTURE_SURFACES } from "./types.js";
+import { validateWebMcpArguments } from "../adapters/webmcp.js";
 
 const warningSchema = z.string().max(500);
 const frameworkSchema = z.enum(["vanilla", "react", "angular", "vue", "vite", "next"]);
@@ -12,6 +13,7 @@ const capabilityProvenanceSchema = z.enum([
   "safari-bidi",
   "performance-resource-timing",
   "session-policy",
+  "webmcp-page-api",
 ]);
 const runtimeCapabilitySchema = z.object({
   state: capabilityStateSchema,
@@ -31,7 +33,7 @@ export const projectCapabilitiesSchema: z.ZodType = z.object({
 }).strict();
 
 export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   browser: z.enum(["chromium", "safari"]),
   transport: z.enum(["chromium-launch", "chromium-cdp-attach", "safari-webdriver"]),
   actions: runtimeCapabilitySchema,
@@ -47,9 +49,11 @@ export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
   viewportMatrix: runtimeCapabilitySchema,
   tlsBypass: runtimeCapabilitySchema,
   authSeeding: runtimeCapabilitySchema,
+  webmcp: runtimeCapabilitySchema,
 }).strict();
 
 const browserTargetSchema = z.object({
+  schemaVersion: z.literal(1),
   browser: z.enum(["chromium", "safari"]),
   remote: z.boolean(),
   url: z.string().max(2_560),
@@ -108,7 +112,7 @@ export const projectDescriptorSchema: z.ZodType = z.object({
 }).strict();
 
 export const debugSessionSummarySchema: z.ZodType = z.object({
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
   id: z.string().uuid(),
   projectRoot: z.string().max(4_096),
   url: z.string().max(2_560),
@@ -131,7 +135,7 @@ const locatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("label"), text: z.string().max(500) }).strict(),
   z.object({ kind: z.literal("testId"), value: z.string().max(500) }).strict(),
 ]);
-const actionSchema = z.discriminatedUnion("kind", [
+const replayableActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("navigate"), url: z.string().max(2_560) }).strict(),
   z.object({ kind: z.literal("click"), locator: locatorSchema }).strict(),
   z.object({ kind: z.literal("fill"), locator: locatorSchema, value: z.string() }).strict(),
@@ -144,11 +148,39 @@ const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("reload") }).strict(),
 ]);
 
-export const actionResultSchema: z.ZodType = z.object({
-  kind: z.enum(["navigate", "click", "fill", "press", "select", "check", "hover", "scroll", "wait", "reload"]),
-  url: z.string().max(2_560),
-  title: z.string().max(300),
+const jsonValueSchema: z.ZodType = z.lazy(() => z.union([z.null(), z.boolean(), z.number().finite(), z.string(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema)]));
+const webmcpArgumentsSchema = z.record(z.string().max(100), jsonValueSchema).superRefine((value, context) => {
+  try {
+    const validation = validateWebMcpArguments(value);
+    if (!validation.valid) context.addIssue({ code: z.ZodIssueCode.custom, message: validation.message });
+  } catch (error) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: error instanceof Error ? error.message : "Invalid WebMCP arguments." });
+  }
+});
+const webmcpActionSchema = z.object({
+  kind: z.literal("webmcp"),
+  origin: z.string().max(2_560).url(),
+  name: z.string().min(1).max(100),
+  arguments: webmcpArgumentsSchema,
+  allowSideEffects: z.literal(true),
+  timeoutMs: z.number().int().min(1).max(30_000).optional(),
 }).strict();
+export const directActionSchema = z.discriminatedUnion("kind", [
+  ...replayableActionSchema.options,
+  webmcpActionSchema,
+]);
+export const replayableBrowserActionSchema = replayableActionSchema;
+export const webmcpDirectActionSchema = webmcpActionSchema;
+export const directBrowserActionSchema = directActionSchema;
+const serverStateResetSchema = z.object({
+  action: replayableActionSchema.optional(),
+  readyCheck: z.json().optional(),
+}).strict();
+
+export const actionResultSchema: z.ZodType = z.discriminatedUnion("kind", [
+  z.object({ schemaVersion: z.literal(1), kind: z.enum(["navigate", "click", "fill", "press", "select", "check", "hover", "scroll", "wait", "reload"]), url: z.string().max(2_560), title: z.string().max(300) }).strict(),
+  z.object({ schemaVersion: z.literal(1), kind: z.literal("webmcp"), url: z.string().max(2_560), title: z.string().max(300), toolResult: z.string().max(8_192).refine((value) => Buffer.byteLength(value, "utf8") <= 8_192, "WebMCP tool results are limited to 8,192 UTF-8 bytes.").nullable() }).strict(),
+]);
 
 const consoleEntrySchema = z.object({
   level: z.enum(["log", "info", "debug", "warning", "error", "pageerror"]),
@@ -203,7 +235,7 @@ const replayFrameSchema = z.object({
   attemptId: z.string().nullable(),
   capturedAt: z.string().max(100),
   trigger: z.enum(["action", "capture"]),
-  action: actionSchema.nullable(),
+  action: replayableActionSchema.nullable(),
   url: z.string().max(2_560),
   title: z.string().max(300),
   dom: domSchema,
@@ -218,7 +250,26 @@ const replayTimelineSchema = z.object({
   enabled: z.literal(true),
   maxFrames: z.number().int().positive(),
   truncated: z.boolean(),
+  restorable: z.boolean(),
+  restoreBlockedReason: z.string().max(100).nullable(),
   frames: z.array(replayFrameSchema).max(8),
+}).strict();
+
+const webmcpToolSchema = z.object({
+  origin: z.string().max(2_048),
+  name: z.string().max(100),
+  title: z.string().max(200).nullable(),
+  description: z.string().max(500),
+  inputSchemaJson: z.string().max(8_192).refine((value) => Buffer.byteLength(value, "utf8") <= 8_192, "WebMCP schemas are limited to 8,192 UTF-8 bytes.").nullable(),
+  annotations: z.object({ readOnlyHint: z.boolean().nullable(), untrustedContentHint: z.boolean().nullable() }).strict(),
+  untrusted: z.literal(true),
+}).strict();
+const webmcpDetailSchema = z.object({
+  provenance: z.literal("webmcp-page-api"),
+  observedAt: z.string().max(100),
+  total: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+  tools: z.array(webmcpToolSchema).max(16),
 }).strict();
 
 const captureSurfaceSchema = z.enum(CAPTURE_SURFACES);
@@ -235,9 +286,11 @@ const captureDetailsSchema = z.object({
   accessibility: z.json().nullable().optional(),
   replay: replayTimelineSchema.optional(),
   screenshot: z.object({ status: z.enum(["captured", "suppressed", "unavailable"]) }).strict().optional(),
+  webmcp: webmcpDetailSchema.nullable().optional(),
 }).strict();
 
 const captureTargetSchema = z.object({
+  schemaVersion: z.literal(1),
   browser: z.enum(["chromium", "safari"]),
   remote: z.boolean(),
   viewport: viewportSchema.nullable(),
@@ -246,7 +299,7 @@ const captureTargetSchema = z.object({
 }).strict();
 
 const captureCommonSchema = z.object({
-  schemaVersion: z.literal(4),
+  schemaVersion: z.literal(5),
   capturedAt: z.string().max(100),
   cursor: z.string().uuid(),
   session: z.object({
@@ -279,7 +332,8 @@ const captureCommonSchema = z.object({
       vite: z.enum(["present", "not-detected", "unavailable"]),
       accessibility: z.enum(["present", "not-detected", "unavailable"]),
     }).strict(),
-    replay: z.object({ frames: z.number().int().nonnegative(), truncated: z.boolean(), oldestIndex: z.number().int().nullable(), newestIndex: z.number().int().nullable() }).strict(),
+    replay: z.object({ frames: z.number().int().nonnegative(), truncated: z.boolean(), oldestIndex: z.number().int().nullable(), newestIndex: z.number().int().nullable(), restorable: z.boolean(), restoreBlockedReason: z.string().max(100).nullable() }).strict(),
+    webmcp: z.object({ state: capabilityStateSchema, callableTools: z.number().int().nonnegative(), truncated: z.boolean() }).strict(),
     observations: observationsSchema.nullable(),
   }).strict(),
   redaction: z.object({ applied: z.literal(true), policy: z.literal("default-sensitive-fields") }).strict(),
@@ -313,9 +367,12 @@ export const nextInspectionResultSchema: z.ZodType = z.object({
 }).strict();
 
 export const replaySeekResultSchema: z.ZodType = z.object({
+  schemaVersion: z.literal(1),
   sessionId: z.string().uuid(),
   frame: replayFrameSchema,
   restored: z.boolean(),
+  restorable: z.boolean(),
+  restoreBlockedReason: z.string().max(100).nullable(),
   availableFrames: z.number().int().nonnegative(),
   oldestFrameIndex: z.number().int().nonnegative(),
   newestFrameIndex: z.number().int().nonnegative(),
@@ -328,7 +385,7 @@ export const evaluationResultSchema: z.ZodType = z.object({
 }).strict();
 
 const environmentFingerprintSchema = z.object({
-  schemaVersion: z.literal(3),
+  schemaVersion: z.literal(4),
   projectRoot: z.string().max(4_096),
   descriptor: z.string().max(500),
   projectFrameworks: z.array(frameworkSchema).max(6),
@@ -353,12 +410,12 @@ const environmentFingerprintSchema = z.object({
 }).strict();
 
 export const publicReproScenarioSchema: z.ZodType = z.object({
-  schemaVersion: z.literal(5),
+  schemaVersion: z.literal(6),
   id: z.string().uuid(),
   sessionId: z.string().uuid(),
   name: z.string().max(200),
   url: z.string().max(2_560),
-  actions: z.array(actionSchema).max(100),
+  actions: z.array(replayableActionSchema).max(100),
   failureSignature: z.array(z.json()).max(64),
   acceptanceChecks: z.array(z.json()).max(64),
   regressionChecks: z.array(z.json()).max(64),
@@ -368,7 +425,7 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
   authFixture: z.enum(["seeded-disposable", "none"]),
   tls: z.enum(["strict", "allow-insecure-loopback"]),
   risks: z.json(),
-  serverStateReset: z.json().optional(),
+  serverStateReset: serverStateResetSchema.optional(),
   requestedLevel: z.enum(["quick", "standard", "strict"]),
   buildReference: z.json(),
   environmentFingerprint: environmentFingerprintSchema,
@@ -391,7 +448,7 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
 }).strict();
 
 export const verificationResultSchema: z.ZodType = z.object({
-  schemaVersion: z.literal(5),
+  schemaVersion: z.literal(6),
   outcome: z.enum(["verified", "failed", "inconclusive"]),
   level: z.enum(["quick", "standard", "strict"]),
   requestedLevel: z.enum(["quick", "standard", "strict"]),

@@ -14,7 +14,8 @@ import type {
   AttemptSummary,
   AttemptTermination,
   BaselineStatus,
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserSnapshot,
   BrowserTarget,
   BuildReference,
@@ -69,6 +70,7 @@ import {
   actionSecret,
   actionSecrets,
   isSensitiveInputAction,
+  replaceSecrets,
 } from "./private-values.js";
 import {
   cloneActions,
@@ -96,6 +98,7 @@ import {
   type VerifyScenarioInput,
 } from "./scenario-contract.js";
 import { SessionReplay } from "./session-replay.js";
+import { validateWebMcpAction } from "../adapters/webmcp.js";
 import {
   assertAllowedTargetUrl,
   cloneSummary,
@@ -175,6 +178,7 @@ interface ManagedSession {
   startOptions: BrowserStartOptions;
   authFixture: "seeded-disposable" | "none";
   tls: "strict" | "allow-insecure-loopback";
+  webmcpAttempted: boolean;
   selectedTargetId: string | null;
   lease: Lease | null;
   closing: boolean;
@@ -246,7 +250,7 @@ export class SessionManager {
     const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-"));
     const adapter = this.adapterFactory({ allowRemote: input.allowRemote, browser, webdriverEndpoint: input.webdriverEndpoint, targetId: input.targetId });
     const summary: DebugSessionSummary = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       id,
       projectRoot: descriptor.projectRoot,
       url: safeUrl(input.url),
@@ -293,6 +297,7 @@ export class SessionManager {
       closePromise: null,
       authFixture: authState ? "seeded-disposable" : "none",
       tls,
+      webmcpAttempted: false,
     };
     for (const secret of authSecrets) if (secret) managed.redactionSecrets.add(secret);
     if (authState) managed.summary.warnings.push("Disposable auth storage was seeded; screenshot pixels are not claimed redacted.");
@@ -328,10 +333,11 @@ export class SessionManager {
     throw new WebDebugError("SESSION_NOT_FOUND", `Unknown debug session: ${sessionId}`);
   }
 
-  async act(sessionId: string, action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+  async act(sessionId: string, action: DirectBrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     const session = this.requireSession(sessionId);
     try {
-      return await this.withLease(session, context, (operation) => this.actInternal(session, action, operation, true));
+      const result = await this.withLease(session, context, (operation) => this.actInternal(session, action, operation, true));
+      return replaceSecrets(result, sessionSecrets(session)) as ActionResult;
     } catch (error) {
       const secret = actionSecret(action);
       throw sanitizeError(error, secret ? [secret] : sessionSecrets(session));
@@ -351,7 +357,7 @@ export class SessionManager {
           view: normalized,
           cursors: session.captureCursors,
           generation: session.captureGeneration,
-          screenshotSuppressed: session.authFixture === "seeded-disposable" || sessionSecrets(session).length > 0,
+          screenshotSuppressed: session.webmcpAttempted || session.authFixture === "seeded-disposable" || sessionSecrets(session).length > 0,
         });
       });
     } catch (error) {
@@ -425,7 +431,7 @@ export class SessionManager {
       const risks = mergeRisks(input.risks);
       const requestedLevel = effectiveRequestedLevel(input.requestedLevel, risks);
       const scenario = createPrivateScenario({
-        schemaVersion: 5,
+        schemaVersion: 6,
         id: randomUUID(),
         sessionId: input.sessionId,
         name: input.name.trim(),
@@ -925,7 +931,7 @@ export class SessionManager {
               session.descriptor,
               evidenceSession,
               { ...fullBrowser, next: null, vite: null },
-              { enabled: true, maxFrames: MAX_REPLAY_FRAMES, truncated: false, frames: [] },
+              { enabled: true, maxFrames: MAX_REPLAY_FRAMES, truncated: false, restorable: true, restoreBlockedReason: null, frames: [] },
             ), sessionActions(session)));
             representativeEvidence.phase = phase;
             representativeEvidence.attemptId = attemptId;
@@ -1069,10 +1075,11 @@ export class SessionManager {
 
   private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean): Promise<EvidenceBundle> {
     const suppressInputScreenshot = sessionSecrets(session).length > 0;
-    const suppressScreenshot = session.authFixture === "seeded-disposable" || suppressInputScreenshot;
+    const suppressScreenshot = session.webmcpAttempted || session.authFixture === "seeded-disposable" || suppressInputScreenshot;
     const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot }, context), context);
     await this.applySessionArtifactPolicy(session, browser, suppressScreenshot);
-    if (captureScreenshot && suppressInputScreenshot && session.authFixture !== "seeded-disposable") browser.warnings.push("Screenshot suppressed because the session contains private fill/select input values; pixels are not claimed redacted.");
+    if (captureScreenshot && session.webmcpAttempted) browser.warnings.push("Screenshot suppressed after a direct WebMCP action; the page may have mutated state outside the replay contract.");
+    else if (captureScreenshot && suppressInputScreenshot && session.authFixture !== "seeded-disposable") browser.warnings.push("Screenshot suppressed because the session contains private fill/select input values; pixels are not claimed redacted.");
     let next = null;
     if (session.nextAdapter) {
       const optional = optionalContext(context);
@@ -1119,7 +1126,27 @@ export class SessionManager {
     browser.warnings.push(...artifactPolicy.warnings);
   }
 
-  private async actInternal(session: ManagedSession, action: BrowserAction, context: OperationContext, recordReplay: boolean): Promise<ActionResult> {
+  private async actInternal(session: ManagedSession, action: DirectBrowserAction, context: OperationContext, recordReplay: boolean): Promise<ActionResult> {
+    if (action.kind === "webmcp") {
+      const validation = validateWebMcpAction(action);
+      for (const secret of validation.strings) if (secret) session.redactionSecrets.add(secret);
+      session.webmcpAttempted = true;
+      session.replay.markNonRestorable("webmcp-direct-action");
+      try {
+        try {
+          if (new URL(session.summary.url).origin !== action.origin) throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "The WebMCP action origin must equal the selected session origin.");
+        } catch (error) {
+          if (error instanceof WebDebugError) throw error;
+          throw new WebDebugError("NAVIGATION_ORIGIN_BLOCKED", "The WebMCP action origin must equal the selected session origin.");
+        }
+        const result = await this.callAdapter(() => session.adapter.act(action, context), context);
+        session.summary.url = safeUrl(result.url);
+        if (session.summary.target) session.summary.target = { ...session.summary.target, url: safeUrl(result.url), title: boundText(result.title, 300) };
+        return replaceSecrets(redactValue(result), sessionSecrets(session)) as ActionResult;
+      } finally {
+        if (recordReplay) await this.recordWebMcpAttemptFrame(session, context);
+      }
+    }
     validateAction(action);
     const secret = actionSecret(action);
     if (secret) session.redactionSecrets.add(secret);
@@ -1136,6 +1163,7 @@ export class SessionManager {
   }
 
   private async restoreReplayFrame(session: ManagedSession, targetFrame: ReplayFrame, context: OperationContext): Promise<void> {
+    if (!session.replay.isRestorable()) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "Replay restore is unavailable after a direct WebMCP action.");
     if (session.redactionSecrets.size > 0) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "This session includes a sanitized input action; restore it by rerunning the original scenario with its input supplied explicitly.");
     if (targetFrame.attemptId) throw new WebDebugError("REPLAY_RESTORE_UNAVAILABLE", "Verification replay retains a capture-only frame; restore it by rerunning the original scenario.");
     const actions = session.replay.actionsThrough(targetFrame);
@@ -1151,7 +1179,7 @@ export class SessionManager {
     for (const action of actions) await this.actInternal(session, action, context, false);
   }
 
-  private async recordReplayFrame(session: ManagedSession, trigger: ReplayFrame["trigger"], action: BrowserAction | null, providedSnapshot?: BrowserSnapshot, context: OperationContext = {}, redactionActions?: BrowserAction[]): Promise<void> {
+  private async recordReplayFrame(session: ManagedSession, trigger: ReplayFrame["trigger"], action: ReplayableBrowserAction | null, providedSnapshot?: BrowserSnapshot, context: OperationContext = {}, redactionActions?: ReplayableBrowserAction[]): Promise<void> {
     const rawBrowser = providedSnapshot ?? await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: redactionActions === undefined }, context), context);
     const browser = scrubBrowserSnapshot(rawBrowser, [...sessionActions(session), ...(redactionActions ?? [])]);
     session.replay.append({
@@ -1170,6 +1198,30 @@ export class SessionManager {
       react: redactionActions ? null : browser.react,
       angular: redactionActions ? null : browser.angular,
       vue: redactionActions ? null : browser.vue,
+    });
+  }
+
+  private async recordWebMcpAttemptFrame(session: ManagedSession, context: OperationContext): Promise<void> {
+    try {
+      await this.recordReplayFrame(session, "action", null, undefined, context);
+      return;
+    } catch (error) {
+      session.summary.warnings = mergeWarnings(session.summary.warnings, [`WebMCP replay frame unavailable: ${boundText(errorMessage(error), 500)}`]);
+    }
+    session.replay.append({
+      attemptId: context.attemptId ?? null,
+      capturedAt: this.timestamp(),
+      trigger: "action",
+      action: null,
+      url: safeUrl(session.summary.url),
+      title: boundText(session.summary.target?.title ?? "", 300),
+      dom: { bodyText: "", elements: [] },
+      console: [],
+      network: [],
+      debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
+      react: null,
+      angular: null,
+      vue: null,
     });
   }
 
@@ -1251,7 +1303,7 @@ export class SessionManager {
     let parsed: URL | null = null;
     try { parsed = new URL(url); } catch { /* validation produces the public error */ }
     return {
-      schemaVersion: 3,
+      schemaVersion: 4,
       projectRoot: session.descriptor.projectRoot,
       descriptor: [...session.descriptor.frameworks].sort().join(",") || "none",
       projectFrameworks: [...session.descriptor.frameworks],
@@ -1280,7 +1332,7 @@ export class SessionManager {
     const emptyRate = emptyRateSummary();
     const evidence = { baseline: scenario.baseline.evidence, postFix: null };
     return boundVerificationResult(scrubVerificationResult({
-      schemaVersion: 5,
+      schemaVersion: 6,
       outcome: "inconclusive",
       level: scenario.baseline.level,
       requestedLevel: scenario.requestedLevel,
@@ -1307,7 +1359,7 @@ export class SessionManager {
   private createVerificationResult(scenario: PrivateReproScenario, fingerprint: EnvironmentFingerprint, buildReference: BuildReference, postFix: PhaseResult, outcome: VerificationOutcome, flaky: boolean, level: VerificationLevel): VerificationResult {
     const evidence = { baseline: scenario.baseline.evidence, postFix: postFix.evidence };
     return {
-      schemaVersion: 5,
+      schemaVersion: 6,
       outcome,
       level,
       requestedLevel: scenario.requestedLevel,
@@ -1397,7 +1449,7 @@ function compareProvenance(scenario: PrivateReproScenario, current: EnvironmentF
   if (!stored.isolated && stored.targetId !== (session.summary.target?.targetId ?? session.selectedTargetId)) return "ATTACHED_TARGET_MISMATCH";
   return null;
 }
-function sessionActions(session: ManagedSession): BrowserAction[] {
+function sessionActions(session: ManagedSession): ReplayableBrowserAction[] {
   return [
     ...[...session.scenarios.values()].flatMap((scenario) => scenario.privateActions),
     ...[...session.redactionSecrets].map((value) => ({ kind: "fill" as const, locator: { kind: "css" as const, value: "body" }, value })),

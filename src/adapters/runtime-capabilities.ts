@@ -12,13 +12,13 @@ function capability(
   return { state, provenance: provenance.slice(0, 2), ...(reason ? { reason: reason.slice(0, 500) } : {}) };
 }
 
-export function chromiumRuntimeCapabilities(attached: boolean): BrowserRuntimeCapabilities {
+export function chromiumRuntimeCapabilities(attached: boolean, webmcpAvailable?: boolean): BrowserRuntimeCapabilities {
   const cdp = capability("supported", ["playwright", "chromium-cdp"]);
   const launchOnly = attached
     ? capability("unsupported", ["session-policy"], "Attached Chromium targets cannot provide fresh isolated launch state.")
     : capability("supported", ["playwright", "session-policy"]);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     browser: "chromium",
     transport: attached ? "chromium-cdp-attach" : "chromium-launch",
     actions: cdp,
@@ -34,6 +34,11 @@ export function chromiumRuntimeCapabilities(attached: boolean): BrowserRuntimeCa
     viewportMatrix: launchOnly,
     tlsBypass: launchOnly,
     authSeeding: launchOnly,
+    webmcp: webmcpAvailable === true
+      ? capability("supported", ["webmcp-page-api"])
+      : webmcpAvailable === false
+        ? capability("unsupported", ["webmcp-page-api"], "The selected page did not expose a callable WebMCP API.")
+        : capability("degraded", ["webmcp-page-api"], "WebMCP availability is negotiated from the selected page at startup."),
   };
 }
 
@@ -41,7 +46,7 @@ export function safariRuntimeCapabilities(hasBidi: boolean): BrowserRuntimeCapab
   const webdriver = capability("supported", ["safari-webdriver"]);
   const unavailable = (reason: string) => capability("unsupported", ["safari-webdriver"], reason);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     browser: "safari",
     transport: "safari-webdriver",
     actions: webdriver,
@@ -66,5 +71,6 @@ export function safariRuntimeCapabilities(hasBidi: boolean): BrowserRuntimeCapab
     viewportMatrix: unavailable("Safari WebDriver uses a visible non-isolated profile and cannot provide fresh viewport candidates."),
     tlsBypass: unavailable("Guarded loopback TLS bypass is unavailable in Safari WebDriver."),
     authSeeding: unavailable("Disposable auth-state seeding is unavailable in Safari WebDriver."),
+    webmcp: unavailable("WebMCP is a Chromium page API and is unavailable in Safari WebDriver."),
   };
 }

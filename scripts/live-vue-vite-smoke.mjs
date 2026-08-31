@@ -44,7 +44,7 @@ try {
   const hmr = await waitForViteTransformDiff(url);
 
   const assertions = {
-    evidenceSchema: afterCapture.schemaVersion === 4,
+    evidenceSchema: afterCapture.schemaVersion === 5,
     detected: afterCapture.project.frameworks.join(",") === "vite,vue" && after.vue?.detected === true,
     exactVersion: after.vue?.version === "3.5.42",
     componentTree: Boolean(component) && (after.vue?.componentCount ?? 0) >= 2,

@@ -173,9 +173,9 @@ async function validateFixture(fixture: Fixture, afterDigestBinding?: (fixture: 
 }
 
 describe("bundled plugin skills", () => {
-  it("discovers two uniquely named and correctly routed skills", async () => {
+  it("discovers three uniquely named and correctly routed skills", async () => {
     const directories = (await readdir(skillsRoot, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-    expect(directories).toEqual(["manual-parity-qualification", "web-debug-workflow"]);
+    expect(directories).toEqual(["manual-parity-qualification", "web-debug-workflow", "webmcp-tool-authoring"]);
     const names = [];
     for (const directory of directories) {
       const text = await readFile(join(skillsRoot, directory, "SKILL.md"), "utf8");
@@ -190,6 +190,22 @@ describe("bundled plugin skills", () => {
     expect(qualificationSkill).toContain("typed native test code");
     expect(qualificationSkill).toContain("Web Debug diagnostics never award qualification PASS");
     expect(qualificationSkill).toContain("record `inconclusive`");
+    const webmcpSkill = await readFile(join(skillsRoot, "webmcp-tool-authoring/SKILL.md"), "utf8");
+    expect(webmcpSkill).toContain("approved, reviewed product requirement");
+    expect(webmcpSkill).toContain("not replayable");
+    expect(webmcpSkill).toContain("never retried");
+    const workflowSkill = await readFile(join(skillsRoot, "web-debug-workflow/SKILL.md"), "utf8");
+    const safariDiagnostics = await readFile(join(skillsRoot, "web-debug-workflow/references/safari-mcp-diagnostics.md"), "utf8");
+    expect(workflowSkill).toContain("references/safari-mcp-diagnostics.md");
+    expect(safariDiagnostics).toContain("create_tab");
+    expect(safariDiagnostics).toContain("navigate_to_url");
+    expect(safariDiagnostics).toContain("browser_console_messages");
+    expect(safariDiagnostics).toContain("list_network_requests");
+    expect(safariDiagnostics).toContain("close_tab");
+    expect(safariDiagnostics).toContain("Do not call `list_tabs`");
+    expect(safariDiagnostics).toContain("Do not call `list_tabs`, `switch_tab`, `get_network_request`");
+    expect(safariDiagnostics).toContain("Never merge it into a Web Debug evidence bundle");
+    expect(safariDiagnostics).toContain("qualification PASS");
   });
 });
 

@@ -17,6 +17,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   cancellationObserved = false;
   closed = false;
   private readonly target: BrowserTarget = {
+    schemaVersion: 1,
     browser: "chromium",
     remote: false,
     url: "http://127.0.0.1:4173/",
@@ -52,7 +53,7 @@ class McpScriptedAdapter implements BrowserAdapter {
         else context.signal?.addEventListener("abort", onAbort, { once: true });
       });
     }
-    return { kind: action.kind, url: this.target.url, title: this.target.title };
+    return { schemaVersion: 1, kind: action.kind, url: this.target.url, title: this.target.title };
   }
   async snapshot(_options: SnapshotOptions): Promise<BrowserSnapshot> {
     this.snapshots += 1;
@@ -71,6 +72,7 @@ class McpScriptedAdapter implements BrowserAdapter {
       vue: null,
       next: null,
       vite: null,
+      webmcp: null,
       warnings: [],
       observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser" },
@@ -140,6 +142,7 @@ describe("MCP server contract", () => {
     const actionTool = listed.tools.find((tool) => tool.name === "web_browser_action");
     const actionSchema = JSON.stringify(actionTool?.inputSchema);
     for (const kind of ["press", "select", "check", "hover", "scroll"]) expect(actionSchema).toContain(`\"${kind}\"`);
+    expect(actionSchema).toContain("webmcp");
 
     const result = asCallResult(await client.callTool({
       name: "web_project_detect",
@@ -210,7 +213,7 @@ describe("MCP server contract", () => {
     }, undefined, { onprogress: (event) => { recordProgress.push(event); } }));
     expect(recordResult.isError).not.toBe(true);
     const scenario = structuredData(recordResult) as Record<string, any>;
-    expect(scenario.schemaVersion).toBe(5);
+    expect(scenario.schemaVersion).toBe(6);
     expect(scenario.baseline.status).toBe("reproduced");
     expect(scenario.url).toBe("http://127.0.0.1:4173/");
     expect(scenario).not.toHaveProperty("riskSignals");
@@ -227,7 +230,7 @@ describe("MCP server contract", () => {
     ));
     expect(verifyResult.isError).not.toBe(true);
     const verification = structuredData(verifyResult) as Record<string, any>;
-    expect(verification.schemaVersion).toBe(5);
+    expect(verification.schemaVersion).toBe(6);
     expect(verification.outcome).toBe("verified");
     expect(verification.level).toBe("quick");
     expect(verification).not.toHaveProperty("passed");
@@ -242,7 +245,7 @@ describe("MCP server contract", () => {
     const captureResult = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id } }));
     expect(captureResult.isError).not.toBe(true);
     const capture = structuredData(captureResult) as Record<string, any>;
-    expect(capture).toMatchObject({ schemaVersion: 4, profile: "summary" });
+    expect(capture).toMatchObject({ schemaVersion: 5, profile: "summary" });
     expect(capture).not.toHaveProperty("details");
     expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
     expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "delta" }).success).toBe(false);

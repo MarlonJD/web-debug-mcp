@@ -5,7 +5,8 @@ import { performance } from "node:perf_hooks";
 
 import type {
   ActionResult,
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
@@ -162,11 +163,13 @@ export class SafariAdapter implements BrowserAdapter {
   browserVersion(): string | null { return this.browserVersionValue; }
   runtimeCapabilities() { return safariRuntimeCapabilities(this.bidi !== null); }
 
-  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+  async act(action: DirectBrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
     this.requireClient();
     await this.enforceOwnedTopLevelState(context);
     switch (action.kind) {
+      case "webmcp":
+        throw new WebDebugError("WEBMCP_UNAVAILABLE", "WebMCP is unavailable in the Safari WebDriver transport.");
       case "navigate":
         assertAllowedUrl(action.url, this.allowRemote);
         this.assertSameOrigin(action.url);
@@ -210,7 +213,7 @@ export class SafariAdapter implements BrowserAdapter {
     }
     const url = await this.enforceOwnedTopLevelState(context);
     const title = await this.readTitle(context);
-    return { kind: action.kind, url: safeUrl(url), title };
+    return { schemaVersion: 1, kind: action.kind, url: safeUrl(url), title };
   }
 
   async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {
@@ -248,7 +251,7 @@ export class SafariAdapter implements BrowserAdapter {
     return result;
   }
 
-  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+  private async waitForProbe(action: Extract<ReplayableBrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
     const timeout = boundedTimeout(action.timeoutMs);
     const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
     while (performance.now() <= deadline) {
@@ -346,6 +349,7 @@ export class SafariAdapter implements BrowserAdapter {
       next: null,
       vite: null,
       accessibility: null,
+      webmcp: null,
       warnings,
       observations: {
         url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
@@ -537,7 +541,7 @@ export class SafariAdapter implements BrowserAdapter {
     await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] }, context);
   }
 
-  private async press(css: string, key: Extract<BrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
+  private async press(css: string, key: Extract<ReplayableBrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
     const element = await this.findElement(css, context);
     const value = webdriverKey(key);
     await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [value] }, context);
@@ -702,6 +706,7 @@ export class SafariAdapter implements BrowserAdapter {
 
   private async target(context: OperationContext = {}): Promise<BrowserTarget> {
     return {
+      schemaVersion: 1,
       browser: "safari",
       remote: this.remoteTarget,
       url: safeUrl(await this.currentUrl(context)),
@@ -1028,8 +1033,8 @@ function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
   }
 }
 
-function webdriverKey(key: Extract<BrowserAction, { kind: "press" }>["key"]): string {
-  const keys: Record<Extract<BrowserAction, { kind: "press" }>["key"], string> = {
+function webdriverKey(key: Extract<ReplayableBrowserAction, { kind: "press" }>["key"]): string {
+  const keys: Record<Extract<ReplayableBrowserAction, { kind: "press" }>["key"], string> = {
     Enter: "\uE007",
     Escape: "\uE00C",
     Tab: "\uE004",

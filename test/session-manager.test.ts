@@ -64,6 +64,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   ) {
     this.targetIdValue = config.targetId ?? `target-${instanceNumber}`;
     this.target = {
+      schemaVersion: 1,
       browser: config.browser ?? "chromium",
       remote: false,
       url: "http://127.0.0.1:4173/",
@@ -123,13 +124,13 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
     if (action.kind === "navigate") this.target.url = action.url;
     if (action.kind === "click" && this.config.navigateOnClickTo) this.target.url = this.config.navigateOnClickTo;
     if (this.config.failAction) throw this.config.failAction;
-    const result = { kind: action.kind, url: this.target.url, title: this.target.title };
+    const result = { schemaVersion: 1 as const, kind: action.kind, url: this.target.url, title: this.target.title };
     if (this.actionGate) return this.actionGate;
     return result;
   }
 
   releaseAction(): void {
-    const result = { kind: "click" as const, url: this.target.url, title: this.target.title };
+    const result = { schemaVersion: 1 as const, kind: "click" as const, url: this.target.url, title: this.target.title };
     this.actionRelease?.(result);
     this.actionRelease = null;
   }
@@ -207,6 +208,7 @@ function snapshotFor(bodyText: string, options: {
     vue: options.vue ?? null,
     next: null,
     vite: null,
+    webmcp: null,
     warnings: options.warnings ?? [],
     observations: options.observations ?? {
       url: { state: "pass", freshness: "fresh", provenance: "browser" },

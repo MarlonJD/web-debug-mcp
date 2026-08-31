@@ -1,4 +1,4 @@
-import type { BrowserAction } from "../domain/types.js";
+import type { DirectBrowserAction, ReplayableBrowserAction } from "../domain/types.js";
 
 export function scrubText(value: string, secrets: string[]): string {
   const ordered = [...new Set(secrets)].sort((first, second) => second.length - first.length);
@@ -26,15 +26,15 @@ export function replaceSecrets(value: unknown, secrets: string[], depth = 0, see
   return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, replaceSecrets(child, secrets, depth + 1, seen)]));
 }
 
-export function isSensitiveInputAction(action: BrowserAction): action is Extract<BrowserAction, { kind: "fill" | "select" }> {
+export function isSensitiveInputAction(action: ReplayableBrowserAction): action is Extract<ReplayableBrowserAction, { kind: "fill" | "select" }> {
   return action.kind === "fill" || action.kind === "select";
 }
 
-export function actionSecret(action: BrowserAction): string | null {
-  return isSensitiveInputAction(action) && action.value.length > 0 ? action.value : null;
+export function actionSecret(action: DirectBrowserAction): string | null {
+  return action.kind !== "webmcp" && isSensitiveInputAction(action) && action.value.length > 0 ? action.value : null;
 }
 
-export function actionSecrets(actions: BrowserAction[]): string[] {
+export function actionSecrets(actions: ReplayableBrowserAction[]): string[] {
   return actions.flatMap((action) => {
     const secret = actionSecret(action);
     return secret ? [secret] : [];

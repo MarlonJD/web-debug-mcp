@@ -35,7 +35,7 @@ try {
   const after = afterCapture.details;
   const component = findComponent(after.angular?.components ?? [], "CheckoutPanelComponent");
   const assertions = {
-    evidenceSchema: afterCapture.schemaVersion === 4,
+    evidenceSchema: afterCapture.schemaVersion === 5,
     detected: afterCapture.project.frameworks.join(",") === "angular" && after.angular?.detected === true,
     exactVersion: after.angular?.version === "21.2.22",
     domHostTree: after.angular?.treeMode === "dom-host" && (after.angular.componentCount ?? 0) >= 2,
