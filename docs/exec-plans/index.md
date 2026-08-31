@@ -5,7 +5,6 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Commit, push, and install the verified source-next plugin locally](active/install-source-next-codex-plugin.md) | Web Debug maintainers | Commit/push | 2026-08-31 | Local source-next plugin verified; commit and push current main, then record exact SHA |
 <!-- harness:plans:active:end -->
 
 ## Completed
@@ -13,6 +12,7 @@
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
 <!-- harness:plans:completed:start -->
+| [Commit, push, and install the verified source-next plugin locally](completed/install-source-next-codex-plugin.md) | 2026-08-31 | Committed/pushed source-next, installed one enabled local `0.7.0-next.0` plugin/runtime with all three skills and exact 13-tool schema, and preserved released `0.6.0` rollback availability | Source commit `6f97199`; tarball shasum `b58bf248e9846fa201947b17dfcf1e6de47b9ed3`; MCP `0.7.0-next.0`; 13 tools/13 schemas; one installed Web Debug plugin; no duplicate MCP registration |
 | [Use Safari MCP only for handle-scoped optional diagnostics](completed/safari-mcp-safe-diagnostics.md) | 2026-08-31 | Added an opt-in external Safari MCP workflow for one owned tab using only handle-scoped navigation, console summaries, network summaries, and close; WebDriver/BiDi and native-runner authority remain unchanged | Skill validator; focused 15 tests; full 32 files/161 tests; typecheck/build; harness 596; diff-check; contract-backed by reviewed Safari 27 schemas, not live-run on this host |
 | [Add direct-only WebMCP actions and reject an unsafe Safari 27 MCP cutover](completed/webmcp-hybrid-authoring-and-safari-mcp.md) | 2026-08-31 | Added bounded direct-only Chromium WebMCP and hybrid authoring guidance; Safari 27 MCP failed the strict external cutover gate, so no Safari MCP runtime was retained and WebDriver/BiDi remains authoritative | 32 files/161 tests; typecheck/build; harness 591; Chrome WebMCP and existing browser/framework smokes; three skill validators; eight forward cases; exact source-next 13-tool/13-schema handshake; external Safari gate 36 passed/10 failed/7 blocked |
 | [Release Web Debug 0.6.0 and update Codex](completed/complete-0-6-0-release.md) | 2026-08-31 | Published exact stable 0.6.0 to npm/GitHub and updated the installed Codex plugin with compact capture contracts and two workflow skills | 155 tests; typecheck/build; native/formal harness; skill/plugin validators; audit; Node 20/22/24 and public 13-schema handshakes; Chromium/framework/local-fidelity/demo evidence; exact npm/GitHub/Codex identities; Safari fresh live blocked literally |

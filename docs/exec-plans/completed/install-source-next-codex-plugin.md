@@ -1,9 +1,9 @@
 <!-- harness-plan:v1
 id: install-source-next-codex-plugin
-status: active
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
-completed:
+completed: 2026-08-31
 owner: Web Debug maintainers
 -->
 
@@ -21,7 +21,7 @@ Deliver the verified `0.7.0-next.0` source-next work to `origin/main` and replac
 - [x] (2026-08-31) Built and packed the verified source-next package into stable prefix `/Users/marlonjd/.codex/local-runtimes/web-debug-source-next/b58bf248e9846fa201947b17dfcf1e6de47b9ed3`; MCP handshake returned `0.7.0-next.0`, exact 13 tools, and 13 concrete schemas.
 - [x] (2026-08-31) Created and validated local `web-debug-source-next` marketplace overlay with all three skills and the exact local runtime command.
 - [x] (2026-08-31) Replaced installed `web-debug@web-debug` with enabled `web-debug@web-debug-source-next` `0.7.0-next.0+codex.20260831144834`; the released plugin remains available for rollback and only one `web-debug-mcp` registration is enabled.
-- [ ] Complete repository gates, create Conventional Commit(s), push `main`, and verify exact remote SHA.
+- [x] (2026-08-31) Repository gates passed; committed source-next as `6f97199` with `feat!: add direct WebMCP actions and hybrid authoring` and pushed `main`. Final plan metadata is delivered in a follow-up docs commit, after which local/remote SHA equality is rechecked.
 
 ## Surprises & Discoveries
 
@@ -35,7 +35,7 @@ Deliver the verified `0.7.0-next.0` source-next work to `origin/main` and replac
 
 ## Outcomes & Retrospective
 
-The immutable local runtime and source-next plugin are installed and enabled. Codex reports one installed Web Debug plugin, all three skill trees in its cache, and one enabled `web-debug-mcp` transport pointing to the content-addressed local binary. The remote `web-debug` marketplace and released `0.6.0` plugin remain available but not installed. Repository commit/push evidence is recorded by the final delivery step after this plan file is committed.
+The immutable local runtime and source-next plugin are installed and enabled. Codex reports one installed Web Debug plugin, all three skill trees in its cache, and one enabled `web-debug-mcp` transport pointing to the content-addressed local binary. The remote `web-debug` marketplace and released `0.6.0` plugin remain available but not installed. Source commit `6f97199` is on `origin/main`; no npm publish, tag, GitHub release, or public marketplace mutation occurred.
 
 ## Context and Orientation
 
@@ -74,3 +74,4 @@ Use existing Node/npm/Codex/GitHub CLIs and the existing MCP SDK. Add no reposit
 
 - (2026-08-31) Change: Created the plan. Reason: Deliver the verified source-next runtime and skills to Codex without an unauthorized public release.
 - (2026-08-31) Change: Completed local pack, handshake, marketplace overlay, plugin replacement, and duplicate-registration verification. Reason: Install the verified source-next runtime and skills without publishing npm or mutating the public marketplace.
+- (2026-08-31) Change: Committed and pushed the source-next implementation, then completed the plan. Reason: Deliver the authorized repository and local Codex update while preserving a released-plugin rollback path.
