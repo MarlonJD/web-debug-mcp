@@ -28,7 +28,7 @@ import type {
 } from "./domain/types.js";
 import { BROWSER_PRESS_KEYS, CAPTURE_SURFACES, MAX_MCP_OPERATION_MS } from "./domain/types.js";
 import { SessionManager } from "./core/session-manager.js";
-import { ProcessRegistry } from "./core/process-registry.js";
+import { ProcessRegistry, registryStartupDiagnostic } from "./core/process-registry.js";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./core/version.js";
 import { ArtifactStore, type ScreenshotCandidate } from "./core/artifact-store.js";
 import { errorToolResult, successToolResult, toolOutputSchemaFor } from "./core/mcp-response.js";
@@ -187,7 +187,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
       instructions:
-        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, bounded desktop/mobile matrices, and an opt-in direct-only WebMCP page action with truthful page-API provenance; auth-seeded or post-WebMCP sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, matrix, and WebMCP capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
+        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. For an explicit Web Debug request, call web_project_detect first; if the bundled tool is unavailable, report MCP_CLIENT_BINDING_UNAVAILABLE and stop without substituting Playwright, Puppeteer, raw CDP, a direct SDK transport, or a naked server process. Then use web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, bounded desktop/mobile matrices, and an opt-in direct-only WebMCP page action with truthful page-API provenance; auth-seeded or post-WebMCP sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, matrix, and WebMCP capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -541,5 +541,10 @@ export async function startStdioServer(): Promise<void> {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await startStdioServer();
+  try {
+    await startStdioServer();
+  } catch (error) {
+    process.stderr.write(`${registryStartupDiagnostic(error)}\n`);
+    process.exitCode = 1;
+  }
 }

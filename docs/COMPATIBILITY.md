@@ -1,6 +1,6 @@
 # Compatibility
 
-This matrix records final `0.7.0` behavior on exact local development fixtures and package handshakes. A version not listed as verified is not implicitly unsupported; it is candidate-only until its deterministic contract and live smoke pass. Exact observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not HMAC certification, provider authority, deployment, or production evidence.
+This matrix records final `0.7.0` behavior on exact local development fixtures and package handshakes. Current source-next is `0.8.0-next.0`; its registry recovery and binding-policy changes are verified only by the deterministic local gates named in the active ExecPlan and remain release pending. A version not listed as verified is not implicitly unsupported; it is candidate-only until its deterministic contract and live smoke pass. Exact final-release observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not HMAC certification, provider authority, deployment, or production evidence.
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |
@@ -15,7 +15,10 @@ This matrix records final `0.7.0` behavior on exact local development fixtures a
 | Angular | Chromium development runtime with documented `window.ng` globals | Angular `21.2.22`, TypeScript `5.9.2`, and Angular CLI development fixture with bounded DOM-host component/state evidence | Angular 22/TypeScript 6, optimized builds, injector/router/profiler trees, SSR/hydration, Safari enrichment, and other Angular versions are candidate-only |
 | Vue | Vue 3 Chromium development runtime plus optional Web Debug Vite endpoint | Vue `3.5.42`, `@vitejs/plugin-vue 6.0.8`, and Vite `7.3.6` fixture with safely chained DevTools-hook component evidence and Vite HMR provenance | Vue 2, Nuxt, production devtools flags, DOM-private fallbacks, Safari enrichment, and other Vue versions are candidate-only |
 | Test runner | Repository development gate | Vitest `4.1.11`; upgraded to satisfy Angular build's supported peer range | Other Vitest majors are not claimed |
+| Codex host / MCP binding | Codex CLI `0.152.0` or newer is the official-docs-recommended baseline for MCP tool availability through cache refreshes and remote plugin changes; CLI `0.151.0` adds optional-MCP discovery grace | CLI `0.146.0` reproduced the incident configuration and missing-binding condition; no successful task binding is claimed on that host | End-to-end plugin/task binding on `0.152.0+` remains candidate-only until a local bundled `web_project_detect` Gate 0 handshake passes; older hosts are also candidate-only |
 
 ## Update rule
 
 Change a row to `verified locally` only after the exact package/runtime version passes its deterministic contract plus the relevant live smoke. Keep remote browsers, provider authority, production environments, and release publication as separate evidence scopes.
+
+Codex's `required = true` startup policy is supported for a direct `[mcp_servers.<name>]` entry in `config.toml`. The plugin-bundled `.mcp.json` in this repository intentionally does not invent that field; apply the strict direct-server override only with the documented Codex configuration and disable the duplicate plugin-provided connection. A successful server start still does not prove that an already-running task refreshed its tool namespace: use Settings → MCP servers → Restart or a new task/session, then call `web_project_detect` as Gate 0. Sources: [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp) and [Codex changelog](https://learn.chatgpt.com/docs/changelog).

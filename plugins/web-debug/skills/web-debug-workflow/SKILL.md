@@ -11,6 +11,24 @@ Use the bundled web-debug-mcp tools when a local web application needs browser-g
 
 Web Debug complements frontend authoring and deterministic test runners; it does not replace them.
 
+### Gate 0 — prove the bundled MCP binding before doing browser work
+
+An explicit Web Debug request is fail closed. The first operation MUST be one real call to the bundled `web_project_detect` tool in the current Codex task. A doctor result, an MCP process visible in a terminal, a package install, or a skill being loaded is not proof that this task owns a callable tool namespace.
+
+If `web_project_detect` is absent, cannot be called, or MCP initialization/tool discovery failed, stop and report exactly one blocker: `MCP_CLIENT_BINDING_UNAVAILABLE` when the task cannot see the bundled tool, or `MCP_SERVER_STARTUP_UNAVAILABLE` when the bundled server reported a startup failure. Include the bounded server diagnostic when one is available. Do not continue with or substitute any of the following:
+
+- repository Playwright or Puppeteer;
+- raw CDP, browser DevTools, or another browser connector;
+- a direct MCP SDK transport or an ad-hoc stdio client;
+- a naked `npx web-debug-mcp`/`node` server process started from the task;
+- `web-debug-mcp cleanup` as a way to bind tools or repair the current task.
+
+These prohibitions apply even when the requested browser evidence appears simple. A native runner may be used only when the user separately asks for native-runner evidence or the request is not an explicit Web Debug invocation; it cannot be a fallback for a missing Web Debug binding.
+
+The supported recovery handoff is: inspect the reported package/registry startup condition, repair only an identity-safe stale registry condition if needed, then use Codex Settings → MCP servers → Restart (or restart the IDE extension) and retry Gate 0 in the same task. If the tool namespace remains absent, start a new task/session. Never claim Web Debug evidence until the bundled `web_project_detect` call succeeds.
+
+The current supported Codex host baseline is CLI `0.152.0` or newer. CLI `0.151.0` added optional-MCP discovery grace but does not replace a missing binding; older hosts are candidate-only for this recovery contract. Plugin `.mcp.json` supports the bundled launch command and bounded timeouts, but `required` is currently a `config.toml` MCP-server option rather than a plugin manifest field. Do not invent `required` in the plugin manifest. For a strict direct-server configuration, use the documented user config override with `required = true`, keep the plugin's bundled connection disabled to avoid duplicate registrations, and still require Gate 0.
+
 - Use this skill when the user explicitly names `@Web Debug`, `web-debug@web-debug`, `web-debug-workflow`, or the bundled Web Debug MCP, or when the diagnosis needs live browser evidence: DOM, console, network, screenshots, CDP debugger state, React/Angular/Vue/Vite/Next runtime signals, responsive geometry, action replay, or recorded fix verification.
 - Keep repository-native Vitest, Go, and project Playwright commands as the primary evidence when they identify an exact failure and no browser symptom remains. A passing runner does not prove browser behavior, and a runner failure does not by itself require a browser session.
 - Use `build-web-apps` when it is available for frontend authoring, dev-server work, generic rendered QA, or visual implementation. Do not copy that workflow or silently substitute it for an explicit Web Debug request.

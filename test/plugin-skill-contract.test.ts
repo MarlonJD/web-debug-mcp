@@ -196,6 +196,15 @@ describe("bundled plugin skills", () => {
     expect(webmcpSkill).toContain("never retried");
     const workflowSkill = await readFile(join(skillsRoot, "web-debug-workflow/SKILL.md"), "utf8");
     const safariDiagnostics = await readFile(join(skillsRoot, "web-debug-workflow/references/safari-mcp-diagnostics.md"), "utf8");
+    expect(workflowSkill).toContain("Gate 0");
+    expect(workflowSkill).toContain("MCP_CLIENT_BINDING_UNAVAILABLE");
+    expect(workflowSkill).toContain("MCP_SERVER_STARTUP_UNAVAILABLE");
+    for (const forbidden of ["Playwright", "Puppeteer", "raw CDP", "direct MCP SDK", "npx web-debug-mcp", "web-debug-mcp cleanup"]) expect(workflowSkill).toContain(forbidden);
+    expect(workflowSkill).toContain("Settings → MCP servers → Restart");
+    expect(workflowSkill).toContain("new task/session");
+    expect(workflowSkill).toContain("0.152.0");
+    const mcpConfig = JSON.parse(await readFile(resolve("plugins/web-debug/.mcp.json"), "utf8")) as { mcpServers?: Record<string, { required?: unknown }> };
+    expect(mcpConfig.mcpServers?.["web-debug-mcp"]?.required).toBeUndefined();
     expect(workflowSkill).toContain("references/safari-mcp-diagnostics.md");
     expect(safariDiagnostics).toContain("create_tab");
     expect(safariDiagnostics).toContain("navigate_to_url");

@@ -9,6 +9,7 @@ import { ViteAdapter } from "../adapters/vite.js";
 import { detectProject } from "./capabilities.js";
 import { WebDebugError } from "./errors.js";
 import { readResponseTextBounded } from "./http.js";
+import { inspectRegistryReadiness, registryDirectoryForUid } from "./process-registry.js";
 import { boundText, safeUrl } from "./redaction.js";
 import { PACKAGE_VERSION } from "./version.js";
 
@@ -22,17 +23,18 @@ export interface DoctorOptions {
   executablePath?: string;
   cdpEndpoint?: string;
   webdriverEndpoint?: string;
+  registryDirectory?: string;
 }
 
 export interface DoctorCheck {
-  id: "arguments" | "node" | "project" | "browser" | "target-url" | "vite" | "next";
+  id: "arguments" | "node" | "registry" | "client-binding" | "project" | "browser" | "target-url" | "vite" | "next";
   status: "pass" | "warn" | "fail" | "skipped";
   message: string;
   recovery?: string;
 }
 
 export interface DoctorReport {
-  schemaVersion: 2;
+  schemaVersion: 3;
   version: string;
   ok: boolean;
   checkedAt: string;
@@ -43,7 +45,7 @@ export interface DoctorReport {
 
 export function parseDoctorArgs(args: string[], cwd = process.cwd()): DoctorOptions {
   const options: DoctorOptions = { projectRoot: cwd, browser: "chromium" };
-  const valueOptions = new Set(["--project-root", "--url", "--browser", "--executable-path", "--cdp-endpoint", "--webdriver-endpoint"]);
+  const valueOptions = new Set(["--project-root", "--url", "--browser", "--executable-path", "--cdp-endpoint", "--webdriver-endpoint", "--registry-directory"]);
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index]!;
     if (!valueOptions.has(flag)) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", `Unknown doctor argument: ${boundText(flag, 100)}`);
@@ -53,6 +55,7 @@ export function parseDoctorArgs(args: string[], cwd = process.cwd()): DoctorOpti
     index += 1;
     if (flag === "--project-root") options.projectRoot = resolve(cwd, value);
     if (flag === "--url") options.url = value;
+    if (flag === "--registry-directory") options.registryDirectory = resolve(cwd, value);
     if (flag === "--browser") {
       if (value !== "chromium" && value !== "safari") throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", "--browser must be chromium or safari.");
       options.browser = value;
@@ -75,6 +78,17 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
     : options.browser === "safari" && typeof globalThis.WebSocket !== "function"
       ? { id: "node", status: "warn", message: `Node ${process.versions.node} satisfies the base runtime contract, but WebSocket is unavailable for Safari BiDi.`, recovery: "Use Node 21+ or enable the Node 20 WebSocket runtime flag; WebDriver can continue with explicit BiDi limitations." }
       : { id: "node", status: "pass", message: `Node ${process.versions.node} satisfies the Node 20+ runtime contract.` });
+
+  const registryDirectory = options.registryDirectory ?? (typeof process.getuid === "function" ? registryDirectoryForUid(process.getuid()) : null);
+  checks.push(registryDirectory
+    ? await checkRegistry(registryDirectory)
+    : { id: "registry", status: "warn", message: "The local runtime cannot verify an owner-only process registry because no numeric user identity is available.", recovery: "Use a supported local runtime with a numeric user identity before starting Web Debug." });
+  checks.push({
+    id: "client-binding",
+    status: "warn",
+    message: "Current Codex task MCP binding was not verified; only a real bundled web_project_detect call proves the Web Debug Gate 0 binding.",
+    recovery: "If Web Debug tools are missing, use Codex Settings → MCP servers → Restart, or start a new task/session; do not substitute another browser transport.",
+  });
 
   let project: ProjectDescriptor | null = null;
   try {
@@ -141,19 +155,29 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     version: PACKAGE_VERSION,
     ok: checks.every((check) => check.status !== "fail"),
     checkedAt: new Date().toISOString(),
-    checks: checks.slice(0, 10),
+    checks: checks.slice(0, 12),
     project,
     targetUrl: options.url ? boundText(safeUrl(options.url), 2_048) : null,
   };
 }
 
+async function checkRegistry(directory: string): Promise<DoctorCheck> {
+  const readiness = await inspectRegistryReadiness({ directory });
+  return {
+    id: "registry",
+    status: readiness.status === "ready" ? "pass" : readiness.status,
+    message: readiness.message,
+    recovery: readiness.recovery,
+  };
+}
+
 export function doctorArgumentFailure(error: unknown): DoctorReport {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     version: PACKAGE_VERSION,
     ok: false,
     checkedAt: new Date().toISOString(),

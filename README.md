@@ -6,6 +6,8 @@ An evidence-first, local MCP debugger for web applications.
 
 Release `0.7.0` keeps the 13-tool catalog while adding a direct-only Chrome WebMCP action, untrusted discover-only capture metadata, final wire versions, and reviewed WebMCP authoring/qualification guidance.
 
+Current `main` is source-next `0.8.0-next.0`. Its MCP startup-recovery and fail-closed binding changes are release pending; the install commands and bundled plugin intentionally remain pinned to immutable public runtime `0.7.0` until a separate release is verified and published.
+
 ## Install as an MCP server
 
 The core package is a standalone MCP server. The repository also includes an optional Web Debug plugin for Codex and ChatGPT: the MCP server provides callable debugging tools, while the bundled skill provides workflow guidance. Claude Code and other MCP clients can continue using the standalone server.
@@ -35,9 +37,24 @@ command = "npx"
 args = ["-y", "web-debug-mcp@0.7.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
+# Optional strict host policy: fail startup if this server cannot initialize.
+required = true
 ```
 
 Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the active server.
+
+### MCP startup and binding recovery
+
+An explicit Web Debug request is fail-closed: the bundled `web_project_detect` call is Gate 0. A doctor pass, a process visible in a terminal, or a loaded skill does not prove that the current Codex task has the Web Debug tool namespace. If Gate 0 is unavailable, report `MCP_CLIENT_BINDING_UNAVAILABLE` (or `MCP_SERVER_STARTUP_UNAVAILABLE` when the server reports a startup failure) and stop; do not substitute Playwright, Puppeteer, raw CDP, a direct MCP SDK client, a naked `npx web-debug-mcp` process, or `web-debug-mcp cleanup`.
+
+The plugin-bundled `.mcp.json` intentionally contains only the supported launch command and timeouts. Codex currently documents `required = true` for a direct `[mcp_servers.<name>]` entry in `config.toml`, not for a plugin manifest field. To apply the strict policy, configure the direct server entry above and disable the duplicate plugin-provided server in the user plugin policy:
+
+```toml
+[plugins."web-debug@web-debug".mcp_servers.web-debug-mcp]
+enabled = false
+```
+
+If the server is missing from the current task after a repair, use Codex Settings → MCP servers → Restart (or restart the IDE extension), then retry Gate 0. A new task/session is the supported recovery when the current task does not refresh its tool binding. Codex CLI `0.152.0` or newer is the supported host baseline; `0.151.0` adds optional-MCP discovery grace, while older hosts are candidate-only for this recovery contract. See the [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp) and [Codex changelog](https://learn.chatgpt.com/docs/changelog).
 
 ## Use Web Debug as a plugin
 

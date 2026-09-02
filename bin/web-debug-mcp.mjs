@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { startStdioServer } from "../dist/index.js";
-import { cleanupRegistry } from "../dist/core/process-registry.js";
+import { cleanupRegistry, registryStartupDiagnostic } from "../dist/core/process-registry.js";
 import { doctorArgumentFailure, parseDoctorArgs, runDoctor } from "../dist/core/doctor.js";
 
 const args = process.argv.slice(2);
@@ -14,6 +14,7 @@ const help = `Usage:
 Doctor options:
   --project-root <path> --url <loopback-url> --browser <chromium|safari>
   --executable-path <path> | --cdp-endpoint <url> | --webdriver-endpoint <url>
+  --registry-directory <owner-only-path>
 `;
 
 if (args[0] === "--help" || args[0] === "help" || args[0] === "doctor" && args[1] === "--help") {
@@ -42,7 +43,12 @@ if (args[0] === "--help" || args[0] === "help" || args[0] === "doctor" && args[1
     }
   }
 } else if (args.length === 0) {
-  await startStdioServer();
+  try {
+    await startStdioServer();
+  } catch (error) {
+    process.stderr.write(`${registryStartupDiagnostic(error)}\n`);
+    process.exitCode = 1;
+  }
 } else {
   process.stderr.write("web-debug-mcp accepts no arguments, doctor options, cleanup [--all-idle], or --help.\n");
   process.exitCode = 2;

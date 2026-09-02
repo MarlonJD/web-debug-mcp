@@ -1,8 +1,8 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.7.0",
+  "version": "0.8.0-next.0",
   "webDebug": {
-    "releaseStatus": "final",
+    "releaseStatus": "next",
     "releasedPackageVersion": "0.7.0",
     "releasedPluginRuntimeVersion": "0.7.0"
   },

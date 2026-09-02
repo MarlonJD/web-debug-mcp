@@ -8,6 +8,7 @@ describe("declared compatibility matrix", () => {
       engines: { node: string };
       dependencies: Record<string, string>;
       devDependencies: Record<string, string>;
+      webDebug: { releasedPackageVersion: string };
     };
     const lock = JSON.parse(await readFile("package-lock.json", "utf8")) as { packages: Record<string, { version?: string }> };
     const reactVite = JSON.parse(await readFile("fixtures/react-vite/package.json", "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
@@ -47,7 +48,7 @@ describe("declared compatibility matrix", () => {
     expect(vueVite.devDependencies["@vitejs/plugin-vue"]).toBe(root.devDependencies["@vitejs/plugin-vue"]);
     expect(vueVite.devDependencies.vite).toBe(root.devDependencies.vite);
     expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.7.0-final-local", releaseBaseline: { version: "0.7.0" } });
-    expect(evidence.sourceVersion).toBe((root as { version?: string }).version);
+    expect(evidence.sourceVersion).toBe(root.webDebug.releasedPackageVersion);
     expect(evidence.releaseBaseline.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(evidence.runtime.mcpSdk).toBe(root.dependencies["@modelcontextprotocol/sdk"]);
     expect(evidence.runtime.react).toBe(root.devDependencies.react);

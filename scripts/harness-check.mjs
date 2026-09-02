@@ -178,7 +178,7 @@ check(packageJson.name === "web-debug-mcp", "package.json name must remain web-d
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "final" && sourceVersion === "0.7.0" && packageJson.webDebug?.releasedPackageVersion === "0.7.0" && releasedPluginVersion === "0.7.0", "final package, released package, and plugin runtime identities must agree on 0.7.0");
+check(packageJson.webDebug?.releaseStatus === "next" && sourceVersion === "0.8.0-next.0" && packageJson.webDebug?.releasedPackageVersion === "0.7.0" && releasedPluginVersion === "0.7.0", "source-next must be 0.8.0-next.0 while released package and plugin runtime remain immutable 0.7.0");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");
@@ -218,6 +218,7 @@ check(pluginManifest.interface?.defaultPrompt?.some((prompt) => typeof prompt ==
 check(bundledMcp?.command === "npx", "Codex plugin must launch the MCP package with npx");
 check(Array.isArray(bundledMcp?.args) && bundledMcp.args.includes(`web-debug-mcp@${releasedPluginVersion}`), "Codex plugin must resolve the immutable released runtime named by package metadata");
 check(bundledMcp?.startup_timeout_sec === 20 && bundledMcp?.tool_timeout_sec === 150, "Codex plugin MCP timeouts must remain bounded for strict verification");
+check(bundledMcp?.required === undefined, "Plugin .mcp.json must not invent the direct config.toml-only required field");
 check(pluginManifest.version?.startsWith(`${releasedPluginVersion}+codex.`), "Codex plugin manifest must expose a timestamped build for the released runtime");
 check(marketplaceEntry?.version === releasedPluginVersion, "Codex marketplace metadata must match the released plugin runtime");
 check(marketplaceEntry?.source?.path === "./plugins/web-debug", "Plugin marketplace must point to the web-debug package");
@@ -229,6 +230,8 @@ check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use 
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
 check(claudeMarketplaceEntry?.version === releasedPluginVersion && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the released plugin runtime");
 check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
+check(pluginSkill.includes("Gate 0") && pluginSkill.includes("MCP_CLIENT_BINDING_UNAVAILABLE") && pluginSkill.includes("MCP_SERVER_STARTUP_UNAVAILABLE") && pluginSkill.includes("Settings → MCP servers → Restart") && pluginSkill.includes("new task/session"), "Web Debug skill must fail closed when the current MCP binding is unavailable and name supported recovery");
+for (const forbidden of ["Playwright", "Puppeteer", "raw CDP", "direct MCP SDK", "npx web-debug-mcp", "web-debug-mcp cleanup"]) check(pluginSkill.includes(forbidden), `Web Debug Gate 0 must explicitly prohibit fallback: ${forbidden}`);
 check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
 check(pluginSkill.includes("references/safari-mcp-diagnostics.md") && safariMcpDiagnostics.includes("create_tab") && safariMcpDiagnostics.includes("navigate_to_url") && safariMcpDiagnostics.includes("browser_console_messages") && safariMcpDiagnostics.includes("list_network_requests") && safariMcpDiagnostics.includes("close_tab"), "Web Debug workflow must route the exact Safari MCP owned-handle diagnostic subset");
 check(safariMcpDiagnostics.includes("Do not call `list_tabs`, `switch_tab`, `get_network_request`") && safariMcpDiagnostics.includes("Never merge it into a Web Debug evidence bundle") && safariMcpDiagnostics.includes("qualification PASS"), "Safari MCP diagnostics must forbid ambient/full-detail tools and remain separate diagnostic-only evidence");
@@ -307,6 +310,8 @@ check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.incl
 check(sessionSource.includes("MAX_DECISIVE_OBSERVATIONS") && sessionSource.includes("runMatrixAttempt"), "Session manager must enforce aggregate observations and ephemeral matrix candidates");
 check(read("src/core/auth-state.ts").includes("fstat") || read("src/core/auth-state.ts").includes("handle.stat"), "Auth fixture validation must re-stat one open descriptor");
 check(read("src/core/process-registry.ts").includes("REGISTRY_RECORD_CAP") && read("src/core/process-registry.ts").includes("identityMatches"), "Process cleanup must be registry and identity backed");
+check(read("src/core/process-registry.ts").includes("reconcileRegistryArtifacts") && read("src/core/process-registry.ts").includes("removeRegistryArtifacts"), "Process startup must reconcile exact stale registry artifacts before enforcing caps");
+check(read("src/core/doctor.ts").includes('id: "client-binding"') && read("src/core/doctor.ts").includes("web_project_detect"), "Doctor must distinguish current-task MCP binding from package/runtime readiness");
 check(!sessionSource.includes("Object.defineProperty"), "Verification output must not use a compatibility alias hack");
 check(!sessionSource.includes("terminationReason") && !mcpSource.includes("size: viewportSchema") && !mcpSource.includes("name: z.string().min(1).max(40), viewport: viewportSchema"), "Public contracts must not retain legacy aliases or alternate viewport shapes");
 check(!sessionSource.includes("copyToSafeArtifactPath") && !sessionSource.includes("copyFileSync"), "Redaction must not copy screenshots outside the owning session artifact directory");
@@ -318,6 +323,7 @@ check(nextSource.includes("extractRequestTraces"), "Next adapter must preserve n
 check(read("README.md").includes("codex mcp add"), "README must document Codex MCP installation");
 check(read("README.md").includes("claude mcp add"), "README must document Claude Code MCP installation");
 check(read("README.md").includes("optional Web Debug plugin"), "README must document the optional Web Debug plugin");
+check(read("README.md").includes("required = true") && read("README.md").includes("MCP_CLIENT_BINDING_UNAVAILABLE") && read("README.md").includes("Settings → MCP servers → Restart"), "README must document strict MCP startup and current-task binding recovery");
 check(read("README.md").includes("Installing Web Debug installs both"), "README must explain that plugin installation includes the MCP connection");
 check(read("README.md").includes("manual-parity-qualification") && read("README.md").includes("non-executable metadata"), "README must document the second qualification skill and native-runner boundary");
 check(read("README.md").includes(`web-debug-mcp@${releasedPluginVersion}`) && read("README.md").includes(sourceVersion) && !read("README.md").includes("0.7.0-next.0") && !read("README.md").includes("#main"), "README must document the immutable final release runtime");

@@ -1,4 +1,8 @@
 import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { describe, expect, it, vi } from "vitest";
@@ -23,11 +27,14 @@ describe("doctor CLI contract", () => {
       projectRoot: "fixtures/vanilla",
       browser: "chromium",
       executablePath: process.execPath,
+      registryDirectory: join(tmpdir(), `web-debug-doctor-absent-${randomUUID()}`),
     });
-    expect(report.schemaVersion).toBe(2);
+    expect(report.schemaVersion).toBe(3);
     expect(report.ok).toBe(true);
     expect(report.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "node", status: "pass" }),
+      expect.objectContaining({ id: "registry", status: "pass" }),
+      expect.objectContaining({ id: "client-binding", status: "warn", message: expect.stringContaining("web_project_detect") }),
       expect.objectContaining({ id: "project", status: "pass" }),
       expect.objectContaining({ id: "browser", status: "warn" }),
       expect.objectContaining({ id: "target-url", status: "skipped" }),
@@ -39,6 +46,23 @@ describe("doctor CLI contract", () => {
     expect(report.ok).toBe(true);
     expect(report.project).toMatchObject({ kind: "library", confidence: "low", frameworks: [], projectCapabilities: { browserTarget: false } });
     expect(report.checks).toContainEqual(expect.objectContaining({ id: "project", status: "warn", message: expect.stringContaining("no framework adapter") }));
+  });
+
+  it("reports registry readiness separately from the unverified current-task binding", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-doctor-registry-"));
+    try {
+      const ready = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "chromium", executablePath: process.execPath, registryDirectory: root });
+      expect(ready.checks).toContainEqual(expect.objectContaining({ id: "registry", status: "pass" }));
+      expect(ready.checks).toContainEqual(expect.objectContaining({ id: "client-binding", status: "warn" }));
+
+      await chmod(root, 0o755);
+      const untrusted = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "chromium", executablePath: process.execPath, registryDirectory: root });
+      expect(untrusted.ok).toBe(false);
+      expect(untrusted.checks).toContainEqual(expect.objectContaining({ id: "registry", status: "fail", message: expect.stringContaining("owner-only") }));
+      expect(untrusted.checks).toContainEqual(expect.objectContaining({ id: "client-binding", status: "warn" }));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("documents the CLI and warns when Safari BiDi lacks a WebSocket runtime", async () => {

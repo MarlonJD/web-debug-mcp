@@ -27,7 +27,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/core/version.ts` | Package-derived runtime and cleanup identity | Platform Engineering; update only if package metadata ownership changes |
 | `src/core/auth-state.ts` | Contained, bounded, no-follow disposable Playwright storage-state validation | Platform Engineering; update with auth fixture policy |
 | `src/core/aggregation.ts` | Pure probe → viewport → attempt → phase aggregation and deterministic pruning | Platform Engineering; update with scenario/matrix contract changes |
-| `src/core/process-registry.ts` | Per-user locked process registry, identity checks, idle TTL, idempotent shutdown, and cleanup reports | Platform Engineering; update with lifecycle policy changes |
+| `src/core/process-registry.ts` | Per-user locked process registry, identity checks, identity-safe pre-cap startup reconciliation, exact stale artifact cleanup, idle TTL, idempotent shutdown, and cleanup reports | Platform Engineering; update with lifecycle policy changes |
 | `src/core/evidence.ts` | Redacted evidence bundle composition | Platform Engineering; update when evidence consumers change |
 | `src/adapters/browser.ts` | Browser transport interface | Platform Engineering; update when an adapter capability changes |
 | `src/adapters/chromium.ts` | Playwright/CDP browser and JavaScript debugger adapter with target-scoped direct WebMCP delegation | Platform Engineering; update with Chromium protocol behavior |
@@ -102,7 +102,7 @@ Codex/ChatGPT/Claude Code plugin or another MCP client
       ▼
 web-debug-mcp process
       ├── SessionManager
-      ├── ProcessRegistry (owner-only lock/heartbeat/TTL)
+      ├── ProcessRegistry (owner-only lock/heartbeat/TTL + pre-cap stale reconciliation)
       ├── ArtifactStore (opaque bounded screenshot resources)
       └── Browser adapters
             ├── ChromiumAdapter ── Playwright/CDP ── Chromium
@@ -113,7 +113,7 @@ web-debug-mcp process
 
 When the explicitly opted-in Chrome page API is available, `ChromiumAdapter` composes the target-scoped WebMCP page component; it does not add a second MCP server or browser transport. Safari MCP failed the full internal-transport cutover gate and is not part of `SafariAdapter`. When separately configured, the workflow skill may use only Safari MCP's handle-scoped create/navigate/console-summary/network-summary/close subset in a distinct diagnostic tab; that output is never merged with WebDriver evidence or qualification verdicts.
 
-The deterministic fixtures use `scripts/serve-fixture.mjs`, `scripts/serve-react-vite.mjs`, and `scripts/serve-next.mjs` on loopback ports. Shared smoke helpers bound readiness, reject every early exit, await SIGTERM, and escalate only their command-owned child. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. `doctor` checks those explicit inputs without launching a browser. Temporary screenshots remain outside the project and survive default close for inspection; `artifactPolicy: "delete"` removes only the exact owned session directory.
+The deterministic fixtures use `scripts/serve-fixture.mjs`, `scripts/serve-react-vite.mjs`, and `scripts/serve-next.mjs` on loopback ports. Shared smoke helpers bound readiness, reject every early exit, await SIGTERM, and escalate only their command-owned child. A live adapter requires either `WEB_DEBUG_CHROME_EXECUTABLE_PATH` or a caller-provided `cdpEndpoint`. `doctor` checks those explicit inputs without launching a browser and reports registry readiness separately from the unverifiable current Codex task binding. Temporary screenshots remain outside the project and survive default close for inspection; `artifactPolicy: "delete"` removes only the exact owned session directory.
 
 Production, hosted MCP, and cloud deployment environments are intentionally out of scope for this increment. Remote browser attachment exists behind explicit opt-in, but an approved external target is still required for live evidence.
 

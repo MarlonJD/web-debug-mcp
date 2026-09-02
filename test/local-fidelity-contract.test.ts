@@ -1,5 +1,6 @@
-import { chmod, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, readdir, rm, symlink, utimes, writeFile } from "node:fs/promises";
 import { spawn, execFile as execFileCallback } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -7,12 +8,12 @@ import { promisify } from "node:util";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createServer } from "../src/index.js";
 import { loadAuthStorageState } from "../src/core/auth-state.js";
 import { aggregateAttempt, aggregateBaselineWithFailureViewports, aggregatePhase, aggregatePostFixEveryViewport, aggregateViewport, observationDigest } from "../src/core/aggregation.js";
-import { ProcessRegistry, cleanupRegistry, inspectProcessIdentity, processIdentityMatches } from "../src/core/process-registry.js";
+import { ProcessRegistry, cleanupRegistry, inspectProcessIdentity, processIdentityMatches, registryStartupDiagnostic, type ProcessIdentity, type RegistryRecord } from "../src/core/process-registry.js";
 import { SafariAdapter } from "../src/adapters/safari.js";
 import { SessionManager } from "../src/core/session-manager.js";
 import { chromiumRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
@@ -84,6 +85,144 @@ describe("0.3.x local fidelity contracts", () => {
       await registry.requestShutdown(async () => undefined);
       await registry.requestShutdown(async () => undefined);
       await expect(readFile(registry.recordPath)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reconciles a record-cap directory before admission and removes each stale sidecar", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-reconcile-cap-"));
+    const staleRecords = Array.from({ length: 64 }, () => randomUUID());
+    try {
+      for (const instance of staleRecords) await writeRegistryFixture(root, instance, { pid: 9_999_999 });
+      const registry = new ProcessRegistry({
+        directory: root,
+        idleTtlMs: 0,
+        identityReader: async () => null,
+        processExists: async () => false,
+      });
+      await registry.start();
+      const entries = await readdir(root);
+      expect(entries.filter((name) => name.endsWith(".json"))).toHaveLength(1);
+      expect(entries.some((name) => name.endsWith(".lock") || name.endsWith(".tmp"))).toBe(false);
+      await registry.requestShutdown(async () => undefined);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("removes a PID-reused identity mismatch without signaling the unrelated live process", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-pid-reuse-"));
+    const identity = await inspectProcessIdentity(process.pid);
+    if (!identity) throw new Error("Current process identity was unavailable for the PID-reuse fixture.");
+    const instance = randomUUID();
+    const kill = vi.spyOn(process, "kill");
+    try {
+      await writeRegistryFixture(root, instance, { ...identity, startIdentity: `${identity.startIdentity}-reused` });
+      const registry = new ProcessRegistry({ directory: root, idleTtlMs: 0 });
+      await registry.start();
+      const entries = await readdir(root);
+      expect(entries).not.toContain(`${instance}.json`);
+      expect(entries).not.toContain(`${instance}.lock`);
+      expect(entries).not.toContain(`${instance}.tmp`);
+      expect(kill.mock.calls.some((call) => call[1] === "SIGTERM" || call[1] === "SIGKILL")).toBe(false);
+      await registry.requestShutdown(async () => undefined);
+    } finally {
+      kill.mockRestore();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("makes cleanup idempotently remove the exact stale record family", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-cleanup-sidecars-"));
+    const instance = randomUUID();
+    try {
+      await writeRegistryFixture(root, instance, { pid: 9_999_999 });
+      const first = await cleanupRegistry({ directory: root });
+      expect(first.removedStaleRecords).toBe(1);
+      expect(first.failed).toBe(0);
+      expect(await readdir(root)).toEqual([]);
+      const second = await cleanupRegistry({ directory: root });
+      expect(second).toMatchObject({ scanned: 0, removedStaleRecords: 0, failed: 0 });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reclaims only stale owner-only orphan sidecars and retains recent ones", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-orphan-sidecars-"));
+    const staleInstance = randomUUID();
+    const recentInstance = randomUUID();
+    try {
+      await writeFile(join(root, `${staleInstance}.lock`), "", { mode: 0o600 });
+      await writeFile(join(root, `${staleInstance}.tmp`), "", { mode: 0o600 });
+      await writeFile(join(root, `${recentInstance}.lock`), "", { mode: 0o600 });
+      const now = Date.now();
+      const staleTime = new Date(now - 60_000);
+      await utimes(join(root, `${staleInstance}.lock`), staleTime, staleTime);
+      await utimes(join(root, `${staleInstance}.tmp`), staleTime, staleTime);
+      const registry = new ProcessRegistry({ directory: root, idleTtlMs: 0, now: () => now });
+      await registry.start();
+      const entries = await readdir(root);
+      expect(entries).not.toContain(`${staleInstance}.lock`);
+      expect(entries).not.toContain(`${staleInstance}.tmp`);
+      expect(entries).toContain(`${recentInstance}.lock`);
+      await registry.requestShutdown(async () => undefined);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps startup diagnostics bounded and on one stderr-safe line", () => {
+    const diagnostic = registryStartupDiagnostic(new Error(`registry failed\n${"x".repeat(2_000)}`));
+    expect(Buffer.byteLength(diagnostic, "utf8")).toBeLessThanOrEqual(550);
+    expect(diagnostic).toContain("MCP server startup failed");
+    expect(diagnostic).not.toContain("\n");
+  });
+
+  it("retains live-matching and identity-unverifiable records during startup repair", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-retain-"));
+    const identity = await inspectProcessIdentity(process.pid);
+    if (!identity) throw new Error("Current process identity was unavailable for the retention fixture.");
+    const liveInstance = randomUUID();
+    const unknownInstance = randomUUID();
+    try {
+      await writeRegistryFixture(root, liveInstance, identity);
+      await writeRegistryFixture(root, unknownInstance, { pid: process.ppid });
+      const registry = new ProcessRegistry({
+        directory: root,
+        idleTtlMs: 0,
+        identityReader: async (pid) => pid === process.pid ? identity : null,
+        processExists: async () => true,
+      });
+      await registry.start();
+      const entries = await readdir(root);
+      expect(entries.filter((name) => name.endsWith(".json"))).toHaveLength(3);
+      expect(entries).toContain(`${liveInstance}.json`);
+      expect(entries).toContain(`${unknownInstance}.json`);
+      await registry.requestShutdown(async () => undefined);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed when live records still exhaust capacity after reconciliation", async () => {
+    const root = await mkdtemp(join(tmpdir(), "web-debug-registry-live-cap-"));
+    const identity = await inspectProcessIdentity(process.pid);
+    if (!identity) throw new Error("Current process identity was unavailable for the cap fixture.");
+    try {
+      for (let index = 0; index < 64; index += 1) await writeRegistryFixture(root, randomUUID(), identity, false);
+      const registry = new ProcessRegistry({
+        directory: root,
+        idleTtlMs: 0,
+        identityReader: async () => identity,
+        processExists: async () => true,
+      });
+      await expect(registry.start()).rejects.toMatchObject({
+        code: "REGISTRY_RECORD_CAP",
+        reconciliation: { retainedLiveRecords: 64, removedStaleRecords: 0 },
+      });
+      expect((await readdir(root)).filter((name) => name.endsWith(".json"))).toHaveLength(64);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -255,6 +394,35 @@ async function waitForChildExit(child: ReturnType<typeof spawn>, timeoutMs: numb
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+async function writeRegistryFixture(root: string, instance: string, identity: Partial<ProcessIdentity>, includeSidecars = true): Promise<RegistryRecord> {
+  const timestamp = "2026-09-02T00:00:00.000Z";
+  const record: RegistryRecord = {
+    schemaVersion: 1,
+    instance,
+    pid: identity.pid ?? 9_999_999,
+    ppid: process.pid,
+    packageVersion: "0.7.0",
+    executable: identity.executable ?? process.execPath,
+    packageEntry: identity.packageEntry ?? resolve("bin/web-debug-mcp.mjs"),
+    startIdentity: identity.startIdentity ?? "dead-process",
+    startedAt: timestamp,
+    lastActivityAt: timestamp,
+    idleSince: timestamp,
+    heartbeatAt: timestamp,
+    idleTtlMs: 0,
+    activeSessionCount: 0,
+    activeRequestCount: 0,
+    busy: false,
+    state: "idle",
+  };
+  await writeFile(join(root, `${instance}.json`), `${JSON.stringify(record)}\n`, { mode: 0o600 });
+  if (includeSidecars) {
+    await writeFile(join(root, `${instance}.lock`), "", { mode: 0o600 });
+    await writeFile(join(root, `${instance}.tmp`), "", { mode: 0o600 });
+  }
+  return record;
 }
 
 class MatrixAdapter {
