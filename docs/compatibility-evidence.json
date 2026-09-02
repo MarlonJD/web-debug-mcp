@@ -1,19 +1,19 @@
 {
   "schemaVersion": 2,
-  "scope": "0.7.0-final-local",
-  "observedAt": "2026-08-31T18:37:00+03:00",
-  "sourceVersion": "0.7.0",
+  "scope": "0.8.0-final-local",
+  "observedAt": "2026-09-02T15:31:00+03:00",
+  "sourceVersion": "0.8.0",
   "releaseBaseline": {
-    "version": "0.7.0",
-    "commit": "208506dd61af02343d15ac1cf88f1cf5768c62ad",
-    "archiveShasum": "041afcf651c7581a2e20cc120af2f629506d8b48"
+    "version": "0.8.0",
+    "commit": "2a79f4fe1febd30611a5d51ad09429be5a1cd6aa",
+    "archiveShasum": null
   },
   "runtime": {
     "node": "24.18.0",
     "node20": "20.20.2",
     "node22": "22.23.2",
     "mcpSdk": "1.30.0",
-    "chromium": "151.0.7922.174",
+    "chromium": "152.0.7977.65",
     "safari": "26.6.2",
     "react": "19.2.8",
     "vite": "7.3.6",
@@ -25,28 +25,28 @@
     "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "161/161 deterministic tests including WebMCP direct-only contracts, three-skill routing, capture profiles/cursors, tool-specific schemas, detection/runtime negotiation, manual-parity validation, and prior security/lifecycle contracts" },
-    { "command": "final exact archive handshake under Node 24.20.0", "status": "passed", "signal": "Exact 156-entry archive returned serverInfo 0.7.0, 13 tools, and 13 concrete schemas" },
-    { "command": "final 0.7.0 archive handshake under Node 20.20.2", "status": "passed", "signal": "Exact archive returned serverInfo 0.7.0, 13 tools, and 13 concrete schemas" },
-    { "command": "final 0.7.0 archive handshake under Node 22.23.2", "status": "passed", "signal": "Exact archive returned serverInfo 0.7.0, 13 tools, and 13 concrete schemas" },
-    { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
-    { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 151 WebMCP direct action, opaque bounded result, independent DOM/oracle read-back, replay non-restorability, and post-call screenshot suppression" },
-    { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
-    { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
-    { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR transform diff" },
-    { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 development DOM-host component/state/change evidence with no Vite provenance claim" },
-    { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action, DOM, screenshot, BiDi console, Performance Resource Timing network fallback, origin/profile warnings, and cleanup" },
-    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" },
-    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-4 project/runtime-aware fingerprints" },
-    { "command": "public npm 0.7.0 fresh-cache handshake", "status": "passed", "signal": "Empty prefix/cache installed 96 packages and returned 0.7.0, 13 tools, and 13 concrete schemas; npm latest and next both resolve to 0.7.0" },
+    { "command": "npm test", "status": "passed", "signal": "169/169 final 0.8.0 deterministic tests including pre-cap recovery, exact stale/orphan sidecars, PID reuse without signaling, doctor schema 3, fail-closed Gate 0, and prior browser/runtime/security contracts" },
+    { "command": "final exact archive handshake under Node 24.20.0", "status": "not-run", "signal": "Pending clean final release commit and exact archive." },
+    { "command": "final 0.8.0 archive handshake under Node 20.20.2", "status": "not-run", "signal": "Pending clean final release commit and exact archive." },
+    { "command": "final 0.8.0 archive handshake under Node 22.23.2", "status": "not-run", "signal": "Pending clean final release commit and exact archive." },
+    { "command": "npm run smoke:live", "status": "passed", "signal": "Chrome 152 isolated launch, breakpoint/locals/screenshot, local-target policy, clean console, and side-effect rejection." },
+    { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 152 page WebMCP direct action, independent read-back, missing-tool error, replay non-restorability, and screenshot suppression." },
+    { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/render cause/profiler/flamegraph, Vite transform/HMR, replay, breakpoint, and screenshot." },
+    { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action resolution/trace linkage, logs, DOM, console, and request insights." },
+    { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR provenance." },
+    { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 documented-global DOM-host component/state/change evidence with no Vite provenance claim." },
+    { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action/DOM/screenshot, BiDi console, Performance Resource Timing network fallback, and explicit debugger/profile warnings." },
+    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification." },
+    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "All six raw/MCP scenarios reproduced or verified with structured evidence; complex, async, and responsive fixes passed." },
+    { "command": "public npm 0.8.0 fresh-cache handshake", "status": "not-run", "signal": "Pending immutable publication." },
     { "command": "Safari 27 MCP feasibility on caller-provided other MacBook", "status": "failed", "signal": "Safari 27.0 Safari/1.0.0 MCP initialized; strict cutover matrix returned 36 passed, 10 failed, and 7 blocked. No runtime code was retained; only the handle-scoped external diagnostic subset remains candidate-only" },
-    { "command": "Codex plugin update", "status": "passed", "signal": "One installed/enabled web-debug@web-debug 0.7.0+codex.20260831150253 plugin, three skills, bundled runtime pin web-debug-mcp@0.7.0, and no duplicate MCP registration" }
+    { "command": "Codex plugin update", "status": "not-run", "signal": "Pending public 0.8.0 package and marketplace publication." }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Node 20.20.2, 22.23.2, and 24.20.0 passed exact final 0.7.0 archive handshakes; broader deterministic/live browser jobs used Node 24.18.0.",
+    "Node 20.20.2, 22.23.2, and 24.20.0 exact final 0.8.0 archive handshakes remain pending until the clean release commit is packed once.",
     "Safari 26.6.2 WebDriver is verified locally; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
     "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
-    "Final 0.7.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover was rejected and optional external diagnostics remain separate from product evidence."
+    "Final 0.8.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover remains rejected and optional external diagnostics remain separate from product evidence."
   ]
 }

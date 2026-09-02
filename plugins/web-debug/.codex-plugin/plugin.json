@@ -1,6 +1,6 @@
 {
   "name": "web-debug",
-  "version": "0.7.0+codex.20260831150253",
+  "version": "0.8.0+codex.20260902122251",
   "description": "Evidence-first local web debugging and reviewed manual-parity qualification around native test workflows.",
   "author": {
     "name": "Marlon J.D.",

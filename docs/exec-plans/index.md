@@ -5,6 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
+| [Release Web Debug 0.8.0 and update Codex](active/release-0-8-0.md) | Platform Engineering | active | 2026-09-02 | Restore npm auth, promote final identities, publish one exact archive/tag/release, and replace the installed Codex plugin |
 <!-- harness:plans:active:end -->
 
 ## Completed

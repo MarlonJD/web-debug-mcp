@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-The immutable package/plugin release is `0.7.0`. It adds a direct-only WebMCP action, capture metadata, and a third authoring skill while keeping the 13-tool MCP catalog unchanged.
+The immutable package/plugin release is `0.8.0`. It adds identity-safe startup recovery and fail-closed task-binding guidance while retaining the direct-only WebMCP action, capture metadata, three bundled skills, and unchanged 13-tool MCP catalog.
 
 ## User outcome
 
