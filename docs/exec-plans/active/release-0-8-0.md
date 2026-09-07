@@ -21,13 +21,17 @@ Promote locally verified source-next `0.8.0-next.0` to stable `0.8.0`, publish o
 - [x] (2026-09-02 12:25Z) Restored npm owner authentication through the supported browser-authorized CLI flow; `npm whoami` returned `marlonjd` and package ownership matched.
 - [x] (2026-09-02 12:27Z) Promoted package/plugin/marketplace/docs/tests/harness identities to stable `0.8.0`, set Codex build `0.8.0+codex.20260902122251`, and added release notes.
 - [x] (2026-09-02 12:31Z) Passed 32 files/169 tests, source/test typecheck, build, audit zero, 620-check native harness, three skill validators, plugin validator, Chrome/WebMCP/local-fidelity/framework/Next/Safari smokes, and all six comparison scenarios. Exact-archive Node 20/22/24 verification follows the clean release commit.
-- [ ] Commit/push the final release source, push annotated `v0.8.0`, publish the exact tested archive, converge npm tags, and create the GitHub release.
-- [ ] Upgrade the configured remote marketplace and installed Codex plugin, verify one released plugin/MCP registration, real 13-tool Gate 0 handshake, and clean final repository state.
+- [x] (2026-09-07 14:42Z) Refreshed the transitive `qs` dependency to `6.16.0`, then re-ran fresh-install tests, typecheck, harness, and production audit with zero vulnerabilities.
+- [x] (2026-09-07 14:43Z) Committed and pushed the final source as `e54075d20a6666fed01ad7b524cbd40a83303df7`; packed the exact archive with shasum `eaf6aabd43ee89d7efff1229e27f3be312567e7f` and integrity `sha512-hx93WlroH/4GPfGZLYBxiknCUI+AppMmkit4xJyPNlpwyLxEM2MJ07Qi/0+HdF2UML4S9d/gy2Zq7IotrrRpyQ==`.
+- [x] (2026-09-07 14:49Z) Published `web-debug-mcp@0.8.0`, converged npm `latest` and `next` to `0.8.0`, pushed annotated tag `v0.8.0`, and created the GitHub release.
+- [x] (2026-09-07 14:50Z) Upgraded the configured `web-debug` marketplace to `e54075d`; the installed Codex plugin is `0.8.0+codex.20260902122251`, and the direct strict MCP configuration pins public `web-debug-mcp@0.8.0` with `required = true` while the duplicate plugin connection remains disabled.
+- [ ] (release verification pending) Restart Codex MCP from Settings or start a new task, then complete the real 13-tool Gate 0 handshake and record the final current-task binding evidence.
 
 ## Surprises & Discoveries
 
 - npm owner credentials from the prior release are no longer valid; GitHub keyring authentication remains valid. No immutable publication action has started.
 - Current Codex CLI is `0.146.0`. It can manage the installed plugin, but a new task/session is still required for the current official binding-recovery baseline after the installed plugin is upgraded.
+- The 0.8.0 package was intentionally prepared in source before publication; the plugin's pinned `npx web-debug-mcp@0.8.0` could not initialize until the public npm version existed. Publication and public integrity verification are now complete.
 
 ## Decision Log
 
@@ -38,11 +42,11 @@ Promote locally verified source-next `0.8.0-next.0` to stable `0.8.0`, publish o
 
 ## Outcomes & Retrospective
 
-Pending publication and installed-plugin verification.
+Public package, npm tags, GitHub release, source marketplace snapshot, and installed plugin are complete. Current-task MCP binding remains pending the required Codex MCP restart/new-task boundary and a successful Gate 0 call.
 
 ## Context and Orientation
 
-Release identity is distributed across `package.json`, `package-lock.json`, `src/core/version.ts`, release-identity tests, README and compatibility docs, `plugins/web-debug/.mcp.json`, both plugin manifests, both marketplace files, harness assertions, and release notes under `docs/releases/`. The working tree is promoted to final `0.8.0`; immutable public package/plugin baseline remains `0.7.0` until publication. The completed [`mcp-binding-fail-closed-recovery.md`](../completed/mcp-binding-fail-closed-recovery.md) contains the implementation evidence being promoted.
+Release identity is distributed across `package.json`, `package-lock.json`, `src/core/version.ts`, release-identity tests, README and compatibility docs, `plugins/web-debug/.mcp.json`, both plugin manifests, both marketplace files, harness assertions, and release notes under `docs/releases/`. The working tree and public package/plugin baseline are now final `0.8.0`. The completed [`mcp-binding-fail-closed-recovery.md`](../completed/mcp-binding-fail-closed-recovery.md) contains the implementation evidence promoted by this release.
 
 ## Plan of Work
 
@@ -75,6 +79,9 @@ All prepublication checks are rerunnable. Stop before npm/tag/release writes on 
 ## Artifacts and Notes
 
 - Public baseline at preflight: npm/package/plugin `0.7.0`; npm `latest=next=0.7.0`; `v0.8.0` absent.
+- Public result: npm `web-debug-mcp@0.8.0`, `latest=next=0.8.0`, shasum `eaf6aabd43ee89d7efff1229e27f3be312567e7f`, and integrity `sha512-hx93WlroH/4GPfGZLYBxiknCUI+AppMmkit4xJyPNlpwyLxEM2MJ07Qi/0+HdF2UML4S9d/gy2Zq7IotrrRpyQ==`.
+- GitHub result: release `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.8.0`, annotated tag `v0.8.0`, and source commit `e54075d20a6666fed01ad7b524cbd40a83303df7`.
+- Codex result: bundled host `0.153.4`; installed `web-debug@web-debug` `0.8.0+codex.20260902122251` from the refreshed Git marketplace; direct `web_debug_mcp` pins the now-public 0.8.0 package.
 - Release implementation source: `2a79f4fe1febd30611a5d51ad09429be5a1cd6aa`.
 - Official plugin documentation: <https://developers.openai.com/plugins> and <https://learn.chatgpt.com/docs/build-plugins>.
 
@@ -85,3 +92,4 @@ Change no dependency version. Keep the exact 13 public tool names, concrete outp
 ## Revision History
 
 - (2026-09-02 12:18Z) Change: Created and registered the stable 0.8.0 release plan after npm/GitHub/Codex preflight. Reason: Make authorized immutable publication and installed-plugin replacement auditable and recoverable.
+- (2026-09-07 14:50Z) Change: Published the exact 0.8.0 npm archive, converged npm tags, pushed the annotated GitHub tag/release, and refreshed the installed Codex marketplace/plugin. Reason: Make the plugin's pinned MCP runtime publicly resolvable without requiring a standalone Codex CLI.
