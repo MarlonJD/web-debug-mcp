@@ -5,7 +5,7 @@
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
 <!-- harness:plans:active:start -->
-| [Release Web Debug 0.10.0 and update Codex](active/release-0-10-0.md) | Platform Engineering | active | 2026-09-08 | Promote current source, publish one exact archive/tag/release, and replace the installed Codex plugin |
+| [Release Web Debug 0.10.0 and update Codex](active/release-0-10-0.md) | Platform Engineering | active | 2026-09-08 | Published and installed; Node 20/22 archive handshakes and current-task MCP rebinding remain explicit follow-ups |
 | [Release Web Debug 0.8.0 and update Codex](active/release-0-8-0.md) | Platform Engineering | active | 2026-09-02 | Restore npm auth, promote final identities, publish one exact archive/tag/release, and replace the installed Codex plugin |
 <!-- harness:plans:active:end -->
 
