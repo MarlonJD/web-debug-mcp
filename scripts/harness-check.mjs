@@ -50,6 +50,7 @@ const requiredFiles = [
   "docs/releases/0.6.0.md",
   "docs/releases/0.7.0.md",
   "docs/releases/0.8.0.md",
+  "docs/releases/0.10.0.md",
   "docs/COMPATIBILITY.md",
   "docs/compatibility-evidence.json",
   "docs/examples-evidence.md",
@@ -179,7 +180,7 @@ check(packageJson.name === "web-debug-mcp", "package.json name must remain web-d
 const sourceVersion = packageJson.version;
 const releasedPluginVersion = packageJson.webDebug?.releasedPluginRuntimeVersion;
 check(typeof sourceVersion === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(sourceVersion), "package.json must expose a semantic source version");
-check(packageJson.webDebug?.releaseStatus === "final" && sourceVersion === "0.8.0" && packageJson.webDebug?.releasedPackageVersion === "0.8.0" && releasedPluginVersion === "0.8.0", "final package, released package, and plugin runtime identities must agree on 0.8.0");
+check(packageJson.webDebug?.releaseStatus === "final" && sourceVersion === "0.10.0" && packageJson.webDebug?.releasedPackageVersion === "0.10.0" && releasedPluginVersion === "0.10.0", "final package, released package, and plugin runtime identities must agree on 0.10.0");
 check(packageJson.type === "module", "package.json must use ESM for the NodeNext build");
 check(packageJson.private !== true, "package.json must be installable as a published or GitHub package");
 check(packageJson.license === "GPL-3.0-or-later", "package.json must declare GPL-3.0-or-later");

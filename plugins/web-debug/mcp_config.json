@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "web-debug-mcp@0.8.0"
+        "web-debug-mcp@0.10.0"
       ]
     }
   }
