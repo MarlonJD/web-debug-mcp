@@ -16,6 +16,7 @@ This matrix records the stable `0.8.0` release candidate on exact local developm
 | Vue | Vue 3 Chromium development runtime plus optional Web Debug Vite endpoint | Vue `3.5.42`, `@vitejs/plugin-vue 6.0.8`, and Vite `7.3.6` fixture with safely chained DevTools-hook component evidence and Vite HMR provenance | Vue 2, Nuxt, production devtools flags, DOM-private fallbacks, Safari enrichment, and other Vue versions are candidate-only |
 | Test runner | Repository development gate | Vitest `4.1.11`; upgraded to satisfy Angular build's supported peer range | Other Vitest majors are not claimed |
 | Codex host / MCP binding | Codex CLI `0.152.0` or newer is the official-docs-recommended baseline for MCP tool availability through cache refreshes and remote plugin changes; CLI `0.151.0` adds optional-MCP discovery grace | CLI `0.146.0` reproduced the incident configuration and missing-binding condition; no successful task binding is claimed on that host | End-to-end plugin/task binding on `0.152.0+` remains candidate-only until a local bundled `web_project_detect` Gate 0 handshake passes; older hosts are also candidate-only |
+| Google Antigravity | Antigravity IDE/CLI with a root `plugin.json`, `mcp_config.json`, and local stdio MCP | Host-native manifest, stdio configuration, and shared skill layout are covered by deterministic contract tests; no live Antigravity host handshake is claimed | End-to-end tool discovery, browser-session startup, and Antigravity permission behavior remain candidate-only |
 
 ## Update rule
 

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "web-debug-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "web-debug-mcp@0.8.0"
+      ]
+    }
+  }
+}
