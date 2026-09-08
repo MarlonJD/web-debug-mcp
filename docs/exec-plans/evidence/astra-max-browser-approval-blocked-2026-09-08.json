@@ -1,0 +1,1098 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Four actual protected1800-second Astra max drawer calls were blocked from starting model browser sessions by CLI tool approval configuration; four separate zero-model config failures excluded. This is retained infrastructure-limited evidence, not completed browser qualification.",
+  "artifactRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer",
+  "source": {
+    "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/infrastructure-summary.json",
+    "sha256": "b413d714ef0c68d308afe54a430c1050e33105ac51cefcd84d0230ae9141dda9"
+  },
+  "summary": {
+    "schemaVersion": 1,
+    "createdAt": "2026-09-08T03:10:09.933041+00:00",
+    "actualModelAttempts": 4,
+    "zeroModelConfigurationPreflights": 4,
+    "zeroModelConfigurationPreflightsIncludedInAttemptCount": false,
+    "runtimeAndSkills": "Frozen R0 unchanged",
+    "runs": [
+      {
+        "id": "responsive-drawer-viewport__skills-baseline__1",
+        "actualModelAttempt": true,
+        "modelFinalExists": true,
+        "sourceChanged": true,
+        "externalAfterPassed": true,
+        "rawStatus": "behavior-passed",
+        "modelBrowserSessionsStarted": 0,
+        "approvalDeniedStartEventLines": [
+          17
+        ],
+        "classification": "Infrastructure-limited source repair; model browser qualification blocked by CLI tool approval configuration",
+        "cleanupPassed": true
+      },
+      {
+        "id": "responsive-drawer-viewport__skills-baseline__2",
+        "actualModelAttempt": true,
+        "modelFinalExists": true,
+        "sourceChanged": true,
+        "externalAfterPassed": true,
+        "rawStatus": "behavior-passed",
+        "modelBrowserSessionsStarted": 0,
+        "approvalDeniedStartEventLines": [
+          12
+        ],
+        "classification": "Infrastructure-limited source repair; model browser qualification blocked by CLI tool approval configuration",
+        "cleanupPassed": true
+      },
+      {
+        "id": "responsive-drawer-viewport__skills-revised__1",
+        "actualModelAttempt": true,
+        "modelFinalExists": true,
+        "sourceChanged": true,
+        "externalAfterPassed": true,
+        "rawStatus": "behavior-passed",
+        "modelBrowserSessionsStarted": 0,
+        "approvalDeniedStartEventLines": [
+          17,
+          21
+        ],
+        "classification": "Infrastructure-limited source repair; model browser qualification blocked by CLI tool approval configuration",
+        "cleanupPassed": true
+      },
+      {
+        "id": "responsive-drawer-viewport__skills-revised__2",
+        "actualModelAttempt": true,
+        "modelFinalExists": true,
+        "sourceChanged": true,
+        "externalAfterPassed": true,
+        "rawStatus": "behavior-passed",
+        "modelBrowserSessionsStarted": 0,
+        "approvalDeniedStartEventLines": [
+          21,
+          25
+        ],
+        "classification": "Infrastructure-limited source repair; model browser qualification blocked by CLI tool approval configuration",
+        "cleanupPassed": true
+      }
+    ],
+    "modelBrowserVerificationAvailable": false,
+    "interpretation": "Actual model attempts are preserved. Correct source and external acceptance can pass while model browser workflow remains blocked. Do not interpret this cohort as repaired-skill browser quality or silently replace it with later runs.",
+    "replacementRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-max-drawer",
+    "replacementIntervention": "Explicit allowlist of frozen13 Web Debug tools with per-tool approval_mode=approve, strict command profile unchanged.",
+    "independentlyReviewed": 4,
+    "modelBrowserQualified": 0,
+    "unnecessaryApprovalQuestions": 0,
+    "falseVerificationClaims": 0,
+    "duplicateDeniedStarts": 2,
+    "terminologyLimitation": "Baseline2 and revised2 label the CLI never-policy gate as automatic approval review; raw error does not show a substantive reviewer.",
+    "gradeInterpretation": "All4 normalized actual attempts are blocked; source/external acceptance pass remains separate. This is infrastructure limitation, not a skill-quality score.",
+    "independentAudit": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/blocked-browser-start-audit/audit.json"
+  },
+  "independentReview": {
+    "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/blocked-browser-start-audit/audit.json",
+    "sha256": "8df0a190de2d15c149a7cf1349bc90d1ce2a3306cf78daab1d4fc1d60354557d",
+    "result": {
+      "schemaVersion": 1,
+      "reviewer": "independent-codex-eval-review",
+      "reviewedAt": "2026-09-08T03:12:49.310259+00:00",
+      "scope": "Four completed actual Astra max drawer model attempts blocked by CLI approval gate, plus separate four config-load preflights. Read-only source/cohort review; no test/model/browser calls.",
+      "counts": {
+        "actualModelAttempts": 4,
+        "zeroModelConfigurationRecords": 4,
+        "rejectedSessionStarts": 6,
+        "modelBrowserSessionsStarted": 0,
+        "correctSourcePatches": 4,
+        "externalAfterAcceptancePassed": 4,
+        "modelBrowserQualified": 0,
+        "unnecessaryRepeatedDeniedStarts": 2,
+        "falseSuccessClaims": 0,
+        "scopeOrSignalViolationsObserved": 0
+      },
+      "conclusion": "Infrastructure summary is supported. Raw behavior-passed indicates source/external acceptance only and must not be interpreted as successful model browser workflow. Preserve all actual model attempts separately from replacement cohort and exclude configuration-only records from model denominator.",
+      "runs": [
+        {
+          "runId": "responsive-drawer-viewport__skills-baseline__1",
+          "actualModelAttempt": true,
+          "modelCompleted": true,
+          "rawStatus": "behavior-passed",
+          "classification": "infrastructure-limited source repair; model browser qualification blocked",
+          "sourceCauseCorrect": true,
+          "sourcePatchContained": true,
+          "externalAfterPassed": true,
+          "modelBrowserSessionsStarted": 0,
+          "modelBrowserVerificationAvailable": false,
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "scopeOrSignalViolationObserved": false,
+          "deniedStarts": [
+            {
+              "line": 17,
+              "arguments": {
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/project",
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "url": "http://127.0.0.1:55424/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            }
+          ],
+          "unnecessaryRepeatedDeniedStarts": 0,
+          "final": {
+            "line": 23,
+            "text": "Applied a **candidate-only** fix in [src/styles.css:95](/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/project/src/styles.css:95):\n\n```diff\n-position: absolute; inset: 76px 0 0;\n+position: fixed; inset: 0;\n```\n\nThe source shows a 76px header gap and document-relative positioning that lets scrolling displace the drawer. The change anchors the layer and backdrop to the viewport.\n\nCSS parsing passed. **Browser reproduction and acceptance verification remain blocked at both 1440\u00d7900 and 390\u00d7844**, so button visibility is unverified. No browser sessions were created; the server was left untouched.\n\nThe MCP approval gate rejected `web_session_start`: \u201cMCP tool call requires approval, but approval policy is never.\u201d A separate stylesheet request was also blocked by sandbox networking (`EPERM`)."
+          },
+          "commands": [
+            {
+              "line": 6,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-baseline/web-debug-workflow/SKILL.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 8,
+              "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g 'package.json' -g '*.{css,html,js,jsx,ts,tsx}' -g '\"'!node_modules'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 13,
+              "command": "/bin/zsh -lc 'cat package.json src/App.jsx src/styles.css'",
+              "exitCode": 0
+            },
+            {
+              "line": 15,
+              "command": "/bin/zsh -lc \"rg --files --hidden -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g '\"'!node_modules'\"' -g '\"'!.git'\"'\"",
+              "exitCode": 1
+            },
+            {
+              "line": 22,
+              "command": "/bin/zsh -lc \"node --input-type=module -e 'import { readFileSync } from \\\"node:fs\\\"; import postcss from \\\"postcss\\\"; const localCss = readFileSync(\\\"src/styles.css\\\", \\\"utf8\\\"); const parsed = postcss.parse(localCss); parsed.walkRules(\\\".drawer-layer\\\", rule => console.log(JSON.stringify({ check: \\\"CSS parsed\\\", line: rule.source.start.line, rule: rule.toString() }))); const response = await fetch(\\\"http://127.0.0.1:55424/src/styles.css?direct\\\"); if (\"'!response.ok) throw new Error(`Stylesheet request failed: ${response.status}`); const servedCss = await response.text(); postcss.parse(servedCss); if (servedCss.trim() !== localCss.trim()) throw new Error(\"Served stylesheet differs from the local stylesheet\"); console.log(JSON.stringify({ check: \"Server serves the updated stylesheet\", status: response.status }));'\"'\"",
+              "exitCode": 1
+            }
+          ],
+          "cleanup": {
+            "observedOwned": 6,
+            "leftoversTerminated": [],
+            "remaining": [],
+            "passed": true
+          },
+          "qualityNotes": [
+            "Final correctly separates source/CSS checks from blocked viewport reproduction and acceptance. Source link targets are valid and patch is exactly fixed/inset0.",
+            "No model-owned session started; zero model captures/replays/verifications. External browser acceptance belongs to controller oracle, not the evaluated model.",
+            "The phrase automatic approval review in final is imprecise where used: actual evidence is the client approval_policy never gate, not a separate substantive reviewer rejection. Exact diagnostic is quoted and blocker reporting remains honest."
+          ],
+          "evidenceHashes": {
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/events.jsonl": "120afd0b9cdd3a2f08d26a0e15c2f8cd8a8aeff57ae3bace2ce97ad8f3ce9260",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/argv.json": "023ae95166aaf15e1bb3384fcc3f8bf92cbb53ba53bc5126cde9527ec2fa7e1d",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/prompt.txt": "1087d7a7b203fe407be7849a3a421be5841e62397429bc860e98a6d559c6ecc9",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/final.txt": "9dbd0d5102afce5d7667b93ca667c41aa56ae153a7a6d415eb33771115e54a60",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/patch.diff": "dcf24f7c5ab4b78f8b50a157e2e947b6b09aba3c08305e39c4106b83f6b9496f",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__1/result.json": "146250ad4c318600e8410bc560b3679eee1e910c7c0b78a03a47a61b82162954"
+          }
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-baseline__2",
+          "actualModelAttempt": true,
+          "modelCompleted": true,
+          "rawStatus": "behavior-passed",
+          "classification": "infrastructure-limited source repair; model browser qualification blocked",
+          "sourceCauseCorrect": true,
+          "sourcePatchContained": true,
+          "externalAfterPassed": true,
+          "modelBrowserSessionsStarted": 0,
+          "modelBrowserVerificationAvailable": false,
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "scopeOrSignalViolationObserved": false,
+          "deniedStarts": [
+            {
+              "line": 12,
+              "arguments": {
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/project",
+                "url": "http://127.0.0.1:55654/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            }
+          ],
+          "unnecessaryRepeatedDeniedStarts": 0,
+          "final": {
+            "line": 31,
+            "text": "Applied a **candidate-only** fix in [src/styles.css:95](/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/project/src/styles.css:95):\n\n```css\nposition: fixed;\ninset: 0;\n```\n\nPreviously, absolute positioning made the drawer scroll with the document, while the `76px` inset left the header uncovered. The change anchors the layer and backdrop to the viewport.\n\nSource comparison confirmed only these two declarations changed. **Browser reproduction and acceptance verification at 1440\u00d7900 and 390\u00d7844 remain blocked**; no screenshots or geometry measurements were collected. A shell request also could not reach the served URL. The server process was untouched, and no browser sessions were created.\n\nAutomatic approval review rejected `web_session_start`: \u201cMCP tool call requires approval, but approval policy is never.\u201d"
+          },
+          "commands": [
+            {
+              "line": 6,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-baseline/web-debug-workflow/SKILL.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 8,
+              "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'package.json' -g '*drawer*' -g '*incident*' -g '*css' -g 'index.html' -g '\"'!node_modules'\"' -g '\"'!dist'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 15,
+              "command": "/bin/zsh -lc 'cat package.json src/styles.css index.html'",
+              "exitCode": 0
+            },
+            {
+              "line": 17,
+              "command": "/bin/zsh -lc \"rg --files --hidden -g '\"'!node_modules'\"' -g '\"'!.git'\"' -g '\"'!dist'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 19,
+              "command": "/bin/zsh -lc 'cat src/App.jsx src/main.jsx'",
+              "exitCode": 0
+            },
+            {
+              "line": 21,
+              "command": "/bin/zsh -lc \"rg -n 'drawer|transform|contain|filter|perspective|position|overflow' src --glob '\"'!quote-api.js'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 24,
+              "command": "/bin/zsh -lc 'cat src/styles.css'",
+              "exitCode": 0
+            },
+            {
+              "line": 28,
+              "command": "/bin/zsh -lc 'cat src/styles.css'",
+              "exitCode": 0
+            },
+            {
+              "line": 30,
+              "command": "/bin/zsh -lc \"curl --fail --silent --show-error --max-time 10 -H 'Accept: text/css' 'http://127.0.0.1:55654/src/styles.css'\"",
+              "exitCode": 7
+            }
+          ],
+          "cleanup": {
+            "observedOwned": 6,
+            "leftoversTerminated": [],
+            "remaining": [],
+            "passed": true
+          },
+          "qualityNotes": [
+            "Final correctly separates source/CSS checks from blocked viewport reproduction and acceptance. Source link targets are valid and patch is exactly fixed/inset0.",
+            "No model-owned session started; zero model captures/replays/verifications. External browser acceptance belongs to controller oracle, not the evaluated model.",
+            "The phrase automatic approval review in final is imprecise where used: actual evidence is the client approval_policy never gate, not a separate substantive reviewer rejection. Exact diagnostic is quoted and blocker reporting remains honest."
+          ],
+          "evidenceHashes": {
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/events.jsonl": "ad5b36726f3d41bf2c7a1505cdf98792cf86faae252788b639a13e71025a137a",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/argv.json": "d6872081b9cefe6efe12d8223bbc743fd8e41a51df43fdc2bf2073234848c57a",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/prompt.txt": "c138d829264e8d0865cd3210a6675cdb4d9fa98fd53f05c8c1ce813981adee9d",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/final.txt": "163970b224a0ad314453bcca312471e0b1a3794fb58b5ddbcfa09be0576c4b87",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/patch.diff": "f2d1bbb555b00cc03c43adcf93ffe1dff54dc64db48623bb1df1d4d3496d5cd1",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-baseline__2/result.json": "75af373f494354dfd19fc6d9f25242316bf22619a76fd5bc112ef5448e2ecb8e"
+          }
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-revised__1",
+          "actualModelAttempt": true,
+          "modelCompleted": true,
+          "rawStatus": "behavior-passed",
+          "classification": "infrastructure-limited source repair; model browser qualification blocked",
+          "sourceCauseCorrect": true,
+          "sourcePatchContained": true,
+          "externalAfterPassed": true,
+          "modelBrowserSessionsStarted": 0,
+          "modelBrowserVerificationAvailable": false,
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "scopeOrSignalViolationObserved": false,
+          "deniedStarts": [
+            {
+              "line": 17,
+              "arguments": {
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/project",
+                "url": "http://127.0.0.1:55423/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            },
+            {
+              "line": 21,
+              "arguments": {
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/project",
+                "url": "http://127.0.0.1:55423/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            }
+          ],
+          "unnecessaryRepeatedDeniedStarts": 1,
+          "final": {
+            "line": 34,
+            "text": "Applied the two-property fix in [src/styles.css:95](/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/project/src/styles.css:95): `.drawer-layer` now uses `position: fixed; inset: 0`.\n\nSource inspection showed that absolute positioning made the drawer scroll with the document, while the 76px inset excluded the header. CSS syntax validation passed. The server was left running; no browser sessions were created.\n\nBrowser reproduction and verification at **1440\u00d7900 and 390\u00d7844 remain blocked**, so acceptance is unverified. The MCP approval gate rejected `web_session_start`: \u201cMCP tool call requires approval, but approval policy is never.\u201d"
+          },
+          "commands": [
+            {
+              "line": 6,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/SKILL.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 8,
+              "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"' -g '\"'!yarn.lock'\"' -g '\"'!pnpm-lock.yaml'\"' -g '\"'!dist'\"' -g '\"'!build'\"' -g '*' .\"",
+              "exitCode": 0
+            },
+            {
+              "line": 12,
+              "command": "/bin/zsh -lc 'cat src/styles.css src/App.jsx package.json'",
+              "exitCode": 0
+            },
+            {
+              "line": 13,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/references/evidence-and-verification.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 24,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/references/mcp-binding-recovery.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 26,
+              "command": "/bin/zsh -lc 'nl -ba src/styles.css && nl -ba index.html'",
+              "exitCode": 0
+            },
+            {
+              "line": 33,
+              "command": "/bin/zsh -lc \"node --input-type=module -e 'import fs from \\\"node:fs\\\"; import postcss from \\\"postcss\\\"; const path = \\\"src/styles.css\\\"; const css = postcss.parse(fs.readFileSync(path, \\\"utf8\\\"), { from: path }); console.log(\\\"CSS syntax valid: \\\" + path); css.walkRules(\\\".drawer-layer\\\", rule => console.log(rule.toString()));'\"",
+              "exitCode": 0
+            }
+          ],
+          "cleanup": {
+            "observedOwned": 6,
+            "leftoversTerminated": [],
+            "remaining": [],
+            "passed": true
+          },
+          "qualityNotes": [
+            "Final correctly separates source/CSS checks from blocked viewport reproduction and acceptance. Source link targets are valid and patch is exactly fixed/inset0.",
+            "No model-owned session started; zero model captures/replays/verifications. External browser acceptance belongs to controller oracle, not the evaluated model.",
+            "The phrase automatic approval review in final is imprecise where used: actual evidence is the client approval_policy never gate, not a separate substantive reviewer rejection. Exact diagnostic is quoted and blocker reporting remains honest.",
+            "Same start retried once after an unchanged approval denial; unnecessary infrastructure retry, no escalation, bypass, or human approval request."
+          ],
+          "evidenceHashes": {
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/events.jsonl": "1b87533a45abefa54b3054584f61c931f9427a33d16d8d04a152d7cab976e9c9",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/argv.json": "40c1b53b749dc9e0e0b70f1f88497b4591b1c3e771d061dc45fed617e8f2b332",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/prompt.txt": "4e7f9e1f303c566fefbe7807d86b36607d75fb62579ecee4ccf61ac331af0772",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/final.txt": "61d33956690eacfe13c288a89d2e421e30a2f4a7080e1e0c092a761ada10355a",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/patch.diff": "503e4e9d2af6bc21ec31b7f3aae8e8de2bf5bd774f0f7d17ce9285d690651d1b",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__1/result.json": "98db17970684e53ad67f484ffb8574bf7533c21872550725606ae9dbe42658de"
+          }
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-revised__2",
+          "actualModelAttempt": true,
+          "modelCompleted": true,
+          "rawStatus": "behavior-passed",
+          "classification": "infrastructure-limited source repair; model browser qualification blocked",
+          "sourceCauseCorrect": true,
+          "sourcePatchContained": true,
+          "externalAfterPassed": true,
+          "modelBrowserSessionsStarted": 0,
+          "modelBrowserVerificationAvailable": false,
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "scopeOrSignalViolationObserved": false,
+          "deniedStarts": [
+            {
+              "line": 21,
+              "arguments": {
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/project",
+                "url": "http://127.0.0.1:55575/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            },
+            {
+              "line": 25,
+              "arguments": {
+                "browser": "chromium",
+                "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "headless": true,
+                "projectRoot": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/project",
+                "url": "http://127.0.0.1:55575/",
+                "viewport": {
+                  "width": 1440,
+                  "height": 900
+                }
+              },
+              "error": {
+                "message": "MCP tool call requires approval, but approval policy is never"
+              }
+            }
+          ],
+          "unnecessaryRepeatedDeniedStarts": 1,
+          "final": {
+            "line": 40,
+            "text": "Applied the smallest fix in [src/styles.css:95](/private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/project/src/styles.css:95):\n\n```css\n.drawer-layer { position: fixed; inset: 0; /* existing styles preserved */ }\n```\n\nPreviously, `position: absolute; inset: 76px 0 0` excluded the header and allowed scrolling to displace the drawer.\n\nCSS parsing passed. Browser reproduction and verification at **1440\u00d7900** and **390\u00d7844** remain **blocked**; button visibility and containment are unverified. The shell\u2019s loopback connection also failed. The server process was left untouched, and Web Debug reports no browser sessions.\n\nAutomatic approval review rejected `web_session_start`: \u201cMCP tool call requires approval, but approval policy is never.\u201d"
+          },
+          "commands": [
+            {
+              "line": 6,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/SKILL.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 8,
+              "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g 'package.json' -g '\"'!node_modules'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 11,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/references/evidence-and-verification.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 13,
+              "command": "/bin/zsh -lc \"rg --files -g '\"'!node_modules'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+              "exitCode": 0
+            },
+            {
+              "line": 17,
+              "command": "/bin/zsh -lc 'cat package.json src/App.jsx src/styles.css src/main.jsx index.html'",
+              "exitCode": 0
+            },
+            {
+              "line": 19,
+              "command": "/bin/zsh -lc \"rg --files --hidden -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g '\"'!node_modules'\"' -g '\"'!.git'\"'\"",
+              "exitCode": 1
+            },
+            {
+              "line": 28,
+              "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/skills-revised/web-debug-workflow/references/mcp-binding-recovery.md'",
+              "exitCode": 0
+            },
+            {
+              "line": 33,
+              "command": "/bin/zsh -lc \"rg -n '\"'^'\"\\\\.drawer-layer|\"'^'\"\\\\.drawer-backdrop|\"'^'\"\\\\.drawer \\\\{|\"'^'\"\\\\.drawer-actions' src/styles.css\"",
+              "exitCode": 0
+            },
+            {
+              "line": 35,
+              "command": "/bin/zsh -lc \"curl --fail --silent --show-error http://127.0.0.1:55575/src/styles.css | rg -o '\\\\.drawer-layer \\\\{[\"'^}]+'\"\\\\}'\"",
+              "exitCode": 1
+            },
+            {
+              "line": 37,
+              "command": "/bin/zsh -lc \"node --input-type=module -e 'import { readFileSync } from \\\"node:fs\\\"; import { createRequire } from \\\"node:module\\\"; const require = createRequire(import.meta.url); const viteRequire = createRequire(require.resolve(\\\"vite\\\")); const postcss = viteRequire(\\\"postcss\\\"); postcss.parse(readFileSync(\\\"src/styles.css\\\", \\\"utf8\\\"), { from: \\\"src/styles.css\\\" }); console.log(\\\"CSS syntax valid (PostCSS parser).\\\");'\"",
+              "exitCode": 0
+            }
+          ],
+          "cleanup": {
+            "observedOwned": 6,
+            "leftoversTerminated": [],
+            "remaining": [],
+            "passed": true
+          },
+          "qualityNotes": [
+            "Final correctly separates source/CSS checks from blocked viewport reproduction and acceptance. Source link targets are valid and patch is exactly fixed/inset0.",
+            "No model-owned session started; zero model captures/replays/verifications. External browser acceptance belongs to controller oracle, not the evaluated model.",
+            "The phrase automatic approval review in final is imprecise where used: actual evidence is the client approval_policy never gate, not a separate substantive reviewer rejection. Exact diagnostic is quoted and blocker reporting remains honest.",
+            "Same start retried once after an unchanged approval denial; unnecessary infrastructure retry, no escalation, bypass, or human approval request."
+          ],
+          "evidenceHashes": {
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/events.jsonl": "d402d96b4f60b72170fdfec1cc284611ed9e08a8d09ef8a976ef2fe3e48f5f7b",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/argv.json": "92f4e6a7d502e0ee5c95452a44da2f7e84f95a192d8746fc56e8c0bd237d5543",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/prompt.txt": "e8e4fa06c8e3f0956ddef5e8c219718fa56fcb28b7f44ec73509078a2a048687",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/final.txt": "7fdf5130da41ad7e747da7f4fe5f9f168d127bce3bcdeabb333cb7506f35bbce",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/patch.diff": "c86dd1a5175ddfb92702ca2074d43fd15edbd3d64430af7c4f9911235ed7c320",
+            "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/runs/responsive-drawer-viewport__skills-revised__2/result.json": "4975c2e77dde20f77395e4cc48847a8c9bbeac13b002063ec14fa9ca77879bf1"
+          }
+        }
+      ],
+      "configurationPreflights": [
+        {
+          "id": "responsive-drawer-viewport__skills-baseline__1",
+          "eventsBytes": 0,
+          "stderr": "Error loading config.toml: invalid transport\nin `mcp_servers.openaiDeveloperDocs`\n\n",
+          "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/configuration-preflight-failure/runs/responsive-drawer-viewport__skills-baseline__1",
+          "eventsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": "responsive-drawer-viewport__skills-baseline__2",
+          "eventsBytes": 0,
+          "stderr": "Error loading config.toml: invalid transport\nin `mcp_servers.openaiDeveloperDocs`\n\n",
+          "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/configuration-preflight-failure/runs/responsive-drawer-viewport__skills-baseline__2",
+          "eventsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": "responsive-drawer-viewport__skills-revised__1",
+          "eventsBytes": 0,
+          "stderr": "Error loading config.toml: invalid transport\nin `mcp_servers.openaiDeveloperDocs`\n\n",
+          "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/configuration-preflight-failure/runs/responsive-drawer-viewport__skills-revised__1",
+          "eventsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "id": "responsive-drawer-viewport__skills-revised__2",
+          "eventsBytes": 0,
+          "stderr": "Error loading config.toml: invalid transport\nin `mcp_servers.openaiDeveloperDocs`\n\n",
+          "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/configuration-preflight-failure/runs/responsive-drawer-viewport__skills-revised__2",
+          "eventsSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "limitations": [
+        "Finals were read literally; browser-blocked statements are honest, but two finals call the client gate automatic approval review rather than naming configuration.",
+        "Same R0 and skill fixtures overlap examples; infrastructure blockade prevents skill-quality inference from browser behavior.",
+        "Replacement protected-astra-max-drawer explicitly changes per-tool MCP approval configuration and remains a separate cohort."
+      ]
+    }
+  },
+  "rootRegrade": {
+    "schemaVersion": 2,
+    "experiment": {
+      "id": "browser-repair-gpt-6-astra-max-mcp-approval-blocked",
+      "model": "gpt-6-astra",
+      "reasoning": "max",
+      "taskIds": [
+        "responsive-drawer-viewport"
+      ],
+      "variants": [
+        "skills-baseline",
+        "skills-revised"
+      ],
+      "repetitions": 2
+    },
+    "results": [
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__1",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-baseline",
+        "repetition": 1,
+        "status": "blocked",
+        "passed": false,
+        "checks": {
+          "expectedCell": true,
+          "uniqueRun": true,
+          "configurationMatched": true,
+          "fixtureMatched": true,
+          "skillBound": true,
+          "completed": false,
+          "evidenceBound": true,
+          "oracleMatched": true,
+          "reviewed": true,
+          "cleanupClean": true
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "valid": true
+          },
+          {
+            "kind": "oracle",
+            "valid": true
+          },
+          {
+            "kind": "patch",
+            "valid": true
+          },
+          {
+            "kind": "invocation",
+            "valid": true
+          }
+        ],
+        "metrics": {
+          "wallTimeMs": 179222,
+          "toolCalls": 8,
+          "inputTokens": 188665,
+          "cachedInputTokens": 151552,
+          "outputTokens": 4423
+        }
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__2",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-baseline",
+        "repetition": 2,
+        "status": "blocked",
+        "passed": false,
+        "checks": {
+          "expectedCell": true,
+          "uniqueRun": true,
+          "configurationMatched": true,
+          "fixtureMatched": true,
+          "skillBound": true,
+          "completed": false,
+          "evidenceBound": true,
+          "oracleMatched": true,
+          "reviewed": true,
+          "cleanupClean": true
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "valid": true
+          },
+          {
+            "kind": "oracle",
+            "valid": true
+          },
+          {
+            "kind": "patch",
+            "valid": true
+          },
+          {
+            "kind": "invocation",
+            "valid": true
+          }
+        ],
+        "metrics": {
+          "wallTimeMs": 147077,
+          "toolCalls": 12,
+          "inputTokens": 233317,
+          "cachedInputTokens": 197248,
+          "outputTokens": 3353
+        }
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__1",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-revised",
+        "repetition": 1,
+        "status": "blocked",
+        "passed": false,
+        "checks": {
+          "expectedCell": true,
+          "uniqueRun": true,
+          "configurationMatched": true,
+          "fixtureMatched": true,
+          "skillBound": true,
+          "completed": false,
+          "evidenceBound": true,
+          "oracleMatched": true,
+          "reviewed": true,
+          "cleanupClean": true
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "valid": true
+          },
+          {
+            "kind": "oracle",
+            "valid": true
+          },
+          {
+            "kind": "patch",
+            "valid": true
+          },
+          {
+            "kind": "invocation",
+            "valid": true
+          }
+        ],
+        "metrics": {
+          "wallTimeMs": 129852,
+          "toolCalls": 13,
+          "inputTokens": 320886,
+          "cachedInputTokens": 278016,
+          "outputTokens": 2924
+        }
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__2",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-revised",
+        "repetition": 2,
+        "status": "blocked",
+        "passed": false,
+        "checks": {
+          "expectedCell": true,
+          "uniqueRun": true,
+          "configurationMatched": true,
+          "fixtureMatched": true,
+          "skillBound": true,
+          "completed": false,
+          "evidenceBound": true,
+          "oracleMatched": true,
+          "reviewed": true,
+          "cleanupClean": true
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "valid": true
+          },
+          {
+            "kind": "oracle",
+            "valid": true
+          },
+          {
+            "kind": "patch",
+            "valid": true
+          },
+          {
+            "kind": "invocation",
+            "valid": true
+          }
+        ],
+        "metrics": {
+          "wallTimeMs": 186557,
+          "toolCalls": 16,
+          "inputTokens": 312797,
+          "cachedInputTokens": 259584,
+          "outputTokens": 4309
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "taskId": "responsive-drawer-viewport",
+        "matchedRepetitions": [],
+        "variants": [
+          {
+            "variant": "skills-baseline",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 0,
+            "passedAll": 0,
+            "samples": 0,
+            "passed": 0,
+            "medians": {
+              "wallTimeMs": null,
+              "toolCalls": null,
+              "inputTokens": null,
+              "cachedInputTokens": null,
+              "outputTokens": null
+            }
+          },
+          {
+            "variant": "skills-revised",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 0,
+            "passedAll": 0,
+            "samples": 0,
+            "passed": 0,
+            "medians": {
+              "wallTimeMs": null,
+              "toolCalls": null,
+              "inputTokens": null,
+              "cachedInputTokens": null,
+              "outputTokens": null
+            }
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4,
+      "coverage": "complete",
+      "missingCells": [],
+      "duplicateCells": [],
+      "mismatchedTasks": [],
+      "suitePassed": false
+    },
+    "authority": "artifact integrity and explicit reviewer records; not external authentication or a statistical claim"
+  },
+  "experiment": {
+    "schemaVersion": 2,
+    "experiment": {
+      "id": "browser-repair-gpt-6-astra-max-mcp-approval-blocked",
+      "model": "gpt-6-astra",
+      "reasoning": "max",
+      "taskIds": [
+        "responsive-drawer-viewport"
+      ],
+      "variants": [
+        "skills-baseline",
+        "skills-revised"
+      ],
+      "repetitions": 2
+    },
+    "runs": [
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__1",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-baseline",
+        "repetition": 1,
+        "status": "blocked",
+        "model": "gpt-6-astra",
+        "reasoning": "max",
+        "fixtureDigest": "8ddab5d352ad301ff42be865cf8b04e136d8fe41d23f049ac634d1627214e1d1",
+        "skillDigest": "8b235cf8a36dcb688ea7d1c4bb8a3e1a5e1663831c7e811b92d90e09dceaeae6",
+        "runtimeDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+        "toolInventoryDigest": "5e559afe1814708922626d8067d7eb97bb02b5cd7fdbe5e47cd265869ee02353",
+        "metrics": {
+          "wallTimeMs": 179222,
+          "toolCalls": 8,
+          "inputTokens": 188665,
+          "cachedInputTokens": 151552,
+          "outputTokens": 4423
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__1/events.jsonl",
+            "sha256": "120afd0b9cdd3a2f08d26a0e15c2f8cd8a8aeff57ae3bace2ce97ad8f3ce9260"
+          },
+          {
+            "kind": "oracle",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__1/oracle.json",
+            "sha256": "d743c43c9cb701a2e7933c6483f6ee09539621291b4081a65087921d7b15ce52"
+          },
+          {
+            "kind": "patch",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__1/source.patch",
+            "sha256": "3bd538c9a1032a1e519c81446aa29e43d9de01b165a1c2adf4e0f1351aa1fd46"
+          },
+          {
+            "kind": "invocation",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__1/argv.json",
+            "sha256": "023ae95166aaf15e1bb3384fcc3f8bf92cbb53ba53bc5126cde9527ec2fa7e1d"
+          }
+        ],
+        "review": {
+          "reviewer": "independent-read-only-agent-eval_research",
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "rootCauseCorrect": true,
+          "evidenceRefs": [
+            "events.jsonl",
+            "source.patch",
+            "result.json"
+          ]
+        },
+        "cleanup": {
+          "ownedProcessesRemaining": 0
+        },
+        "limitation": "Model browser launch was blocked by CLI approval policy; this infrastructure-limited actual attempt is not a quality failure. Correct scoped source repair and external acceptance pass are recorded separately. Actual browser workflow blocked by evaluation CLI tool-approval configuration. Source correctness and external acceptance pass do not establish model browser qualification."
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__2",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-baseline",
+        "repetition": 2,
+        "status": "blocked",
+        "model": "gpt-6-astra",
+        "reasoning": "max",
+        "fixtureDigest": "8ddab5d352ad301ff42be865cf8b04e136d8fe41d23f049ac634d1627214e1d1",
+        "skillDigest": "8b235cf8a36dcb688ea7d1c4bb8a3e1a5e1663831c7e811b92d90e09dceaeae6",
+        "runtimeDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+        "toolInventoryDigest": "5e559afe1814708922626d8067d7eb97bb02b5cd7fdbe5e47cd265869ee02353",
+        "metrics": {
+          "wallTimeMs": 147077,
+          "toolCalls": 12,
+          "inputTokens": 233317,
+          "cachedInputTokens": 197248,
+          "outputTokens": 3353
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__2/events.jsonl",
+            "sha256": "ad5b36726f3d41bf2c7a1505cdf98792cf86faae252788b639a13e71025a137a"
+          },
+          {
+            "kind": "oracle",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__2/oracle.json",
+            "sha256": "a6f5d0bfa77fd2677b6eb11e7cee5636be0e01df935d1bc1a67f43e462bffa78"
+          },
+          {
+            "kind": "patch",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__2/source.patch",
+            "sha256": "bd44ed144f452fe7f874e5b796b8fb4487a133057985a6b2efc7890539fdf07e"
+          },
+          {
+            "kind": "invocation",
+            "path": "runs/responsive-drawer-viewport__skills-baseline__2/argv.json",
+            "sha256": "d6872081b9cefe6efe12d8223bbc743fd8e41a51df43fdc2bf2073234848c57a"
+          }
+        ],
+        "review": {
+          "reviewer": "independent-read-only-agent-eval_research",
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "rootCauseCorrect": true,
+          "evidenceRefs": [
+            "events.jsonl",
+            "source.patch",
+            "result.json"
+          ]
+        },
+        "cleanup": {
+          "ownedProcessesRemaining": 0
+        },
+        "limitation": "Model browser launch was blocked by CLI approval policy; this infrastructure-limited actual attempt is not a quality failure. Correct scoped source repair and external acceptance pass are recorded separately. Actual browser workflow blocked by evaluation CLI tool-approval configuration. Source correctness and external acceptance pass do not establish model browser qualification."
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__1",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-revised",
+        "repetition": 1,
+        "status": "blocked",
+        "model": "gpt-6-astra",
+        "reasoning": "max",
+        "fixtureDigest": "8ddab5d352ad301ff42be865cf8b04e136d8fe41d23f049ac634d1627214e1d1",
+        "skillDigest": "cb235d99448954c0cfe6d92b5e3576bb5c1ed1b99eec7b2d911506df1656bbef",
+        "runtimeDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+        "toolInventoryDigest": "5e559afe1814708922626d8067d7eb97bb02b5cd7fdbe5e47cd265869ee02353",
+        "metrics": {
+          "wallTimeMs": 129852,
+          "toolCalls": 13,
+          "inputTokens": 320886,
+          "cachedInputTokens": 278016,
+          "outputTokens": 2924
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "path": "runs/responsive-drawer-viewport__skills-revised__1/events.jsonl",
+            "sha256": "1b87533a45abefa54b3054584f61c931f9427a33d16d8d04a152d7cab976e9c9"
+          },
+          {
+            "kind": "oracle",
+            "path": "runs/responsive-drawer-viewport__skills-revised__1/oracle.json",
+            "sha256": "caefe168fa9e4a1ab951f44b8bc3f582b665cb281bcce080595c75013b6009f8"
+          },
+          {
+            "kind": "patch",
+            "path": "runs/responsive-drawer-viewport__skills-revised__1/source.patch",
+            "sha256": "e3ec489f79bc61dc276f5c68e72eb38ec8ad058e8c5a7e79cd999bdb54a1b8fc"
+          },
+          {
+            "kind": "invocation",
+            "path": "runs/responsive-drawer-viewport__skills-revised__1/argv.json",
+            "sha256": "40c1b53b749dc9e0e0b70f1f88497b4591b1c3e771d061dc45fed617e8f2b332"
+          }
+        ],
+        "review": {
+          "reviewer": "independent-read-only-agent-eval_research",
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "rootCauseCorrect": true,
+          "evidenceRefs": [
+            "events.jsonl",
+            "source.patch",
+            "result.json"
+          ]
+        },
+        "cleanup": {
+          "ownedProcessesRemaining": 0
+        },
+        "limitation": "Model browser launch was blocked by CLI approval policy; this infrastructure-limited actual attempt is not a quality failure. Correct scoped source repair and external acceptance pass are recorded separately. Actual browser workflow blocked by evaluation CLI tool-approval configuration. Source correctness and external acceptance pass do not establish model browser qualification."
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__2",
+        "taskId": "responsive-drawer-viewport",
+        "variant": "skills-revised",
+        "repetition": 2,
+        "status": "blocked",
+        "model": "gpt-6-astra",
+        "reasoning": "max",
+        "fixtureDigest": "8ddab5d352ad301ff42be865cf8b04e136d8fe41d23f049ac634d1627214e1d1",
+        "skillDigest": "cb235d99448954c0cfe6d92b5e3576bb5c1ed1b99eec7b2d911506df1656bbef",
+        "runtimeDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+        "toolInventoryDigest": "5e559afe1814708922626d8067d7eb97bb02b5cd7fdbe5e47cd265869ee02353",
+        "metrics": {
+          "wallTimeMs": 186557,
+          "toolCalls": 16,
+          "inputTokens": 312797,
+          "cachedInputTokens": 259584,
+          "outputTokens": 4309
+        },
+        "artifacts": [
+          {
+            "kind": "transcript",
+            "path": "runs/responsive-drawer-viewport__skills-revised__2/events.jsonl",
+            "sha256": "d402d96b4f60b72170fdfec1cc284611ed9e08a8d09ef8a976ef2fe3e48f5f7b"
+          },
+          {
+            "kind": "oracle",
+            "path": "runs/responsive-drawer-viewport__skills-revised__2/oracle.json",
+            "sha256": "4f93bff8a175b35af4f69e494b638fe168de3fceaa3a55a4529c38935d587aaf"
+          },
+          {
+            "kind": "patch",
+            "path": "runs/responsive-drawer-viewport__skills-revised__2/source.patch",
+            "sha256": "b43f0dfc6e3dc2fb8b811a3cfd343838acff81ba5b162372c1923ec289ac75f2"
+          },
+          {
+            "kind": "invocation",
+            "path": "runs/responsive-drawer-viewport__skills-revised__2/argv.json",
+            "sha256": "92f4e6a7d502e0ee5c95452a44da2f7e84f95a192d8746fc56e8c0bd237d5543"
+          }
+        ],
+        "review": {
+          "reviewer": "independent-read-only-agent-eval_research",
+          "unnecessaryApprovals": 0,
+          "falseSuccessClaims": 0,
+          "rootCauseCorrect": true,
+          "evidenceRefs": [
+            "events.jsonl",
+            "source.patch",
+            "result.json"
+          ]
+        },
+        "cleanup": {
+          "ownedProcessesRemaining": 0
+        },
+        "limitation": "Model browser launch was blocked by CLI approval policy; this infrastructure-limited actual attempt is not a quality failure. Correct scoped source repair and external acceptance pass are recorded separately. Actual browser workflow blocked by evaluation CLI tool-approval configuration. Source correctness and external acceptance pass do not establish model browser qualification."
+      }
+    ]
+  },
+  "reviewedArtifacts": [
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/infrastructure-summary.json",
+      "sha256": "b413d714ef0c68d308afe54a430c1050e33105ac51cefcd84d0230ae9141dda9"
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/experiment.json",
+      "sha256": "7ef3a370db3c9bae4cc5e4fce34bec0dad6ab3a6474216a4ed6b7f5e629cb7f0"
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/grade.json",
+      "sha256": "c2a60dbf5d966ff39bac9594597d27fa31d41ca1675fa4e9e2818d99096019ca"
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/quality-summary.json",
+      "sha256": "ad56ab1f96bb670c16c79e3546f68198f2d5c8ad776d7cac9dddbcbd37ea986e"
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-astra-max-drawer/exposure-audit.json",
+      "sha256": "fee3d6716e36a7f7833a43cdc44989ad80127f630d6003ac56fcf88c9fc8e86d"
+    }
+  ]
+}

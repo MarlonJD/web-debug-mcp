@@ -38,6 +38,7 @@ try {
   const evidence = verificationCapture.details;
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
+    networkFreshness: verificationCapture.collection.network === "fresh" && verificationCapture.summary.observations?.network?.freshness === "fresh",
     flowCaptured: verificationCapture.redaction.applied === true,
     safariTarget: session.target?.browser === "safari",
     runtimeNegotiated: session.runtimeCapabilities?.transport === "safari-webdriver" && session.runtimeCapabilities.javascriptDebugger.state === "unsupported" && session.runtimeCapabilities.locators.semantic.state === "unsupported",

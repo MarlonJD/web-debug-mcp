@@ -38,11 +38,13 @@ import type {
   VerificationResult,
   ViewportSize,
   CaptureView,
+  CaptureSurface,
   IssueCaptureResult,
   ViewportContract,
   PlaywrightStorageState,
 } from "../domain/types.js";
 import {
+  CAPTURE_SURFACES,
   MAX_DECISIVE_OBSERVATIONS,
   MAX_ATTEMPTS_PER_PHASE,
   MAX_REPLAY_FRAMES,
@@ -61,6 +63,7 @@ import {
   boundEvidence,
   captureRequestsScreenshot,
   normalizeCaptureView,
+  selectedSurfaces,
   projectIssueCapture,
   scrubBrowserSnapshot,
   scrubEvidence,
@@ -351,7 +354,7 @@ export class SessionManager {
       assertCaptureCursorAvailable(normalized, session.captureCursors, session.captureGeneration);
       const captureScreenshot = captureRequestsScreenshot(normalized);
       return await this.withLease(session, context, async (operation) => {
-        const evidence = await this.captureInternal(session, captureScreenshot, operation, true);
+        const evidence = await this.captureInternal(session, captureScreenshot, operation, true, selectedSurfaces(normalized));
         return projectIssueCapture({
           evidence,
           view: normalized,
@@ -1073,15 +1076,15 @@ export class SessionManager {
     }
   }
 
-  private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean): Promise<EvidenceBundle> {
+  private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean, surfaces: readonly CaptureSurface[] = CAPTURE_SURFACES): Promise<EvidenceBundle> {
     const suppressInputScreenshot = sessionSecrets(session).length > 0;
     const suppressScreenshot = session.webmcpAttempted || session.authFixture === "seeded-disposable" || suppressInputScreenshot;
-    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot }, context), context);
+    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: surfaces.includes("accessibility"), surfaces, suppressScreenshot }, context), context);
     await this.applySessionArtifactPolicy(session, browser, suppressScreenshot);
     if (captureScreenshot && session.webmcpAttempted) browser.warnings.push("Screenshot suppressed after a direct WebMCP action; the page may have mutated state outside the replay contract.");
     else if (captureScreenshot && suppressInputScreenshot && session.authFixture !== "seeded-disposable") browser.warnings.push("Screenshot suppressed because the session contains private fill/select input values; pixels are not claimed redacted.");
     let next = null;
-    if (session.nextAdapter) {
+    if (session.nextAdapter && surfaces.includes("next")) {
       const optional = optionalContext(context);
       try { next = await this.callAdapter(() => session.nextAdapter!.snapshot(browser.url, session.descriptor.projectRoot, browser.network, optional.context), optional.context); }
       catch (error) {
@@ -1094,7 +1097,7 @@ export class SessionManager {
       }
     }
     let vite = null;
-    if (session.viteAdapter) {
+    if (session.viteAdapter && surfaces.includes("vite")) {
       const optional = optionalContext(context);
       try { vite = await this.callAdapter(() => session.viteAdapter!.snapshot(browser.url, optional.context), optional.context); }
       catch (error) {

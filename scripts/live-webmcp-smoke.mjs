@@ -29,6 +29,7 @@ try {
   if (!existsSync(browserPath)) throw new Error(`Chromium executable not found: ${browserPath}. Set WEB_DEBUG_CHROME_EXECUTABLE_PATH.`);
   await waitForOutputReady(fixture, "Fixture available at", { label: "Vanilla WebMCP fixture", timeoutMs: 15_000 });
   const session = await manager.start({ projectRoot: join(repositoryRoot, "fixtures/vanilla"), url, executablePath: browserPath, headless: true });
+  const summary = await manager.capture(session.id);
   const before = await manager.capture(session.id, { profile: "include", surfaces: ["webmcp"] });
   const action = await manager.act(session.id, {
     kind: "webmcp",
@@ -55,10 +56,26 @@ try {
   let restoreBlocked = false;
   try { await manager.seekReplay(session.id, replay.frame.index, true); }
   catch (error) { restoreBlocked = error?.code === "REPLAY_RESTORE_UNAVAILABLE"; }
+  const numericSession = await manager.start({ projectRoot: join(repositoryRoot, "fixtures/vanilla"), url, executablePath: browserPath, headless: true });
+  let numericCaptureValid = true;
+  const numericCaptureDiagnostics = [];
+  for (const value of ["0", "1", "2", "3"]) {
+    await manager.act(numericSession.id, { kind: "fill", locator: { kind: "css", value: "#amount" }, value });
+    const numericCapture = await manager.capture(numericSession.id, { profile: "full" });
+    const parsedCapture = issueCaptureResultSchema.safeParse(numericCapture);
+    numericCaptureValid &&= numericCapture.session.id === numericSession.id && parsedCapture.success && numericCapture.collection.screenshot === "suppressed";
+    if (!parsedCapture.success) numericCaptureDiagnostics.push({ value, issues: parsedCapture.error.issues.map(({ code, path }) => ({ code, path })) });
+  }
+  await manager.close(numericSession.id, "delete");
   const result = {
     passed: action.schemaVersion === 1
+      && numericCaptureValid
+      && summary.collection.webmcp === "not-collected"
+      && summary.summary.webmcp.callableTools === null
+      && before.collection.webmcp === "fresh"
+      && after.collection.screenshot === "suppressed"
       && action.kind === "webmcp"
-      && action.toolResult === "Payment submitted: 249.90"
+      && action.toolResult === "payment-submitted"
       && actionResultSchema.safeParse(action).success
       && missingToolCode === "WEBMCP_TOOL_NOT_FOUND"
       && oracle.value === "Payment submitted: 249.90"
@@ -72,6 +89,8 @@ try {
     browserVersion: session.runtimeCapabilities?.browser ? session.runtimeCapabilities : null,
     action,
     missingToolCode,
+    numericCaptureValid,
+    numericCaptureDiagnostics,
     oracle,
     before: { webmcp: before.summary.webmcp },
     after: { webmcp: after.summary.webmcp, replay: after.summary.replay, screenshot: after.details?.screenshot?.status },

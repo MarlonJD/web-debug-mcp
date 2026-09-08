@@ -1,4 +1,4 @@
-import type { DirectBrowserAction, ReplayableBrowserAction } from "../domain/types.js";
+import type { DirectBrowserAction, ReplayableBrowserAction, ReplayFrame } from "../domain/types.js";
 
 export function scrubText(value: string, secrets: string[]): string {
   const ordered = [...new Set(secrets)].sort((first, second) => second.length - first.length);
@@ -43,4 +43,13 @@ export function actionSecrets(actions: ReplayableBrowserAction[]): string[] {
 
 export function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function scrubReplayFrame(frame: ReplayFrame, secrets: string[]): ReplayFrame {
+  const sanitized = replaceSecrets(frame, secrets) as ReplayFrame;
+  // These fields are created by the host, never supplied by page content.
+  sanitized.capturedAt = frame.capturedAt;
+  sanitized.attemptId = frame.attemptId;
+  sanitized.trigger = frame.trigger;
+  return sanitized;
 }

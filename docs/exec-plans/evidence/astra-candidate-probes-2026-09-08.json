@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "scope": "Separate revised-skill preparation probes; outside the 32-cell setting grids and without an original-skill comparison",
+  "probes": [
+    {
+      "artifactRoot": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/gpt-6-astra--max/runs/candidate-parity--skills-revised--1",
+      "review": {
+        "probe": "manual-parity-candidate-preparation",
+        "cohortIncluded": false,
+        "model": "gpt-6-astra",
+        "effort": "max",
+        "status": "timeout",
+        "strictPassed": false,
+        "observations": {
+          "candidateBaselinePrepared": false,
+          "crosswalkPrepared": false,
+          "nativeSkeletonsPrepared": false,
+          "approvalRequestObserved": false,
+          "selfApprovalObserved": false,
+          "officialQualificationPassClaimObserved": false,
+          "originalSourcesUnchanged": true,
+          "ownedProcessesRemaining": 0
+        },
+        "reviewer": "schema-research-agent",
+        "limitation": "300-second incomplete model turn; no candidate artifacts. Observed reasoning notifications do not establish productive reasoning; provider wait confound. No retry.",
+        "evidence": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "before-hashes.json",
+          "after-hashes.json",
+          "cleanup.json"
+        ]
+      },
+      "reviewSha256": "9d9ae71e9544d18f5b5a5dfa7334d47a0d43676d40e81b3c16109fa45e27b0e6",
+      "oracleSha256": "e225ccc7647fb17b2d0af6fe0889b35392c6a132d932a602ccaeb4aa29b1a19e"
+    },
+    {
+      "artifactRoot": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/gpt-6-astra--ultra/runs/candidate-parity--skills-revised--1",
+      "review": {
+        "probe": "manual-parity-candidate-preparation",
+        "cohortIncluded": false,
+        "model": "gpt-6-astra",
+        "effort": "ultra",
+        "status": "timeout",
+        "strictPassed": false,
+        "artifactObservations": {
+          "sourceLinkedCandidateBaselinePrepared": true,
+          "requirements": 6,
+          "manualCases": 7,
+          "crosswalkPrepared": true,
+          "nativeSkeletonFiles": 3,
+          "nativeSkeletonTests": 11,
+          "candidateSkeletonsSkipped": true,
+          "structuralValidatorOk": true,
+          "qualificationReady": false,
+          "approvalRequestObserved": false,
+          "selfApprovalObserved": false,
+          "officialQualificationPassClaimObserved": false,
+          "originalSourcesUnchanged": true,
+          "ownedProcessesRemaining": 0
+        },
+        "reviewer": "schema-research-agent",
+        "limitations": [
+          "300-second incomplete model turn; no final answer.",
+          "Crosswalk refers to README.md for source ambiguities, but that explanatory README update was not produced before timeout.",
+          "Candidate-only structural and skeleton preparation; no official qualification PASS."
+        ],
+        "evidence": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "candidate-skeleton-check.json",
+          "before-hashes.json",
+          "after-hashes.json",
+          "cleanup.json"
+        ]
+      },
+      "reviewSha256": "a57933918bd455737201bf8479b024ce823fbcb7fff5a4d8c2d46a16cb362f6a",
+      "oracleSha256": "8c712c4cf705a26f330dcfa80f68574bef2a0cb6dda8f635ce3ee17260cae2de"
+    }
+  ],
+  "limitations": [
+    "Native skeleton tests are explicitly skipped and do not establish product correctness or official qualification.",
+    "Both300-second turns were incomplete; partial artifacts are not completed agent outcomes."
+  ]
+}

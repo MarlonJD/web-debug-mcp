@@ -1,3 +1,4 @@
+import { CAPTURE_SURFACES } from "../src/domain/types.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -120,7 +121,8 @@ function scenarioResult() {
 
 function captureResult() {
   return {
-    schemaVersion: 5 as const,
+    schemaVersion: 6 as const,
+    collection: Object.fromEntries(CAPTURE_SURFACES.map((surface) => [surface, "fresh"])),
     profile: "summary" as const,
     capturedAt: "2026-08-30T00:00:00.000Z",
     cursor: "00000000-0000-4000-8000-000000000003",

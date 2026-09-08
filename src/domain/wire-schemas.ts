@@ -3,6 +3,8 @@ import { z } from "zod";
 import { CAPTURE_SURFACES } from "./types.js";
 import { validateWebMcpArguments } from "../adapters/webmcp.js";
 
+const sharedJsonSchema = z.json().meta({ id: "JsonValue" });
+
 const warningSchema = z.string().max(500);
 const frameworkSchema = z.enum(["vanilla", "react", "angular", "vue", "vite", "next"]);
 const capabilityStateSchema = z.enum(["supported", "degraded", "unsupported"]);
@@ -19,7 +21,7 @@ const runtimeCapabilitySchema = z.object({
   state: capabilityStateSchema,
   provenance: z.array(capabilityProvenanceSchema).max(2),
   reason: z.string().max(500).optional(),
-}).strict();
+}).strict().meta({ id: "RuntimeCapabilityOutput" });
 const viewportSchema = z.object({ width: z.number().int(), height: z.number().int() }).strict();
 
 export const projectCapabilitiesSchema: z.ZodType = z.object({
@@ -30,7 +32,7 @@ export const projectCapabilitiesSchema: z.ZodType = z.object({
   vite: z.boolean(),
   next: z.boolean(),
   serverRuntime: z.boolean(),
-}).strict();
+}).strict().meta({ id: "ProjectCapabilitiesOutput" });
 
 export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
   schemaVersion: z.literal(2),
@@ -50,7 +52,7 @@ export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
   tlsBypass: runtimeCapabilitySchema,
   authSeeding: runtimeCapabilitySchema,
   webmcp: runtimeCapabilitySchema,
-}).strict();
+}).strict().meta({ id: "BrowserRuntimeCapabilitiesOutput" });
 
 const browserTargetSchema = z.object({
   schemaVersion: z.literal(1),
@@ -126,7 +128,7 @@ export const debugSessionSummarySchema: z.ZodType = z.object({
   tls: z.enum(["strict", "allow-insecure-loopback"]).optional(),
   authFixture: z.enum(["seeded-disposable", "none"]).optional(),
   artifactState: z.enum(["retained", "deleted"]).optional(),
-}).strict();
+}).strict().meta({ id: "DebugSessionSummaryOutput" });
 
 const locatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("css"), value: z.string().max(500) }).strict(),
@@ -134,7 +136,7 @@ const locatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string().max(500) }).strict(),
   z.object({ kind: z.literal("label"), text: z.string().max(500) }).strict(),
   z.object({ kind: z.literal("testId"), value: z.string().max(500) }).strict(),
-]);
+]).meta({ id: "LocatorOutput" });
 const replayableActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("navigate"), url: z.string().max(2_560) }).strict(),
   z.object({ kind: z.literal("click"), locator: locatorSchema }).strict(),
@@ -174,7 +176,7 @@ export const webmcpDirectActionSchema = webmcpActionSchema;
 export const directBrowserActionSchema = directActionSchema;
 const serverStateResetSchema = z.object({
   action: replayableActionSchema.optional(),
-  readyCheck: z.json().optional(),
+  readyCheck: sharedJsonSchema.optional(),
 }).strict();
 
 export const actionResultSchema: z.ZodType = z.discriminatedUnion("kind", [
@@ -188,7 +190,7 @@ const consoleEntrySchema = z.object({
   url: z.string().max(2_560).optional(),
   line: z.number().int().optional(),
   column: z.number().int().optional(),
-}).strict();
+}).strict().meta({ id: "ConsoleEntryOutput" });
 const networkEntrySchema = z.object({
   requestId: z.string().max(500),
   method: z.string().max(50),
@@ -198,7 +200,7 @@ const networkEntrySchema = z.object({
   ok: z.boolean().nullable(),
   nextActionId: z.string().max(200).optional(),
   failure: z.string().max(500).optional(),
-}).strict();
+}).strict().meta({ id: "NetworkEntryOutput" });
 const domSchema = z.object({
   bodyText: z.string().max(4_000),
   elements: z.array(z.object({ tag: z.string(), id: z.string().nullable(), role: z.string().nullable(), text: z.string() }).strict()).max(50),
@@ -216,19 +218,20 @@ const debuggerCallFrameSchema = z.object({
   line: z.number().int(),
   column: z.number().int(),
   scopeNames: z.array(z.string().max(100)).max(50),
-  locals: z.record(z.string(), z.json()),
+  locals: z.record(z.string(), sharedJsonSchema),
 }).strict();
 export const debuggerSnapshotSchema: z.ZodType = z.object({
   paused: z.boolean(),
   reason: z.string().max(500).nullable(),
   callFrames: z.array(debuggerCallFrameSchema).max(50),
   breakpoints: z.array(debuggerBreakpointSchema).max(100),
-}).strict();
+}).strict().meta({ id: "DebuggerSnapshotOutput" });
 
 const observationsSchema = z.object({
-  url: z.json(),
-  dom: z.json(),
-  console: z.json(),
+  url: sharedJsonSchema,
+  dom: sharedJsonSchema,
+  console: sharedJsonSchema,
+  network: sharedJsonSchema.optional(),
 }).strict();
 const replayFrameSchema = z.object({
   index: z.number().int().nonnegative(),
@@ -242,10 +245,10 @@ const replayFrameSchema = z.object({
   console: z.array(consoleEntrySchema).max(20),
   network: z.array(networkEntrySchema).max(20),
   debugger: debuggerSnapshotSchema,
-  react: z.json().nullable(),
-  angular: z.json().nullable(),
-  vue: z.json().nullable(),
-}).strict();
+  react: sharedJsonSchema.nullable(),
+  angular: sharedJsonSchema.nullable(),
+  vue: sharedJsonSchema.nullable(),
+}).strict().meta({ id: "ReplayFrameOutput" });
 const replayTimelineSchema = z.object({
   enabled: z.literal(true),
   maxFrames: z.number().int().positive(),
@@ -278,16 +281,16 @@ const captureDetailsSchema = z.object({
   console: z.array(consoleEntrySchema).max(100).optional(),
   network: z.array(networkEntrySchema).max(100).optional(),
   debugger: debuggerSnapshotSchema.optional(),
-  react: z.json().nullable().optional(),
-  angular: z.json().nullable().optional(),
-  vue: z.json().nullable().optional(),
-  next: z.json().nullable().optional(),
-  vite: z.json().nullable().optional(),
-  accessibility: z.json().nullable().optional(),
+  react: sharedJsonSchema.nullable().optional(),
+  angular: sharedJsonSchema.nullable().optional(),
+  vue: sharedJsonSchema.nullable().optional(),
+  next: sharedJsonSchema.nullable().optional(),
+  vite: sharedJsonSchema.nullable().optional(),
+  accessibility: sharedJsonSchema.nullable().optional(),
   replay: replayTimelineSchema.optional(),
   screenshot: z.object({ status: z.enum(["captured", "suppressed", "unavailable"]) }).strict().optional(),
   webmcp: webmcpDetailSchema.nullable().optional(),
-}).strict();
+}).strict().meta({ id: "CaptureDetailsOutput" });
 
 const captureTargetSchema = z.object({
   schemaVersion: z.literal(1),
@@ -296,10 +299,11 @@ const captureTargetSchema = z.object({
   viewport: viewportSchema.nullable(),
   isolated: z.boolean(),
   mode: z.enum(["launch", "attach", "webdriver"]).optional(),
-}).strict();
+}).strict().meta({ id: "CaptureTargetOutput" });
 
 const captureCommonSchema = z.object({
-  schemaVersion: z.literal(5),
+  schemaVersion: z.literal(6),
+  collection: z.record(captureSurfaceSchema, z.enum(["fresh", "stale", "not-collected", "not-detected", "unavailable", "suppressed"])),
   capturedAt: z.string().max(100),
   cursor: z.string().uuid(),
   session: z.object({
@@ -309,13 +313,13 @@ const captureCommonSchema = z.object({
     target: captureTargetSchema.nullable(),
     projectCapabilities: projectCapabilitiesSchema,
     runtimeCapabilities: browserRuntimeCapabilitiesSchema.nullable(),
-  }).strict(),
+  }).strict().meta({ id: "CaptureSession" }),
   project: z.object({
     frameworks: z.array(frameworkSchema).max(6),
     confidence: confidenceSchema,
     ambiguous: z.boolean(),
     projectCapabilities: projectCapabilitiesSchema,
-  }).strict(),
+  }).strict().meta({ id: "CaptureProject" }),
   summary: z.object({
     title: z.string().max(300),
     viewport: viewportSchema.nullable(),
@@ -325,20 +329,20 @@ const captureCommonSchema = z.object({
     network: z.object({ total: z.number().int().nonnegative(), failed: z.number().int().nonnegative(), pending: z.number().int().nonnegative(), latestFailures: z.array(networkEntrySchema).max(3) }).strict(),
     debugger: z.object({ paused: z.boolean(), reason: z.string().max(500).nullable(), callFrames: z.number().int().nonnegative(), breakpoints: z.number().int().nonnegative() }).strict(),
     runtimes: z.object({
-      react: z.enum(["present", "not-detected", "unavailable"]),
-      angular: z.enum(["present", "not-detected", "unavailable"]),
-      vue: z.enum(["present", "not-detected", "unavailable"]),
-      next: z.enum(["present", "not-detected", "unavailable"]),
-      vite: z.enum(["present", "not-detected", "unavailable"]),
-      accessibility: z.enum(["present", "not-detected", "unavailable"]),
+      react: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
+      angular: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
+      vue: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
+      next: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
+      vite: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
+      accessibility: z.enum(["present", "stale", "not-collected", "not-detected", "unavailable"]),
     }).strict(),
     replay: z.object({ frames: z.number().int().nonnegative(), truncated: z.boolean(), oldestIndex: z.number().int().nullable(), newestIndex: z.number().int().nullable(), restorable: z.boolean(), restoreBlockedReason: z.string().max(100).nullable() }).strict(),
-    webmcp: z.object({ state: capabilityStateSchema, callableTools: z.number().int().nonnegative(), truncated: z.boolean() }).strict(),
+    webmcp: z.object({ state: capabilityStateSchema, callableTools: z.number().int().nonnegative().nullable(), truncated: z.boolean() }).strict(),
     observations: observationsSchema.nullable(),
-  }).strict(),
-  redaction: z.object({ applied: z.literal(true), policy: z.literal("default-sensitive-fields") }).strict(),
+  }).strict().meta({ id: "CaptureSummary" }),
+  redaction: z.object({ applied: z.literal(true), policy: z.literal("default-sensitive-fields") }).strict().meta({ id: "CaptureRedaction" }),
   warnings: z.array(warningSchema).max(10),
-  truncation: z.object({ applied: z.boolean(), omittedSurfaces: z.array(captureSurfaceSchema).max(CAPTURE_SURFACES.length) }).strict(),
+  truncation: z.object({ applied: z.boolean(), omittedSurfaces: z.array(captureSurfaceSchema).max(CAPTURE_SURFACES.length) }).strict().meta({ id: "CaptureTruncation" }),
 }).strict();
 
 export const issueCaptureResultSchema: z.ZodType = z.discriminatedUnion("profile", [
@@ -362,7 +366,7 @@ export const nextInspectionResultSchema: z.ZodType = z.object({
   detected: z.literal(true),
   endpoint: z.string().max(2_560),
   kind: z.enum(["compileRoute", "resolveServerAction"]),
-  result: z.json().nullable(),
+  result: sharedJsonSchema.nullable(),
   warnings: z.array(warningSchema).max(20),
 }).strict();
 
@@ -379,7 +383,7 @@ export const replaySeekResultSchema: z.ZodType = z.object({
 }).strict();
 
 export const evaluationResultSchema: z.ZodType = z.object({
-  value: z.json(),
+  value: sharedJsonSchema,
   type: z.string().max(100).nullable(),
   description: z.string().max(2_000).nullable(),
 }).strict();
@@ -407,7 +411,7 @@ const environmentFingerprintSchema = z.object({
   nodeVersion: z.string().max(100),
   platform: z.string().max(100),
   architecture: z.string().max(100),
-}).strict();
+}).strict().meta({ id: "EnvironmentFingerprintOutput" });
 
 export const publicReproScenarioSchema: z.ZodType = z.object({
   schemaVersion: z.literal(6),
@@ -416,18 +420,18 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
   name: z.string().max(200),
   url: z.string().max(2_560),
   actions: z.array(replayableActionSchema).max(100),
-  failureSignature: z.array(z.json()).max(64),
-  acceptanceChecks: z.array(z.json()).max(64),
-  regressionChecks: z.array(z.json()).max(64),
-  checkpoints: z.array(z.json()).max(16),
+  failureSignature: z.array(sharedJsonSchema).max(64),
+  acceptanceChecks: z.array(sharedJsonSchema).max(64),
+  regressionChecks: z.array(sharedJsonSchema).max(64),
+  checkpoints: z.array(sharedJsonSchema).max(16),
   viewports: z.array(viewportSchema.extend({ name: z.string().max(40) }).strict()).max(4),
   failureViewports: z.array(z.string().max(40)).max(4).optional(),
   authFixture: z.enum(["seeded-disposable", "none"]),
   tls: z.enum(["strict", "allow-insecure-loopback"]),
-  risks: z.json(),
+  risks: sharedJsonSchema,
   serverStateReset: serverStateResetSchema.optional(),
   requestedLevel: z.enum(["quick", "standard", "strict"]),
-  buildReference: z.json(),
+  buildReference: sharedJsonSchema,
   environmentFingerprint: environmentFingerprintSchema,
   contractHash: z.string().length(64),
   persistence: z.literal("in-memory"),
@@ -436,16 +440,16 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
     status: z.enum(["reproduced", "not_reproduced", "inconclusive"]),
     level: z.enum(["quick", "standard", "strict"]),
     flaky: z.boolean(),
-    budget: z.json(),
-    attempts: z.array(z.json()).max(5),
-    observedRate: z.json(),
-    evidence: z.json().nullable(),
+    budget: sharedJsonSchema,
+    attempts: z.array(sharedJsonSchema).max(5),
+    observedRate: sharedJsonSchema,
+    evidence: sharedJsonSchema.nullable(),
     warnings: z.array(warningSchema).max(100),
     viewportConsensus: z.record(z.string(), z.string()).optional(),
     termination: z.string().max(500),
-    truncation: z.json().optional(),
+    truncation: sharedJsonSchema.optional(),
   }).strict(),
-}).strict();
+}).strict().meta({ id: "PublicReproScenarioOutput" });
 
 export const verificationResultSchema: z.ZodType = z.object({
   schemaVersion: z.literal(6),
@@ -455,20 +459,20 @@ export const verificationResultSchema: z.ZodType = z.object({
   escalations: z.array(warningSchema).max(100),
   flaky: z.boolean(),
   scenario: publicReproScenarioSchema,
-  baseline: z.json(),
-  postFix: z.json(),
-  observedRates: z.json(),
-  budget: z.json(),
-  cleanup: z.json(),
-  evidence: z.object({ baseline: z.json().nullable(), postFix: z.json().nullable() }).strict(),
+  baseline: sharedJsonSchema,
+  postFix: sharedJsonSchema,
+  observedRates: sharedJsonSchema,
+  budget: sharedJsonSchema,
+  cleanup: sharedJsonSchema,
+  evidence: z.object({ baseline: sharedJsonSchema.nullable(), postFix: sharedJsonSchema.nullable() }).strict(),
   environmentFingerprint: environmentFingerprintSchema,
   contractHash: z.string().length(64),
-  buildReference: z.json(),
-  isolation: z.json(),
+  buildReference: sharedJsonSchema,
+  isolation: sharedJsonSchema,
   persistence: z.literal("in-memory"),
   warnings: z.array(warningSchema).max(100),
   termination: z.string().max(500),
-  truncation: z.json(),
+  truncation: sharedJsonSchema,
 }).strict();
 
 export const sessionStatusResultSchema: z.ZodType = z.union([debugSessionSummarySchema, z.array(debugSessionSummarySchema).max(8)]);

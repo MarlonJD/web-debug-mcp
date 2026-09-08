@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-08T02:29:50.901532+00:00",
+  "reason": "User challenged deadline censoring as materially affecting final-output quality. Original equal execution budgets were too short for this question.",
+  "originalGuardsSeconds": {
+    "routing": 240,
+    "browser": 420,
+    "authorityPerActualTurn": 300
+  },
+  "followupGuardSeconds": 1800,
+  "guardPurpose": "Bound an indefinitely stalled client/provider; a guard hit is incomplete final-quality evidence, not proof of incorrect code.",
+  "retention": "Original experiments, first attempts, capacity recovery, and partial Luna pilots retained. No silent replacement or hidden rerun.",
+  "cohortSelection": {
+    "astraMax": {
+      "pairedTasks": [
+        "source-only-review",
+        "responsive-drawer-viewport",
+        "prior-turn-authorization"
+      ],
+      "arms": [
+        "skills-baseline",
+        "skills-revised"
+      ],
+      "repetitions": 2,
+      "separateCandidateProbe": true
+    },
+    "astraUltra": {
+      "pairedTasks": [
+        "responsive-drawer-viewport",
+        "prior-turn-authorization"
+      ],
+      "arms": [
+        "skills-baseline",
+        "skills-revised"
+      ],
+      "repetitions": 2,
+      "separateCandidateProbe": true
+    },
+    "lunaMax": {
+      "freshPairedTasks": [
+        "react-filter-stale-memo",
+        "react-latest-response-wins",
+        "responsive-drawer-viewport",
+        "prior-turn-authorization",
+        "ambiguous-mutation"
+      ],
+      "arms": [
+        "skills-baseline",
+        "skills-revised"
+      ],
+      "repetitions": 2,
+      "separateCandidateProbe": true,
+      "retainedRouting": "All12 original routing cells completed uncensored; their model-visible prompts contain no240-second/budget/deadline wording. Keep original guard labelled; no need to rerun uncensored outputs."
+    }
+  },
+  "ordering": "Long Astra workstreams finish before fresh long Luna browser/authority cohorts. Original Luna started only after original Astra completed.",
+  "unchangedInputs": [
+    "comparison runtime R0",
+    "baseline/revised skill bytes",
+    "product task requirements",
+    "independent oracle",
+    "two repetitions per arm/task"
+  ],
+  "documentedChanges": [
+    "Browser model-visible budget line420 to1800; other task wording unchanged apart from owned paths/URLs.",
+    "Temporary runner guard1800 and observational queue/receipt controls; hashes recorded before calls."
+  ],
+  "inferenceLimits": [
+    "Follow-ups selected after seeing deadline censoring and user feedback, not blinded or independently preregistered.",
+    "Do not pool old and new repeats as a larger uniform sample.",
+    "Completed-output correctness, finished-turn outcome, runtime, token use, tool errors, and transport limitations remain separate."
+  ],
+  "auditRef": "astra-authority-timeout-audit-2026-09-08.json",
+  "subsequentContainmentAmendment": {
+    "reason": "Confirmed cell-unowned Chrome signal in original short Luna browser cell; protected comparisons resume after native boundary gates.",
+    "appliesTo": "Protected long authority/browser cohorts for both arms; completed source-only follow-up predates this amendment.",
+    "changes": [
+      "Named per-cell workspace command profile with shared temporary directories read-only and only the exact cell command temp writable.",
+      "Approval policy never; no permission escalation or legacy danger configuration.",
+      "Identical process-ownership guidance; trusted MCP/browser lifecycle remains outside model command sandbox.",
+      "Protected browser runner disables ambient plugins/skills/unrelated MCP servers, changing exposure from original short browser cohorts."
+    ],
+    "nativeEvidence": "astra-command-containment-2026-09-08.json",
+    "incidentEvidence": "luna-process-ownership-incident-2026-09-08.json",
+    "inference": "Old/new differences cannot isolate time budget from command containment, ownership guidance, or ambient exposure."
+  },
+  "phaseOrderEvidence": "astra-luna-long-phase-order-2026-09-08.json",
+  "followupStatusAsOfUtc": "2026-09-08T04:26:50.454104Z",
+  "followupStatus": {
+    "astraMax": "Source, authoring, drawer paired follow-ups and separate candidate complete; paired rubric12/12.",
+    "astraUltra": "Authoring and drawer paired follow-ups complete; paired rubric8/8. Candidate delivered with independently proved assertion flaw.",
+    "lunaMax": "Fresh browser12/12 declared repair rubric (all-final-claims-supported11/12), authority8/8; candidate delivered with source/coverage/assertion defects. Original uncensored routing12/12 remains separate."
+  },
+  "allFollowupEvaluatedCellsCompleted": true,
+  "remainingEvaluatedModelCalls": 0,
+  "completionLimits": "Completion/repair grades do not imply all claims, citations, or candidate assertions are sound. No broader skill quality advantage is established."
+}

@@ -316,11 +316,14 @@ export class SafariAdapter implements BrowserAdapter {
       }
     }
 
-    if (!options.checksOnly && this.networkEntries.size === 0) {
+    let networkAvailable = !options.checksOnly && Boolean(this.bidi);
+    // A fallback without an event subscription must be refreshed for each capture.
+    if (!options.checksOnly && (!this.bidi || this.networkEntries.size === 0)) {
       try {
         const performanceEntries = await this.readPerformanceNetwork(context);
         for (const entry of performanceEntries) this.networkEntries.set(entry.requestId, entry);
-        if (performanceEntries.length > 0) this.performanceNetworkFallbackUsed = true;
+        this.performanceNetworkFallbackUsed = true;
+        networkAvailable = true;
       } catch (error) {
         warnings.push(`Safari network evidence unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
       }
@@ -355,6 +358,11 @@ export class SafariAdapter implements BrowserAdapter {
         url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
         dom: { state: domAvailable ? "pass" : "unavailable", freshness: domAvailable ? "fresh" : "stale", provenance: domAvailable ? "browser" : "cached" },
         console: this.bidi ? { state: "pass", freshness: "fresh", provenance: "webdriver-bidi" } : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari WebDriver BiDi console collection is unavailable." },
+        network: networkAvailable
+          ? { state: "pass", freshness: "fresh", provenance: this.performanceNetworkFallbackUsed ? "performance-resource-timing" : "webdriver-bidi" }
+          : networkBound.items.length > 0
+            ? { state: "pass", freshness: "stale", provenance: "cached", warning: "Safari network observation could not be refreshed." }
+            : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari network collection is unavailable." },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();

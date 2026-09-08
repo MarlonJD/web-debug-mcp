@@ -35,7 +35,8 @@ try {
   const after = afterCapture.details;
   const component = findComponent(after.angular?.components ?? [], "CheckoutPanelComponent");
   const assertions = {
-    evidenceSchema: afterCapture.schemaVersion === 5,
+    evidenceSchema: afterCapture.schemaVersion === 6,
+    collectionState: afterCapture.collection.angular === "fresh" && afterCapture.collection.vue === "not-detected" && afterCapture.collection.accessibility === "not-collected",
     detected: afterCapture.project.frameworks.join(",") === "angular" && after.angular?.detected === true,
     exactVersion: after.angular?.version === "21.2.22",
     domHostTree: after.angular?.treeMode === "dom-host" && (after.angular.componentCount ?? 0) >= 2,

@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Protected long-budget phase ordering. Fresh Luna model calls follow completed Astra max/ultra model execution, independent oracles, and owned-process cleanup; later read-only semantic review is separate.",
+  "rootGoObservedAtUtc": "2026-09-08T03:45:34Z",
+  "rootVerification": "Read all ten authority/candidate cleanup and close-observation records; exact recorded owned PID checks were empty. Read browser closure for all eight cells; no owned matching active processes. Both frozen input checks pass.",
+  "timeEvidenceLimits": "Authority reader receipts carry completed-turn timestamps. Browser final/result filesystem mtimes provide persisted-by bounds, not exact model completion times. GO is the root clock observation immediately before dispatch, not an independent provider timestamp.",
+  "evidence": {
+    "astraAuthorityClosure": {
+      "path": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/protected-astra-operational-closure.json",
+      "sha256": "3e655360380e03509fe690e015719eefb8a3b5db9811a2c0148c022a741b0337",
+      "result": {
+        "recordedAtUtc": "2026-09-08T03:45:11.832886+00:00",
+        "scope": "Protected1800 Astra operational closure only; candidate semantic review remains separate",
+        "settings": [
+          {
+            "effort": "max",
+            "allAuthoringAndCandidateCompleted": true,
+            "ownedAppServerGroups": [
+              10566,
+              95347,
+              99394,
+              95348,
+              99395
+            ],
+            "remainingGroupProcesses": [],
+            "lastModelTurnCompletedAtUtc": "2026-09-08T03:13:58+00:00",
+            "frozenIntegrity": {
+              "runtimeUnchanged": true,
+              "baselineSkillsUnchanged": true,
+              "revisedSkillsUnchanged": true
+            }
+          },
+          {
+            "effort": "ultra",
+            "allAuthoringAndCandidateCompleted": true,
+            "ownedAppServerGroups": [
+              43802,
+              26879,
+              35759,
+              26880,
+              35760
+            ],
+            "remainingGroupProcesses": [],
+            "lastModelTurnCompletedAtUtc": "2026-09-08T03:39:55+00:00",
+            "frozenIntegrity": {
+              "runtimeUnchanged": true,
+              "baselineSkillsUnchanged": true,
+              "revisedSkillsUnchanged": true
+            }
+          }
+        ],
+        "lastActualModelTurnEndUtc": "2026-09-08T03:39:55+00:00"
+      }
+    },
+    "astraBrowserClosure": {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-closure.json",
+      "sha256": "866f7ed5555e7c41fe2fa4e1501b244c4b93ee5e6b33afd7b7954283b1b53793",
+      "result": {
+        "closureObservedAtUtc": "2026-09-08T03:42:49.453289+00:00",
+        "cohorts": [
+          {
+            "cohort": "protected-astra-max-drawer",
+            "actualCells": 4,
+            "sourceExternalOraclePassed": 4,
+            "cleanupPassed": true,
+            "frozenIntegrityPassed": true,
+            "modelFinalArtifactLastWrittenAtUtc": "2026-09-08T03:24:36.264889+00:00",
+            "oracleAndCleanupCompleteByResultArtifactUtc": "2026-09-08T03:24:38.671626+00:00"
+          },
+          {
+            "cohort": "protected-astra-ultra-drawer",
+            "actualCells": 4,
+            "sourceExternalOraclePassed": 4,
+            "cleanupPassed": true,
+            "frozenIntegrityPassed": true,
+            "modelFinalArtifactLastWrittenAtUtc": "2026-09-08T03:39:32.962520+00:00",
+            "oracleAndCleanupCompleteByResultArtifactUtc": "2026-09-08T03:39:35.169119+00:00"
+          }
+        ],
+        "ownedActiveMatchingProcesses": [],
+        "allEightCellsAccounted": true,
+        "nativeTimeEvidenceScope": "Final export filesystem time and result artifact persisted-by bounds; JSONL has no precise model-end timestamp. Independent oracle and cleanup complete before result persistence.",
+        "lunaModelCallsStarted": false
+      }
+    },
+    "freshLunaAuthorityStart": {
+      "path": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/gpt-5.6-luna--max/phase-start.json",
+      "sha256": "d0a9b944442521324e08a2cd542c6e6240fa55f80ec8273ac5ac192dc1e764cd",
+      "result": {
+        "startedAt": "2026-09-08T03:46:01.852257+00:00",
+        "configuration": {
+          "model": "gpt-5.6-luna",
+          "effort": "max",
+          "turnTimeoutSeconds": 1800,
+          "repeats": 2,
+          "arms": [
+            "skills-baseline",
+            "skills-revised"
+          ],
+          "tasks": [
+            "prior-turn-authorization",
+            "ambiguous-mutation"
+          ],
+          "candidateProbeCount": 1,
+          "runtime": "/private/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/final-inputs/runtime",
+          "skills": {
+            "skills-baseline": "/private/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/final-inputs/skills-baseline",
+            "skills-revised": "/private/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/final-inputs/skills-revised"
+          },
+          "frozenExperimentDigest": "2575173b7a83af16fb3aaaec6169b9303565b2f57ee01b8135987d16e5169e2f",
+          "runtimeDigest": "37627b352105baf737852c7699440d02da823b9d64329e2e9f811938580d1b86",
+          "runtimeLabel": "R0",
+          "cohortLabel": "fresh protected 1800-second cohort; interrupted unrestricted pilot excluded",
+          "executionBoundary": {
+            "profile": "authority_cell",
+            "extends": ":workspace",
+            "sharedTmpdir": "read only",
+            "slashTmp": "read only",
+            "extraWritableRoot": "exact per-cell command-tmp only",
+            "commandTMPDIR": "exact per-cell command-tmp",
+            "threadAndEveryTurnPermissionsExplicit": true,
+            "approvalPolicy": "never",
+            "serverRequestPolicy": "Only the two declared simulated-ledger dynamic tools receive failure-shaped fixture responses. All other server requests, including command/file/permission escalations, are rejected with a protocol error and retained in events plus host-responses. No permission profile is widened.",
+            "McpOutsideCommandSandbox": true,
+            "nativePreflight": "/private/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/containment-final-preflight-2/result.json"
+          },
+          "controlAmendment": "Uniform 1800 seconds per actual turn, separate from preserved 300-second cohorts.",
+          "runnerSha256": "fa60ecd83e574651185d71ea4a2f283ead3034fbb94908b985b9108e672c1e1d",
+          "reusedR0Driver": "/private/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/quality_runner.py",
+          "capacityRetries": {
+            "maxAdditionalAttempts": 2,
+            "backoffSeconds": [
+              15,
+              30
+            ]
+          },
+          "maxParallelCalls": 2,
+          "liveBrowserCompatibility": false,
+          "observabilityAmendment": {
+            "readerReceiptLog": "Parsed raw protocol frames are timestamped immediately before queue insertion, independently of driver consumption.",
+            "closeDrain": "After exact owned process cleanup, drain queued frames for at most 1 second or 100 ms quiet; observational only, without responses or status reclassification.",
+            "protocolPromptsFixturesUnchanged": true
+          }
+        },
+        "integrity": {
+          "runtimeUnchanged": true,
+          "baselineSkillsUnchanged": true,
+          "revisedSkillsUnchanged": true,
+          "fixturesUnchanged": true,
+          "oracleUnchanged": true,
+          "r0DriverUnchanged": true
+        }
+      }
+    },
+    "freshLunaBrowserStart": {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/phase-start.json",
+      "sha256": "f47a4b0cfb551323a77880d50800ba4f2875edf7d2246654b122e0991b27537d",
+      "result": {
+        "phaseStartedAt": "2026-09-08T03:46:31.988992+00:00",
+        "parentGo": "Fresh full Luna cohort after both protected Astra closures; max2 concurrent,1800s; strict browser_cell/never with explicit frozen13 MCP tools approved.",
+        "model": "gpt-5.6-luna",
+        "reasoning": "max",
+        "plannedCells": 12,
+        "astraBrowserClosure": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-closure.json",
+        "authorityLastTurnCompletedAtUtc": "2026-09-08T03:39:55Z",
+        "previousShortLunaRemainsPartial": true,
+        "runnerSha256": "7944a2368b686b1e75d42b8c70234f0070503256161fc9f928996c872b7c5bf6"
+      }
+    }
+  },
+  "independentLunaPhaseAudit": {
+    "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/luna-phase-integrity-audit.json",
+    "sha256": "a78e287b9014e3fe91bad2f900765445d27b5d0a505d999eb49da6cd4fd13aa4",
+    "result": {
+      "schemaVersion": 1,
+      "reviewedAtUtc": "2026-09-08T03:56:01.130842+00:00",
+      "reviewer": "eval_research independent read-only review",
+      "scope": "Frozen phase identity and launch boundary only. Active partial source not judged.",
+      "browserRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max",
+      "authorityRoot": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/gpt-5.6-luna--max",
+      "browserFrozenFileVerification": {
+        "runtime": {
+          "checkedFiles": 192,
+          "mismatches": [],
+          "manifestDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b"
+        },
+        "fixture": {
+          "checkedFiles": 7,
+          "mismatches": [],
+          "manifestDigest": "33a8846f750f454a9fb603aa4fe657cfd012525afa7acfab2726ceefcaaef81b"
+        },
+        "skills-baseline": {
+          "checkedFiles": 7,
+          "mismatches": [],
+          "manifestDigest": "8b235cf8a36dcb688ea7d1c4bb8a3e1a5e1663831c7e811b92d90e09dceaeae6"
+        },
+        "skills-revised": {
+          "checkedFiles": 10,
+          "mismatches": [],
+          "manifestDigest": "cb235d99448954c0cfe6d92b5e3576bb5c1ed1b99eec7b2d911506df1656bbef"
+        }
+      },
+      "authorityConfigurationSameAcrossProtectedAstraAndLuna": {
+        "runtime": true,
+        "skills": true,
+        "runtimeDigest": true,
+        "frozenExperimentDigest": true,
+        "runnerSha256": true,
+        "executionBoundary": true,
+        "turnTimeoutSeconds": true,
+        "observabilityAmendment": true
+      },
+      "authorityPerCellAttestations": {
+        "prior-turn-authorization--skills-baseline--1": {
+          "checks": {
+            "namedProfile": true,
+            "inheritsWorkspace": true,
+            "workspaceSandbox": true,
+            "networkDenied": true,
+            "sharedTmpdirExcluded": true,
+            "slashTmpExcluded": true,
+            "onlyCellTempExtraRoot": true,
+            "approvalNever": true,
+            "cwdMatches": true
+          },
+          "sha256": "1749a0221c84d02a5c2896119fcd26d468ef97f38b76f8c5aed09d35a101516c"
+        },
+        "prior-turn-authorization--skills-revised--1": {
+          "checks": {
+            "namedProfile": true,
+            "inheritsWorkspace": true,
+            "workspaceSandbox": true,
+            "networkDenied": true,
+            "sharedTmpdirExcluded": true,
+            "slashTmpExcluded": true,
+            "onlyCellTempExtraRoot": true,
+            "approvalNever": true,
+            "cwdMatches": true
+          },
+          "sha256": "5746800f55fa551d3dfe077f21ba15d5053e2a644dd833b175cbbbedcb5fb95c"
+        }
+      },
+      "phaseOrder": {
+        "authorityStartedAt": "2026-09-08T03:46:01.852257+00:00",
+        "browserStartedAt": "2026-09-08T03:46:31.988992+00:00",
+        "browserAstraClosure": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-closure.json"
+      },
+      "browserBoundaryEvidence": "Per-cell argv default_permissions browser_cell extends :workspace, shared temporary roots read-only, exact command-tmp write;13 frozen MCP tools approve. Revised filter events14 ready, prior11 wrong path. ExecJSON lacks profile response, so profile attribution uses argv/native preflight; authority has actual thread response.",
+      "provenanceCaveats": [
+        "Preparation snapshots retain modelCallsStarted=false; phase-start/events are execution evidence.",
+        "Authority/browser runtimeDigest use different inventories/conventions; do not compare across workstreams.",
+        "Shared node_modules not fully sealed.",
+        "Configured model/effort is not independent provider-served-model attestation.",
+        "Old short/blocked/config preflights remain distinct.",
+        "Browser1800 changes containment, ownership guidance and tool approvals too; not pure budget intervention."
+      ],
+      "evidenceHashes": {
+        "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/phase-start.json": "f47a4b0cfb551323a77880d50800ba4f2875edf7d2246654b122e0991b27537d",
+        "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/phase-provenance.json": "d2744ada96a6b9497fd038e8cb4ca3c91d30c4e19807457f36ed66a9140a9825",
+        "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/freeze.json": "c455e739821539b8f383fbb2eb612d0bad9b0540a8c2965f9d0d6bcef87de503",
+        "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/containment-settings.json": "054f71c37705acda1577c2feb002b27ec279436752c9577c8540a9183ee33d0b",
+        "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/gpt-5.6-luna--max/phase-start.json": "d0a9b944442521324e08a2cd542c6e6240fa55f80ec8273ac5ac192dc1e764cd",
+        "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/gpt-5.6-luna--max/configuration.json": "3847fffb00f82d9eb3184b1e5849eb318b20f08e2661bf6d858071fcdaef1158"
+      }
+    }
+  },
+  "completedLunaOperationalEvidence": [
+    {
+      "path": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/protected-long-budget-1800/gpt-5.6-luna--max/operational-closure.json",
+      "sha256": "cdbf991848721571106dc21a2d02f5c0c8dc4fd526ccb4d97f25d8574961e090",
+      "result": {
+        "recordedAtUtc": "2026-09-08T04:15:52.256948+00:00",
+        "allModelCallsCompleted": true,
+        "authoringAndAmbiguityCells": 8,
+        "candidateProbes": 1,
+        "actualTurns": 13,
+        "cellAttempts": 9,
+        "capacityRecoveries": 0,
+        "lastActualModelTurnEndUtc": "2026-09-08T04:15:04+00:00",
+        "ownedAppServerGroups": [
+          76354,
+          64054,
+          75072,
+          87181,
+          88816,
+          64055,
+          76353,
+          75071,
+          87182
+        ],
+        "remainingOwnedGroupProcesses": [],
+        "frozenIntegrity": {
+          "runtimeUnchanged": true,
+          "baselineSkillsUnchanged": true,
+          "revisedSkillsUnchanged": true
+        },
+        "candidateSemanticReview": "pending, separate from operational closure"
+      }
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max/phase-closure.json",
+      "sha256": "4af6f1e8539b638ed86341469be7d1691386773e6671b7d7cc5ca4a7a1254695",
+      "result": {
+        "schemaVersion": 1,
+        "closureObservedAtUtc": "2026-09-08T04:20:13.277743+00:00",
+        "cohort": "/tmp/web-debug-astra-browser-repair-aSXDy1/long-luna-max",
+        "plannedCells": 12,
+        "actualCells": 12,
+        "declaredGridAccounted": true,
+        "modelFinalArtifactLastWrittenAtUtc": "2026-09-08T04:19:39.365715+00:00",
+        "oracleAndCleanupCompleteByResultArtifactUtc": "2026-09-08T04:19:43.101251+00:00",
+        "sourceExternalOraclePassed": 12,
+        "deadlines": 0,
+        "cleanupPassed": true,
+        "ownedActiveMatchingProcesses": [],
+        "freezeIntegrity": {
+          "runtime": {
+            "filesChecked": 192,
+            "mismatches": []
+          },
+          "fixture": {
+            "filesChecked": 7,
+            "mismatches": []
+          },
+          "skills-baseline": {
+            "filesChecked": 7,
+            "mismatches": []
+          },
+          "skills-revised": {
+            "filesChecked": 10,
+            "mismatches": []
+          }
+        },
+        "frozenIntegrityPassed": true,
+        "nativeTimeEvidenceScope": "Final export filesystem time and result persisted-by bounds; JSONL has no precise model-end timestamp. Oracle and owned cleanup finish before result persistence.",
+        "processEvidenceScope": "Read-only command-path snapshot plus each run controller-tracked ownership cleanup. Inspector and its ancestors are excluded. No process signals are issued by this closure helper.",
+        "preparedProvenanceIsSnapshot": "phase-provenance.json modelCallsStarted=false is a retained pre-launch preparation fact; phase-start.json and per-cell exported events document actual execution."
+      }
+    }
+  ],
+  "rootFinalAuthorityOwnedPidCheck": {
+    "pids": [
+      76354,
+      64054,
+      75072,
+      87181,
+      88816,
+      64055,
+      76353,
+      75071,
+      87182
+    ],
+    "command": "ps -p <exact recorded nine PIDs> -o pid=,pgid=,args=",
+    "exitCode": 1,
+    "output": "",
+    "scope": "Read-only absence check; no process signaled."
+  }
+}

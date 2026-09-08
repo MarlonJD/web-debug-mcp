@@ -106,6 +106,26 @@ describe("MCP server contract", () => {
 
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
     const listed = await client.listTools();
+    const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
+    expect(bytes(listed)).toBeLessThan(150_000);
+    expect(listed.tools.reduce((sum, tool) => sum + bytes(tool.inputSchema), 0)).toBeLessThan(30_000);
+    expect(listed.tools.reduce((sum, tool) => sum + bytes(tool.outputSchema), 0)).toBeLessThan(115_000);
+    for (const tool of listed.tools) {
+      for (const schema of [tool.inputSchema, tool.outputSchema]) {
+        const walk = (value: unknown): void => {
+          if (!value || typeof value !== "object") return;
+          const object = value as Record<string, unknown>;
+          if (typeof object.$ref === "string") {
+            expect(object.$ref.startsWith("#/"), tool.name).toBe(true);
+            let target: unknown = schema;
+            for (const key of object.$ref.slice(2).split("/").map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"))) target = (target as Record<string, unknown>)?.[key];
+            expect(target, `${tool.name}: ${object.$ref}`).toBeDefined();
+          }
+          for (const nested of Object.values(object)) walk(nested);
+        };
+        walk(schema);
+      }
+    }
     const names = listed.tools.map((tool) => tool.name).sort();
     expect(names).toEqual([
       "web_breakpoint_set",
@@ -197,6 +217,15 @@ describe("MCP server contract", () => {
 
     const startResult = asCallResult(await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/" } }));
     const session = structuredData(startResult) as { id: string };
+    const malformedSignature = asCallResult(await client.callTool({
+      name: "web_repro_record", arguments: {
+        sessionId: session.id, name: "Malformed baseline", url: "http://127.0.0.1:4173/", actions: [],
+        failureSignature: [{ kind: "locatorCount", locator: { kind: "css", value: "body" }, count: 1, expected: "present" }],
+        acceptanceChecks: [{ kind: "locatorCount", locator: { kind: "css", value: "body" }, count: 1 }],
+      },
+    }));
+    expect(malformedSignature.isError).toBe(true);
+    expect(JSON.stringify(malformedSignature.content)).toContain("failureSignature[0].expected");
     const secret = "mcp-secret-value";
     const recordProgress: Array<{ progress: number; total?: number; message?: string }> = [];
     const recordResult = asCallResult(await client.callTool({
@@ -245,9 +274,18 @@ describe("MCP server contract", () => {
     const captureResult = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id } }));
     expect(captureResult.isError).not.toBe(true);
     const capture = structuredData(captureResult) as Record<string, any>;
-    expect(capture).toMatchObject({ schemaVersion: 5, profile: "summary" });
+    expect(capture).toMatchObject({ schemaVersion: 6, profile: "summary" });
     expect(capture).not.toHaveProperty("details");
     expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, collection: undefined }).success).toBe(false);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, collection: { ...capture.collection, dom: "invented" } }).success).toBe(false);
+    expect(issueCaptureResultSchema.safeParse({ ...capture, summary: { ...capture.summary, domElements: "1" } }).success).toBe(false);
+    for (const view of [{ profile: "include", surfaces: ["dom"] }, { profile: "full" }]) {
+      const projected = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view } }));
+      expect(projected.isError).not.toBe(true);
+      expect(issueCaptureResultSchema.safeParse(structuredData(projected)).success).toBe(true);
+    }
+
     expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "delta" }).success).toBe(false);
     expect(issueCaptureResultSchema.safeParse({ ...capture, changedSurfaces: ["dom"] }).success).toBe(false);
     expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "full" }).success).toBe(false);

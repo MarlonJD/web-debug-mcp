@@ -1,0 +1,1340 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Completed Luna routing cohort under original240-second guard before user requested longer budgets; uncensored outcomes retained separately.",
+  "workstream": "routing",
+  "experiment": {
+    "id": "routing-luna-max-2026-09-08",
+    "model": "gpt-5.6-luna",
+    "reasoning": "max",
+    "taskIds": [
+      "source-only-review",
+      "native-unit-failure",
+      "missing-mcp-binding"
+    ],
+    "variants": [
+      "skills-baseline",
+      "skills-revised"
+    ],
+    "repetitions": 2
+  },
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "blocked": 0,
+    "coverage": "complete",
+    "missingCells": [],
+    "duplicateCells": [],
+    "mismatchedTasks": [],
+    "suitePassed": true
+  },
+  "comparisons": [
+    {
+      "taskId": "source-only-review",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 70607.5,
+            "toolCalls": 6,
+            "inputTokens": 218255.5,
+            "cachedInputTokens": 176896,
+            "outputTokens": 2830.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 61615.5,
+            "toolCalls": 7.5,
+            "inputTokens": 95424,
+            "cachedInputTokens": 70912,
+            "outputTokens": 2788
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "native-unit-failure",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 40052.5,
+            "toolCalls": 8,
+            "inputTokens": 93513,
+            "cachedInputTokens": 78208,
+            "outputTokens": 1587.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 37991,
+            "toolCalls": 7,
+            "inputTokens": 80165.5,
+            "cachedInputTokens": 70144,
+            "outputTokens": 1479.5
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "missing-mcp-binding",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 38831,
+            "toolCalls": 1.5,
+            "inputTokens": 56305,
+            "cachedInputTokens": 44032,
+            "outputTokens": 1743
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 32796.5,
+            "toolCalls": 2,
+            "inputTokens": 71404,
+            "cachedInputTokens": 53504,
+            "outputTokens": 1373
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runId": "source-only-review--skills-baseline--1",
+      "taskId": "source-only-review",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 67407,
+        "toolCalls": 6,
+        "inputTokens": 245747,
+        "cachedInputTokens": 192256,
+        "outputTokens": 2621
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-revised--1",
+      "taskId": "source-only-review",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 50156,
+        "toolCalls": 5,
+        "inputTokens": 99383,
+        "cachedInputTokens": 70400,
+        "outputTokens": 2174
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-revised--2",
+      "taskId": "native-unit-failure",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 39390,
+        "toolCalls": 9,
+        "inputTokens": 80923,
+        "cachedInputTokens": 73216,
+        "outputTokens": 1574
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-revised--1",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 34866,
+        "toolCalls": 2,
+        "inputTokens": 73548,
+        "cachedInputTokens": 55040,
+        "outputTokens": 1514
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-baseline--2",
+      "taskId": "native-unit-failure",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 46226,
+        "toolCalls": 11,
+        "inputTokens": 106913,
+        "cachedInputTokens": 85248,
+        "outputTokens": 1858
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-revised--1",
+      "taskId": "native-unit-failure",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 36592,
+        "toolCalls": 5,
+        "inputTokens": 79408,
+        "cachedInputTokens": 67072,
+        "outputTokens": 1385
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-baseline--2",
+      "taskId": "source-only-review",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 73808,
+        "toolCalls": 6,
+        "inputTokens": 190764,
+        "cachedInputTokens": 161536,
+        "outputTokens": 3040
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-baseline--1",
+      "taskId": "native-unit-failure",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 33879,
+        "toolCalls": 5,
+        "inputTokens": 80113,
+        "cachedInputTokens": 71168,
+        "outputTokens": 1317
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-baseline--1",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 53054,
+        "toolCalls": 2,
+        "inputTokens": 56981,
+        "cachedInputTokens": 40960,
+        "outputTokens": 2501
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-baseline--2",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 24608,
+        "toolCalls": 1,
+        "inputTokens": 55629,
+        "cachedInputTokens": 47104,
+        "outputTokens": 985
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-revised--2",
+      "taskId": "source-only-review",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 73075,
+        "toolCalls": 10,
+        "inputTokens": 91465,
+        "cachedInputTokens": 71424,
+        "outputTokens": 3402
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-revised--2",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 30727,
+        "toolCalls": 2,
+        "inputTokens": 69260,
+        "cachedInputTokens": 51968,
+        "outputTokens": 1232
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    }
+  ],
+  "artifactRoot": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/cohorts/luna-max",
+  "experimentSha256": "cd2d51a4929a57e16b3049edc45a46c61b213868683715b1f2bb517248e250f0",
+  "limitations": [
+    "Two repetitions per arm/task; descriptive workflow regression evidence, not held-out statistical quality evidence.",
+    "Final repository runtime R1 has a separately verified observation-enum correction; all model arms retain R0 and identical revised-skill files."
+  ],
+  "phaseSummary": {
+    "model": "gpt-5.6-luna",
+    "reasoning": "max",
+    "phase": "original240s",
+    "runtime": "R0",
+    "runtimeDigest": "b190f58c3f85b5c6c62a7af72b4496921610d425f757698c522a2326dc1cb619",
+    "baselineRevision": "5ae2dcd92c76f2f116f1dd811c5e725a254bfbbb",
+    "modelAcceptance": "All12invocations requested gpt-5.6-luna/max and completed; CLI0.153.4. Served model identity/provider scheduling not independently exposed in CLI events.",
+    "uniqueCells": 12,
+    "actualInvocations": 12,
+    "firstAttemptPasses": 12,
+    "recoveryInclusivePasses": 12,
+    "timeouts": 0,
+    "capacityRetries": 0,
+    "comparisons": [
+      {
+        "taskId": "source-only-review",
+        "matchedRepetitions": [
+          1,
+          2
+        ],
+        "variants": [
+          {
+            "variant": "skills-baseline",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 70607.5,
+              "toolCalls": 6,
+              "inputTokens": 218255.5,
+              "cachedInputTokens": 176896,
+              "outputTokens": 2830.5
+            }
+          },
+          {
+            "variant": "skills-revised",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 61615.5,
+              "toolCalls": 7.5,
+              "inputTokens": 95424,
+              "cachedInputTokens": 70912,
+              "outputTokens": 2788
+            }
+          }
+        ]
+      },
+      {
+        "taskId": "native-unit-failure",
+        "matchedRepetitions": [
+          1,
+          2
+        ],
+        "variants": [
+          {
+            "variant": "skills-baseline",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 40052.5,
+              "toolCalls": 8,
+              "inputTokens": 93513,
+              "cachedInputTokens": 78208,
+              "outputTokens": 1587.5
+            }
+          },
+          {
+            "variant": "skills-revised",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 37991,
+              "toolCalls": 7,
+              "inputTokens": 80165.5,
+              "cachedInputTokens": 70144,
+              "outputTokens": 1479.5
+            }
+          }
+        ]
+      },
+      {
+        "taskId": "missing-mcp-binding",
+        "matchedRepetitions": [
+          1,
+          2
+        ],
+        "variants": [
+          {
+            "variant": "skills-baseline",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 38831,
+              "toolCalls": 1.5,
+              "inputTokens": 56305,
+              "cachedInputTokens": 44032,
+              "outputTokens": 1743
+            }
+          },
+          {
+            "variant": "skills-revised",
+            "expected": 2,
+            "attempted": 2,
+            "completed": 2,
+            "passedAll": 2,
+            "samples": 2,
+            "passed": 2,
+            "medians": {
+              "wallTimeMs": 32796.5,
+              "toolCalls": 2,
+              "inputTokens": 71404,
+              "cachedInputTokens": 53504,
+              "outputTokens": 1373
+            }
+          }
+        ]
+      }
+    ],
+    "cleanup": {
+      "checkedAt": "2026-09-08T02:24:29.738745+00:00",
+      "method": "Exact owned Luna cohort/frozen runtime process-list match excluding checker ancestors; per-cell process groups recorded. No paths deleted.",
+      "processesRemaining": [],
+      "frozenFilesChecked": 219,
+      "frozenIntegrityMismatches": []
+    },
+    "artifactHashes": {
+      "phase-start.json": "58ff06385ade7b0566b76dc7b924bcb027b8632cc33f7dfac1461bfacd636405",
+      "records.json": "8bf66cc7e7db3e8cfbc30eda118306dd71e572c642ac9fb1faf8e53e11987d4a",
+      "experiment.json": "cd2d51a4929a57e16b3049edc45a46c61b213868683715b1f2bb517248e250f0",
+      "grade.json": "7dbd26ad9c646597d2b2cc855a6a2b631818df6aac0ea37166623c5ae34418b1",
+      "review-decisions.json": "d89845a4b2dadbf2712edf372d55eee9fe5d1d68e31fb408382f1976ee43c13b",
+      "attempt-outcomes.json": "ffd2a00935924121a9299950a0fe461764763a1070eba7b3998c3f0928e99d07",
+      "phase-cleanup.json": "904720819799a8d2b7e9956b6f278db650f5a5bf7de9edd19a46f69b13e78680"
+    },
+    "qualityObservations": [
+      {
+        "runId": "source-only-review--skills-baseline--1",
+        "ref": "events.jsonl:7",
+        "observation": "Unnecessary project detection, no browser."
+      },
+      {
+        "runId": "source-only-review--skills-baseline--2",
+        "ref": "events.jsonl:7",
+        "observation": "Unnecessary project detection, no browser."
+      },
+      {
+        "runId": "source-only-review--skills-revised--1",
+        "ref": "events.jsonl:5",
+        "observation": "Irrelevant outside-project sed attempt on ~/.codex directory returns no content."
+      },
+      {
+        "runId": "source-only-review--skills-revised--2",
+        "ref": "events.jsonl:5",
+        "observation": "Same irrelevant outside-project directory read attempt; no configuration content observed."
+      },
+      {
+        "runId": "source-only-review--skills-revised--1",
+        "ref": "events.jsonl:15; final.txt",
+        "observation": "Two secondary source links use nonfunctional (...) targets; primary App.jsx:25 reference is valid."
+      },
+      {
+        "runId": "native-unit-failure--skills-revised--1",
+        "ref": "events.jsonl:9",
+        "observation": "Git-status failure prevents chained pre-fix npm test; post-fix npm14 and independent oracle pass."
+      }
+    ],
+    "limitations": [
+      "Original rubric unchanged; pass does not certify citation quality or minimal overhead.",
+      "Example overlap; two repetitions on one machine, not held-out quality proof.",
+      "Original240s cohort preserved; no Luna routing deadlines occurred, no1800s substitution needed.",
+      "Per-task paired medians only; no cross-task speed/token aggregation.",
+      "Frozen R0 differs from later native R1 runtime correction."
+    ]
+  },
+  "phaseSummarySha256": "9e8480dcc3a9aab8f5f6c3c4d085b4f136d848e877b15be0e1b39cf16439e45d",
+  "attemptOutcomes": {
+    "schemaVersion": 1,
+    "model": "gpt-5.6-luna",
+    "reasoning": "max",
+    "runtimeDigest": "b190f58c3f85b5c6c62a7af72b4496921610d425f757698c522a2326dc1cb619",
+    "declaredUniqueCells": 12,
+    "actualInvocations": 12,
+    "firstAttemptPasses": 12,
+    "recoveryInclusivePasses": 12,
+    "perTaskVariant": [
+      {
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-baseline",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      },
+      {
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-revised",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      },
+      {
+        "taskId": "native-unit-failure",
+        "variant": "skills-baseline",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      },
+      {
+        "taskId": "native-unit-failure",
+        "variant": "skills-revised",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      },
+      {
+        "taskId": "source-only-review",
+        "variant": "skills-baseline",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      },
+      {
+        "taskId": "source-only-review",
+        "variant": "skills-revised",
+        "uniqueCells": 2,
+        "actualInvocations": 2,
+        "firstAttemptPasses": 2,
+        "recoveryInclusivePasses": 2,
+        "firstAttemptStatuses": {
+          "completed": 2
+        },
+        "recoveryInclusiveStatuses": {
+          "completed": 2
+        }
+      }
+    ],
+    "cells": [
+      {
+        "runId": "source-only-review--skills-baseline--1",
+        "taskId": "source-only-review",
+        "variant": "skills-baseline",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 67407,
+            "usage": {
+              "input_tokens": 245747,
+              "cached_input_tokens": 192256,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 2621,
+              "reasoning_output_tokens": 1282
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/source-only-review--skills-baseline--1/record.json",
+                "sha256": "2d616608133ecd798e3f0dc3643a7544d3f424f3d3505a86f4177b259db1dfa5"
+              },
+              "invocation.json": {
+                "path": "runs/source-only-review--skills-baseline--1/invocation.json",
+                "sha256": "e1d11a2a93ca88ce6ecbafdb6f6c2e93e76953b82a93bb9a4a614930dc4874b9"
+              },
+              "events.jsonl": {
+                "path": "runs/source-only-review--skills-baseline--1/events.jsonl",
+                "sha256": "088128c1d9144e0b257df53c48f6b2d51d45265825b1460d84cd9e26857eeb37"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "source-only-review--skills-revised--1",
+        "taskId": "source-only-review",
+        "variant": "skills-revised",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 50156,
+            "usage": {
+              "input_tokens": 99383,
+              "cached_input_tokens": 70400,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 2174,
+              "reasoning_output_tokens": 1152
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/source-only-review--skills-revised--1/record.json",
+                "sha256": "3551b70504fd396f81bdb8da473ecb340ce8a164330d0bed70f2821428fe5626"
+              },
+              "invocation.json": {
+                "path": "runs/source-only-review--skills-revised--1/invocation.json",
+                "sha256": "164cfb4574b67fd2f512b5dc787fdd31fcda1b40af7c00c9b60711a726bc3738"
+              },
+              "events.jsonl": {
+                "path": "runs/source-only-review--skills-revised--1/events.jsonl",
+                "sha256": "b4b71f1a0cb2f667f5ef0d7f65e3ebed4d60a258c6fbeb94b43e44588c53002b"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "native-unit-failure--skills-revised--2",
+        "taskId": "native-unit-failure",
+        "variant": "skills-revised",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 39390,
+            "usage": {
+              "input_tokens": 80923,
+              "cached_input_tokens": 73216,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1574,
+              "reasoning_output_tokens": 359
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/native-unit-failure--skills-revised--2/record.json",
+                "sha256": "300af599c62f2ec71bc21e9769b24baf9611246347769b83c5d328154b732040"
+              },
+              "invocation.json": {
+                "path": "runs/native-unit-failure--skills-revised--2/invocation.json",
+                "sha256": "7df90ab94ebacdb55571760475e51a1355744eb8d8c63290ee25a99126d5b7d1"
+              },
+              "events.jsonl": {
+                "path": "runs/native-unit-failure--skills-revised--2/events.jsonl",
+                "sha256": "d7fca0481348fd2df22b694ecb02571eb3f1201861c5636774cb62e6726cceeb"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "missing-mcp-binding--skills-revised--1",
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-revised",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 34866,
+            "usage": {
+              "input_tokens": 73548,
+              "cached_input_tokens": 55040,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1514,
+              "reasoning_output_tokens": 852
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/missing-mcp-binding--skills-revised--1/record.json",
+                "sha256": "22a5e5fb3cb038270b7edecf53278509f2c9c3a38a8bc51c142f1ef57c8c7d03"
+              },
+              "invocation.json": {
+                "path": "runs/missing-mcp-binding--skills-revised--1/invocation.json",
+                "sha256": "0eb66797e72089df3887586d00704c40c025cc23b70f450e9ccd7ecf13fb094e"
+              },
+              "events.jsonl": {
+                "path": "runs/missing-mcp-binding--skills-revised--1/events.jsonl",
+                "sha256": "38b21804d5b5073428d55fce8fe31da054c2c2c568222d64334075c38854765c"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "native-unit-failure--skills-baseline--2",
+        "taskId": "native-unit-failure",
+        "variant": "skills-baseline",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 46226,
+            "usage": {
+              "input_tokens": 106913,
+              "cached_input_tokens": 85248,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1858,
+              "reasoning_output_tokens": 593
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/native-unit-failure--skills-baseline--2/record.json",
+                "sha256": "64156937e5574af75d70720ddd5cd4479fb398a81b26ecbdd727abbf8f73ad34"
+              },
+              "invocation.json": {
+                "path": "runs/native-unit-failure--skills-baseline--2/invocation.json",
+                "sha256": "6915679be311f2228882b49df717eb8727926600583c841d3bb149a93373a29f"
+              },
+              "events.jsonl": {
+                "path": "runs/native-unit-failure--skills-baseline--2/events.jsonl",
+                "sha256": "faf052125916acaada16bab3ee3bf8c457f1f4e90efadf8a33757c67c7c4519a"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "native-unit-failure--skills-revised--1",
+        "taskId": "native-unit-failure",
+        "variant": "skills-revised",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 36592,
+            "usage": {
+              "input_tokens": 79408,
+              "cached_input_tokens": 67072,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1385,
+              "reasoning_output_tokens": 403
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/native-unit-failure--skills-revised--1/record.json",
+                "sha256": "c911d7f4e22477ae028725be1cc2849766d61592661990f9d5129b55bb9170af"
+              },
+              "invocation.json": {
+                "path": "runs/native-unit-failure--skills-revised--1/invocation.json",
+                "sha256": "e3d5ed2d1d6b8ade9791cce9885032d10a80f2b982c6543355a7191a502be07e"
+              },
+              "events.jsonl": {
+                "path": "runs/native-unit-failure--skills-revised--1/events.jsonl",
+                "sha256": "e159e0604ecab1adbb071bc4b9a8762c33f3bcf6eed609d701870d8c2b0645c1"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "source-only-review--skills-baseline--2",
+        "taskId": "source-only-review",
+        "variant": "skills-baseline",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 73808,
+            "usage": {
+              "input_tokens": 190764,
+              "cached_input_tokens": 161536,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3040,
+              "reasoning_output_tokens": 1680
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/source-only-review--skills-baseline--2/record.json",
+                "sha256": "ed8706601832ac4b73cda5db4ae3ad90506e9de5f8ab94d31edc492dce213e6d"
+              },
+              "invocation.json": {
+                "path": "runs/source-only-review--skills-baseline--2/invocation.json",
+                "sha256": "8900950c325b02442fb7a57caccd79838caaf4109b178429d32aff32796f76f8"
+              },
+              "events.jsonl": {
+                "path": "runs/source-only-review--skills-baseline--2/events.jsonl",
+                "sha256": "c02079f71dfdece55c307efb65340f63efd79813f7e8f33299f6b4686a72cf79"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "native-unit-failure--skills-baseline--1",
+        "taskId": "native-unit-failure",
+        "variant": "skills-baseline",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 33879,
+            "usage": {
+              "input_tokens": 80113,
+              "cached_input_tokens": 71168,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1317,
+              "reasoning_output_tokens": 442
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/native-unit-failure--skills-baseline--1/record.json",
+                "sha256": "5b54bb318f8bafed89720b0387e5c4d4c9d26b5573a2f75c67ac40e50486aa35"
+              },
+              "invocation.json": {
+                "path": "runs/native-unit-failure--skills-baseline--1/invocation.json",
+                "sha256": "c26100c2e9ce869aa9b3220bf5b6521c6eea73a0e20a9a25caa484121d6e8fb1"
+              },
+              "events.jsonl": {
+                "path": "runs/native-unit-failure--skills-baseline--1/events.jsonl",
+                "sha256": "0a041174b43760c47f8c718e1e560dd345f88332b833f73456b5a1a0eeadd5a9"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "missing-mcp-binding--skills-baseline--1",
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-baseline",
+        "repetition": 1,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 53054,
+            "usage": {
+              "input_tokens": 56981,
+              "cached_input_tokens": 40960,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 2501,
+              "reasoning_output_tokens": 1842
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/missing-mcp-binding--skills-baseline--1/record.json",
+                "sha256": "46787437c54d23a2c4d6aae7c75dd86c6a07fd774bb23af105d22dd89e5d4c19"
+              },
+              "invocation.json": {
+                "path": "runs/missing-mcp-binding--skills-baseline--1/invocation.json",
+                "sha256": "73947e47c6a24b8656be780f988e008e8aaa5ea09e4d3fbb47e2344e40037d0c"
+              },
+              "events.jsonl": {
+                "path": "runs/missing-mcp-binding--skills-baseline--1/events.jsonl",
+                "sha256": "fcb23fd467acc66a3b313b799077dcb563a974bff989ffc34fdb4c3094a239b6"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "missing-mcp-binding--skills-baseline--2",
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-baseline",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 24608,
+            "usage": {
+              "input_tokens": 55629,
+              "cached_input_tokens": 47104,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 985,
+              "reasoning_output_tokens": 630
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/missing-mcp-binding--skills-baseline--2/record.json",
+                "sha256": "eb46cf3f46429ba44a753c5ba81f9f74688f48ccec3f2c9991b374abd6618637"
+              },
+              "invocation.json": {
+                "path": "runs/missing-mcp-binding--skills-baseline--2/invocation.json",
+                "sha256": "dd86183f8cd685ba710337ede3f587f3d15ff580b9aea9b06dba7c57d01ee7ed"
+              },
+              "events.jsonl": {
+                "path": "runs/missing-mcp-binding--skills-baseline--2/events.jsonl",
+                "sha256": "703fe2b9ad553055f48db49a219b1741deb42f4e46aac46771595c1e31cfedd6"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "source-only-review--skills-revised--2",
+        "taskId": "source-only-review",
+        "variant": "skills-revised",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 73075,
+            "usage": {
+              "input_tokens": 91465,
+              "cached_input_tokens": 71424,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3402,
+              "reasoning_output_tokens": 1827
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/source-only-review--skills-revised--2/record.json",
+                "sha256": "db6cef78679846e850cfa6b8b0b31bba0128ee5fea9ba0e52f78b65df8fcd2ab"
+              },
+              "invocation.json": {
+                "path": "runs/source-only-review--skills-revised--2/invocation.json",
+                "sha256": "65032e2c80a9a4a0528ead63518b2177470d27c85029ffdd440705421ed99607"
+              },
+              "events.jsonl": {
+                "path": "runs/source-only-review--skills-revised--2/events.jsonl",
+                "sha256": "82a1fc58dcd78f40fb307245f6468a8f257fa44c1ccdeebeb69afc96785ba163"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "runId": "missing-mcp-binding--skills-revised--2",
+        "taskId": "missing-mcp-binding",
+        "variant": "skills-revised",
+        "repetition": 2,
+        "firstAttemptStatus": "completed",
+        "firstAttemptPassed": true,
+        "recoveryInclusiveStatus": "completed",
+        "recoveryInclusivePassed": true,
+        "actualInvocations": 1,
+        "capacityRecoveryUsed": false,
+        "attempts": [
+          {
+            "ordinal": 1,
+            "invoked": true,
+            "status": "completed",
+            "wallTimeMs": 30727,
+            "usage": {
+              "input_tokens": 69260,
+              "cached_input_tokens": 51968,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1232,
+              "reasoning_output_tokens": 677
+            },
+            "providerCapacityEvidence": [],
+            "evidence": {
+              "record.json": {
+                "path": "runs/missing-mcp-binding--skills-revised--2/record.json",
+                "sha256": "a643e339db7dc18194ea557d3426ac2550b501ae80d69e5389e4eba153f9122e"
+              },
+              "invocation.json": {
+                "path": "runs/missing-mcp-binding--skills-revised--2/invocation.json",
+                "sha256": "a4db41c8c4825d0a24bcb5e9e4ac9e71c35968faed1e73dd1484fd830f1de56a"
+              },
+              "events.jsonl": {
+                "path": "runs/missing-mcp-binding--skills-revised--2/events.jsonl",
+                "sha256": "30af693b0459bf6632f81a09dd95511ebc2bc49a4f6345f8b4505e38c411f15b"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "gradeEvidence": {
+      "path": "grade.json",
+      "sha256": "7dbd26ad9c646597d2b2cc855a6a2b631818df6aac0ea37166623c5ae34418b1"
+    },
+    "interpretation": "First-attempt pass counts retain every original explicit-capacity failure. Recovery-inclusive counts use the final independently reviewed grade, never erase originals, and do not add retries to the unique-cell denominator. Per-attempt time and usage remain separate; missing values stay null. No cross-task speed or token aggregate is calculated."
+  },
+  "attemptOutcomesSha256": "ffd2a00935924121a9299950a0fe461764763a1070eba7b3998c3f0928e99d07"
+}

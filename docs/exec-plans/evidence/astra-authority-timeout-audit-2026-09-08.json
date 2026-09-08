@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Independent read-only authority runner audit before increasing budgets; no model calls",
+  "artifact": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/authority-timeout-audit.json",
+  "artifactSha256": "108ec13c0eaea15119ba57b7e3887c8fec9e28767fb2917a0218e42250b489a4",
+  "audit": {
+    "scope": "Read-only audit of all10 completed short-budget prior-turn implementation streams across Astra max/ultra and Luna max plus completed max ambiguity positive control. No model/browser calls or authority edits.",
+    "driver": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc/quality-v2/quality_runner.py",
+    "driverSha256": "d898249c72907beefa6a5b844a6de9eca51663d84650dca550b84bd068b91325",
+    "findings": [
+      {
+        "conclusion": "No observed second-turn completion/final was missed or misfiltered. All fresh turn IDs match starts; only first-turn final/completed exists in every implementation trace.",
+        "driverLines": [
+          131,
+          136,
+          138,
+          142,
+          145
+        ],
+        "evidence": [
+          {
+            "root": "gpt-6-astra--max/runs/prior-turn-authorization--skills-revised--2",
+            "eventsLines": [
+              315,
+              317,
+              533,
+              538
+            ]
+          },
+          {
+            "root": "gpt-6-astra--ultra/runs/prior-turn-authorization--skills-revised--1",
+            "eventsLines": [
+              346,
+              348,
+              524
+            ]
+          },
+          {
+            "root": "gpt-5.6-luna--max/runs/prior-turn-authorization--skills-baseline--1",
+            "eventsLines": [
+              541,
+              543,
+              787
+            ]
+          }
+        ]
+      },
+      {
+        "conclusion": "No unhandled JSON-RPC server request found: method+id count0 and unparsed count0 across all10 implementation traces. Positive dynamic-tool control demonstrates request/reply flow and final completion.",
+        "driverLines": [
+          65,
+          73,
+          77,
+          87,
+          90,
+          98,
+          103
+        ],
+        "evidence": [
+          {
+            "root": "gpt-6-astra--max/runs/ambiguous-mutation--skills-baseline--1",
+            "eventsLines": [
+              72,
+              112,
+              171
+            ],
+            "responseFile": "host-responses.jsonl",
+            "responseLines": [
+              1,
+              2
+            ]
+          }
+        ]
+      },
+      {
+        "conclusion": "stderr is a file, not a pipe; implementation files are0\u2013390bytes, so no evidenced stderr backpressure. Independent stdout reader drains to queue. Timeout is queue.Empty around declared300seconds.",
+        "driverLines": [
+          45,
+          46,
+          48,
+          55,
+          65,
+          69,
+          139
+        ],
+        "evidence": [
+          {
+            "root": "gpt-6-astra--max/runs/prior-turn-authorization--skills-revised--2",
+            "file": "timeout-chronology.json",
+            "lastEventSeconds": 299.201
+          },
+          {
+            "root": "gpt-6-astra--ultra/runs/prior-turn-authorization--skills-revised--1",
+            "file": "timeout-chronology.json",
+            "lastEventSeconds": 289.39
+          }
+        ]
+      }
+    ],
+    "conclusion": "No evidenced harness defect explains recorded deadlines. Raw events do not establish productive reasoning/provider timing; short-budget timeout is censored execution, not direct code-quality failure.",
+    "limitation": "events.jsonl logs queue consumption at71\u201372, not raw reader receipt; close153\u2013160 terminates without draining late queue. A boundary-race or after-deadline completion cannot be reconstructed/excluded. Optional future reader-receipt logging and bounded close drain improve auditability without changing frozen task inputs."
+  }
+}

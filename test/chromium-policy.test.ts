@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
+import { ReactAdapter } from "../src/adapters/react.js";
+import { VueAdapter } from "../src/adapters/vue.js";
+import { AngularAdapter } from "../src/adapters/angular.js";
+
 import { ChromiumAdapter } from "../src/adapters/chromium.js";
 
 describe("Chromium remote target policy", () => {
@@ -194,6 +198,35 @@ describe("Chromium remote target policy", () => {
       await adapter.close();
       connect.mockRestore();
     }
+  });
+
+  it("skips unrequested framework collectors and discards cached data after a failed fresh read", async () => {
+    const page = fakePage("selected-enrichment");
+    const connect = vi.spyOn(chromium, "connectOverCDP").mockResolvedValue(fakeBrowser([fakeContext([page])]) as never);
+    const react = vi.spyOn(ReactAdapter.prototype, "snapshot").mockResolvedValue({ component: { name: "Example" } } as never);
+    const vue = vi.spyOn(VueAdapter.prototype, "snapshot").mockResolvedValue(null);
+    const angular = vi.spyOn(AngularAdapter.prototype, "snapshot").mockResolvedValue(null);
+    const adapter = new ChromiumAdapter();
+    try {
+      await adapter.start({ url: "http://127.0.0.1:4173/", cdpEndpoint: "http://127.0.0.1:9222", frameworks: ["react", "vue", "angular"] });
+      react.mockClear(); vue.mockClear(); angular.mockClear();
+      page.evaluateResults = [{ bodyText: "Fresh", elements: [] }];
+      await adapter.snapshot({ artifactDir: "", captureScreenshot: false, surfaces: [] });
+      expect(react).not.toHaveBeenCalled(); expect(vue).not.toHaveBeenCalled(); expect(angular).not.toHaveBeenCalled();
+      page.evaluateResults = [{ bodyText: "Fresh", elements: [] }];
+      const selected = await adapter.snapshot({ artifactDir: "", captureScreenshot: false, surfaces: ["react"] });
+      expect(selected.react).not.toBeNull();
+      expect(react).toHaveBeenCalledTimes(1); expect(vue).not.toHaveBeenCalled(); expect(angular).not.toHaveBeenCalled();
+      react.mockRejectedValue(new Error("collector unavailable"));
+      page.evaluateResults = [{ bodyText: "Fresh", elements: [] }];
+      const failed = await adapter.snapshot({ artifactDir: "", captureScreenshot: false, surfaces: ["react"] });
+      expect(failed.react).toBeNull();
+      const evaluate = vi.spyOn(page, "evaluate").mockRejectedValueOnce(new Error("DOM read unavailable"));
+      const cached = await adapter.snapshot({ artifactDir: "", captureScreenshot: false, surfaces: [] });
+      expect(cached.dom.bodyText).toBe("Fresh");
+      expect(cached.observations?.dom).toMatchObject({ state: "unavailable", freshness: "stale", provenance: "cached" });
+      evaluate.mockRestore();
+    } finally { await adapter.close(); connect.mockRestore(); react.mockRestore(); vue.mockRestore(); angular.mockRestore(); }
   });
 
   it("bounds optional React enrichment without failing the browser snapshot", async () => {

@@ -684,6 +684,7 @@ export interface BrowserObservations {
   url: SurfaceObservation;
   dom: SurfaceObservation;
   console: SurfaceObservation;
+  network?: SurfaceObservation;
 }
 
 export interface EvidenceBundle {
@@ -718,6 +719,8 @@ export const CAPTURE_SURFACES = [
   "webmcp",
 ] as const;
 export type CaptureSurface = typeof CAPTURE_SURFACES[number];
+export type CaptureCollectionState = "fresh" | "stale" | "not-collected" | "not-detected" | "unavailable" | "suppressed";
+export type CaptureCollection = Record<CaptureSurface, CaptureCollectionState>;
 
 export type CaptureView =
   | { profile: "summary" }
@@ -748,7 +751,7 @@ export interface CaptureSummary {
     callFrames: number;
     breakpoints: number;
   };
-  runtimes: Record<"react" | "angular" | "vue" | "next" | "vite" | "accessibility", "present" | "not-detected" | "unavailable">;
+  runtimes: Record<"react" | "angular" | "vue" | "next" | "vite" | "accessibility", "present" | "stale" | "not-collected" | "not-detected" | "unavailable">;
   replay: {
     frames: number;
     truncated: boolean;
@@ -759,7 +762,7 @@ export interface CaptureSummary {
   };
   webmcp: {
     state: RuntimeCapabilityState;
-    callableTools: number;
+    callableTools: number | null;
     truncated: boolean;
   };
   observations: BrowserObservations | null;
@@ -782,7 +785,8 @@ export interface CaptureDetails {
 }
 
 export interface IssueCaptureResult {
-  schemaVersion: 5;
+  schemaVersion: 6;
+  collection: CaptureCollection;
   profile: "summary" | "full" | "include" | "delta";
   capturedAt: string;
   cursor: string;

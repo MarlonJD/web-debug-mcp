@@ -1,6 +1,6 @@
 import type { ReplayableBrowserAction, ReplayFrame, ReplaySeekResult, ReplayTimeline } from "../domain/types.js";
 import { MAX_REPLAY_FRAMES } from "../domain/types.js";
-import { actionSecrets, cloneJson, replaceSecrets } from "./private-values.js";
+import { actionSecrets, cloneJson, scrubReplayFrame } from "./private-values.js";
 
 export class SessionReplay {
   private readonly frames: ReplayFrame[] = [];
@@ -52,7 +52,7 @@ export class SessionReplay {
 
   result(sessionId: string, frame: ReplayFrame, restored: boolean, redactionActions: ReplayableBrowserAction[]): ReplaySeekResult {
     const secrets = actionSecrets(redactionActions);
-    const safeFrame = secrets.length === 0 ? frame : replaceSecrets(frame, secrets) as ReplayFrame;
+    const safeFrame = secrets.length === 0 ? frame : scrubReplayFrame(frame, secrets);
     return cloneJson({
       schemaVersion: 1,
       sessionId,

@@ -1,0 +1,537 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Final frozen baseline/revised skills; original declared-cohort attempts, with any capacity recovery recorded separately",
+  "workstream": "routing",
+  "experiment": {
+    "id": "routing-astra-max-2026-09-08",
+    "model": "gpt-6-astra",
+    "reasoning": "max",
+    "taskIds": [
+      "source-only-review",
+      "native-unit-failure",
+      "missing-mcp-binding"
+    ],
+    "variants": [
+      "skills-baseline",
+      "skills-revised"
+    ],
+    "repetitions": 2
+  },
+  "summary": {
+    "total": 12,
+    "passed": 11,
+    "blocked": 0,
+    "coverage": "complete",
+    "missingCells": [],
+    "duplicateCells": [],
+    "mismatchedTasks": [],
+    "suitePassed": false
+  },
+  "comparisons": [
+    {
+      "taskId": "source-only-review",
+      "matchedRepetitions": [
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 1,
+          "passedAll": 1,
+          "samples": 1,
+          "passed": 1,
+          "medians": {
+            "wallTimeMs": 90673,
+            "toolCalls": 6,
+            "inputTokens": 85782,
+            "cachedInputTokens": 40960,
+            "outputTokens": 1803
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 1,
+          "passed": 1,
+          "medians": {
+            "wallTimeMs": 56564,
+            "toolCalls": 8,
+            "inputTokens": 67425,
+            "cachedInputTokens": 29824,
+            "outputTokens": 1323
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "native-unit-failure",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 46937.5,
+            "toolCalls": 8.5,
+            "inputTokens": 97320,
+            "cachedInputTokens": 62848,
+            "outputTokens": 815
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 45263.5,
+            "toolCalls": 7,
+            "inputTokens": 97217.5,
+            "cachedInputTokens": 79360,
+            "outputTokens": 835.5
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "missing-mcp-binding",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 40310.5,
+            "toolCalls": 2,
+            "inputTokens": 31410,
+            "cachedInputTokens": 24320,
+            "outputTokens": 926
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 41417.5,
+            "toolCalls": 4,
+            "inputTokens": 46716.5,
+            "cachedInputTokens": 34752,
+            "outputTokens": 1005
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runId": "source-only-review--skills-baseline--1",
+      "taskId": "source-only-review",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "failed",
+      "passed": false,
+      "metrics": {
+        "wallTimeMs": null,
+        "toolCalls": 0,
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-revised--1",
+      "taskId": "source-only-review",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 49216,
+        "toolCalls": 7,
+        "inputTokens": 49387,
+        "cachedInputTokens": 29696,
+        "outputTokens": 1132
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-revised--2",
+      "taskId": "native-unit-failure",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 41878,
+        "toolCalls": 7,
+        "inputTokens": 97299,
+        "cachedInputTokens": 79360,
+        "outputTokens": 807
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-revised--1",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 38745,
+        "toolCalls": 4,
+        "inputTokens": 46542,
+        "cachedInputTokens": 29440,
+        "outputTokens": 935
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-baseline--2",
+      "taskId": "native-unit-failure",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 43385,
+        "toolCalls": 8,
+        "inputTokens": 97133,
+        "cachedInputTokens": 62592,
+        "outputTokens": 770
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-revised--1",
+      "taskId": "native-unit-failure",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 48649,
+        "toolCalls": 7,
+        "inputTokens": 97136,
+        "cachedInputTokens": 79360,
+        "outputTokens": 864
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-baseline--2",
+      "taskId": "source-only-review",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 90673,
+        "toolCalls": 6,
+        "inputTokens": 85782,
+        "cachedInputTokens": 40960,
+        "outputTokens": 1803
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "native-unit-failure--skills-baseline--1",
+      "taskId": "native-unit-failure",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 50490,
+        "toolCalls": 9,
+        "inputTokens": 97507,
+        "cachedInputTokens": 63104,
+        "outputTokens": 860
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-baseline--1",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 48931,
+        "toolCalls": 2,
+        "inputTokens": 31398,
+        "cachedInputTokens": 24320,
+        "outputTokens": 1086
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-baseline--2",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 31690,
+        "toolCalls": 2,
+        "inputTokens": 31422,
+        "cachedInputTokens": 24320,
+        "outputTokens": 766
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "source-only-review--skills-revised--2",
+      "taskId": "source-only-review",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 56564,
+        "toolCalls": 8,
+        "inputTokens": 67425,
+        "cachedInputTokens": 29824,
+        "outputTokens": 1323
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    },
+    {
+      "runId": "missing-mcp-binding--skills-revised--2",
+      "taskId": "missing-mcp-binding",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 44090,
+        "toolCalls": 4,
+        "inputTokens": 46891,
+        "cachedInputTokens": 40064,
+        "outputTokens": 1075
+      },
+      "review": {
+        "reviewer": "independent-codex-eval-review",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": null,
+        "evidenceRefs": [
+          "events.jsonl",
+          "independent-oracle.json",
+          "invocation.json",
+          "patch.diff"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Two repetitions on one machine. Runtime, revised skills, and source provenance frozen after main fixes. toolCalls counts completed CLI action items. Same fixtures and external unit oracle as initial cohort. No desktop binding claim."
+    }
+  ],
+  "artifactRoot": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/cohorts/astra-max",
+  "experimentSha256": "9cbe0fa5c4c1282648240206755c36ba8e0df7c839ccf38a65eeef724d079356",
+  "limitations": [
+    "Two repetitions; workflow regression tasks overlap skill examples and are not held-out general-quality evidence.",
+    "Deadlines and provider waiting are retained separately from code quality; unknown metrics are not invented.",
+    "CLI invocation requests the exact model and reasoning; provider-served identity is not independently attested.",
+    "Node dependencies use the existing installation; frozen files and locks are checked but dependency contents are not sealed."
+  ]
+}

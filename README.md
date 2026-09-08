@@ -4,6 +4,8 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
+**Working-tree changes (release pending):** manual capture schema 6 adds selective collection and explicit freshness states; skills narrow live-browser routing and preserve prior authorization; evaluation now covers eight tasks across four variants. Published package and plugin pins remain `0.8.0`.
+
 Release `0.8.0` keeps the 13-tool catalog while adding identity-safe MCP startup recovery, bounded stale registry/sidecar reconciliation, schema-versioned doctor binding diagnostics, and a fail-closed Web Debug Gate 0 that never substitutes another browser runner when the requested MCP binding is unavailable.
 
 ## Install as an MCP server
@@ -43,7 +45,7 @@ Verify the connection with `codex mcp list`. In the Codex TUI, `/mcp` shows the 
 
 ### MCP startup and binding recovery
 
-An explicit Web Debug request is fail-closed: the bundled `web_project_detect` call is Gate 0. A doctor pass, a process visible in a terminal, or a loaded skill does not prove that the current Codex task has the Web Debug tool namespace. If Gate 0 is unavailable, report `MCP_CLIENT_BINDING_UNAVAILABLE` (or `MCP_SERVER_STARTUP_UNAVAILABLE` when the server reports a startup failure) and stop; do not substitute Playwright, Puppeteer, raw CDP, a direct MCP SDK client, a naked `npx web-debug-mcp` process, or `web-debug-mcp cleanup`.
+A request for live Web Debug execution is fail-closed: the bundled `web_project_detect` call is Gate 0. A doctor pass, a process visible in a terminal, or a loaded skill does not prove that the current Codex task has the Web Debug tool namespace. If Gate 0 is unavailable, report `MCP_CLIENT_BINDING_UNAVAILABLE` (or `MCP_SERVER_STARTUP_UNAVAILABLE` when the server reports a startup failure) and stop that browser route; continue independent authorized source work. Do not substitute Playwright, Puppeteer, raw CDP, a direct MCP SDK client, a naked `npx web-debug-mcp` process, or `web-debug-mcp cleanup`.
 
 The plugin-bundled `.mcp.json` intentionally contains only the supported launch command and timeouts. Codex currently documents `required = true` for a direct `[mcp_servers.<name>]` entry in `config.toml`, not for a plugin manifest field. To apply the strict policy, configure the direct server entry above and disable the duplicate plugin-provided server in the user plugin policy:
 
@@ -211,17 +213,17 @@ The public tools cover:
 - reproducible flow recording and post-change verification;
 - session cleanup.
 
-Every tool advertises and enforces its own concrete MCP `data` schema inside one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Stable top-level and capture-profile fields are concrete; bounded deep runtime/upstream payloads such as evaluation values, debugger locals, framework trees, and Next metadata remain JSON leaves. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
+Every tool advertises and enforces its own concrete MCP `data` schema. Repeated structures use SDK-supported local JSON Schema definitions and references; this reduces catalog bytes while preserving runtime validation. Each tool returns its result inside one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Stable top-level and capture-profile fields are concrete; bounded deep runtime/upstream payloads such as evaluation values, debugger locals, framework trees, and Next metadata remain JSON leaves. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
 
 ### Capture profiles
 
-`web_issue_capture` defaults to `{ "view": { "profile": "summary" } }`. Summary returns a compact DOM excerpt, counts, latest failures, runtime presence, replay bounds, warnings, and a reusable opaque cursor without producing screenshot pixels. Use an explicit profile when more detail is necessary:
+`web_issue_capture` defaults to `{ "view": { "profile": "summary" } }`. Summary returns a compact DOM excerpt, counts, latest failures, runtime presence, replay bounds, warnings, and a reusable opaque cursor without producing screenshot pixels. Summary collects base browser observations but skips optional React/Angular/Vue, Next/Vite, accessibility, and WebMCP inspection. Use an explicit profile when more detail is necessary:
 
 - `full`: every bounded surface plus an explicit screenshot attempt;
 - `include`: only the unique named `surfaces`; include `screenshot` to opt into pixels;
 - `delta`: the current bounded values of selected surfaces whose digest changed since `cursor`; omitted `surfaces` means every evidence surface except replay and screenshot, whose capture side effects require explicit inclusion. This is not JSON Patch, an event stream, or browser-state time travel. Requested screenshots use a fresh artifact rather than pixel diffing, so each successfully captured screenshot is changed.
 
-Surfaces are `dom`, `console`, `network`, `debugger`, `react`, `angular`, `vue`, `next`, `vite`, `accessibility`, `replay`, and `screenshot`. Each session retains at most eight reusable cursors. Unknown, evicted, cross-session, or browser-generation-stale cursors fail explicitly. Screenshot paths never appear in capture data; accepted pixels are delivered only through the envelope's artifact descriptors. Scenario baseline and fix verification still retain authoritative full evidence independently of the manual profile.
+Surfaces are `dom`, `console`, `network`, `debugger`, `react`, `angular`, `vue`, `next`, `vite`, `accessibility`, `webmcp`, `replay`, and `screenshot`. Capture schema 6 reports a `collection` state for each: `fresh`, `stale`, `not-collected`, `not-detected`, `unavailable`, or `suppressed`. Skipped collection is not absence: the callable WebMCP count is `null` until metadata is collected. Included framework evidence is collected only for detected, supported runtimes; paused cached values are stale. A cursor remembers only its own collected surfaces, so an explicit later collection is changed relative to a summary that skipped it, even if an older capture saw the same value. Each session retains at most eight reusable cursors. Unknown, evicted, cross-session, or browser-generation-stale cursors fail explicitly. Screenshot paths never appear in capture data; accepted pixels are delivered only through the envelope's artifact descriptors. Scenario baseline and fix verification still retain authoritative full evidence independently of the manual profile.
 
 The MCP boundary is intentionally small. Framework-specific protocol details stay inside adapters, while session ownership, same-origin navigation, bounds, redaction, and recovery stay centralized.
 
@@ -519,7 +521,7 @@ Release `0.8.0` promotes the verified startup-recovery and fail-closed task-bind
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 
-Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits the three frozen agent repair contracts documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
+Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits eight repair, routing, and authorization task contracts with four comparison variants documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
 
 ## License
 

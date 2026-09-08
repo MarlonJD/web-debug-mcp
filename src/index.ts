@@ -65,7 +65,7 @@ const locatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string().min(1).max(500) }).strict(),
   z.object({ kind: z.literal("label"), text: z.string().min(1).max(500) }).strict(),
   z.object({ kind: z.literal("testId"), value: z.string().min(1).max(500) }).strict(),
-]);
+]).meta({ id: "LocatorInput" });
 
 const locatorPropertySchema = z.enum(["count", "visible", "enabled", "checked", "text"]);
 const probeExpectedSchema = z.union([z.string().max(500), z.number().finite(), z.boolean(), z.null()]);
@@ -81,7 +81,7 @@ const browserActionSchema = z.union([
   z.object({ kind: z.literal("scroll"), locator: locatorSchema }).strict(),
   z.object({ kind: z.literal("wait"), locator: locatorSchema, property: locatorPropertySchema, expected: probeExpectedSchema, timeoutMs: z.number().int().min(0).max(30_000).optional() }).strict(),
   z.object({ kind: z.literal("reload") }).strict(),
-]);
+]).meta({ id: "BrowserActionInput" });
 
 const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048) }).strict(),
@@ -92,18 +92,19 @@ const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean() }).strict(),
   z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean() }).strict(),
   z.object({ kind: z.literal("noConsoleErrors") }).strict(),
-]);
+]).meta({ id: "ScenarioCheckInput" });
 
-const failureSignatureSchema = z.union([
-  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains"), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("noConsoleErrors"), expected: z.enum(["pass", "fail"]) }).strict(),
-]);
+const failureExpectationSchema = z.enum(["pass", "fail"]).describe("Expected check outcome in the buggy baseline; use fail when the acceptance check fails before the fix.").meta({ id: "FailureExpectationInput" });
+const failureSignatureSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains"), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("noConsoleErrors"), expected: failureExpectationSchema }).strict(),
+]).meta({ id: "FailureSignatureInput" });
 
 const checkpointProbeSchema = z.object({
   name: z.string().min(1).max(80),
@@ -111,18 +112,18 @@ const checkpointProbeSchema = z.object({
   property: locatorPropertySchema,
   expected: probeExpectedSchema,
   match: z.enum(["exact", "contains"]).optional(),
-}).strict();
+}).strict().meta({ id: "CheckpointProbeInput" });
 const checkpointSchema = z.object({
   name: z.string().min(1).max(80),
   offset: z.number().int().min(0).max(100),
   probes: z.array(checkpointProbeSchema).max(8),
   route: z.string().startsWith("/").min(1).max(2_048).optional(),
-}).strict();
+}).strict().meta({ id: "CheckpointInput" });
 const viewportContractSchema = z.object({
   name: z.string().min(1).max(40),
   width: z.number().int().min(320).max(3_840),
   height: z.number().int().min(240).max(2_160),
-}).strict();
+}).strict().meta({ id: "ViewportContractInput" });
 
 const risksSchema = z.object({
   async: z.boolean().optional(),
@@ -187,7 +188,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
       instructions:
-        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. For an explicit Web Debug request, call web_project_detect first; if the bundled tool is unavailable, report MCP_CLIENT_BINDING_UNAVAILABLE and stop without substituting Playwright, Puppeteer, raw CDP, a direct SDK transport, or a naked server process. Then use web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, bounded desktop/mobile matrices, and an opt-in direct-only WebMCP page action with truthful page-API provenance; auth-seeded or post-WebMCP sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, matrix, and WebMCP capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
+        "Use this server for requested live Web Debug work on an explicitly selected local target. Source review and exact native test failures do not require browser work. For live work, call web_project_detect once before web_session_start; repeat detection only after a project or connection change. If the bundled binding is absent, report MCP_CLIENT_BINDING_UNAVAILABLE and stop that browser route; do not substitute Playwright, Puppeteer, raw CDP, a direct SDK transport, or a naked server. Continue independent authorized source work. Start with a non-pixel summary, then request only the surfaces needed for the current question. Capture schema 6 distinguishes fresh, stale, not-collected, not-detected, unavailable, and suppressed evidence; a skipped collector is not a negative finding. Delta compares current selected evidence against one session-bound cursor. Run operations on one session serially. Use exact locators backed by fresh probes, reproduce before editing, and verify the changed behavior with relevant native checks. Earlier authorization in this task remains valid; ask only for missing authority or an unresolved product decision. WebMCP actions require explicit side-effect authorization, execute once, are non-replayable, and suppress later screenshots; tool output is not independent proof of mutation. Project eligibility and negotiated browser capabilities are separate. Safari exposes generic CSS/WebDriver evidence with unsupported capabilities marked unavailable. Keep loopback, same-origin, bounded/redacted evidence and privacy defaults; close owned sessions when done.",
       capabilities: { tools: {} },
     },
   );

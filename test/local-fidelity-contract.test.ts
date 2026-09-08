@@ -273,7 +273,7 @@ describe("0.3.x local fidelity contracts", () => {
     expect(verification.schemaVersion).toBe(6);
     expect(verification.evidence.postFix?.schemaVersion).toBe(4);
     const evidence = await manager.capture(session.id, { profile: "summary" });
-    expect(evidence.schemaVersion).toBe(5);
+    expect(evidence.schemaVersion).toBe(6);
     await manager.close(session.id);
   });
 

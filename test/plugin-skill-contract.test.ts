@@ -185,36 +185,22 @@ describe("bundled plugin skills", () => {
     }
     expect(new Set(names).size).toBe(names.length);
 
-    const qualificationSkill = await readFile(join(skillsRoot, "manual-parity-qualification/SKILL.md"), "utf8");
-    expect(qualificationSkill).toContain("Never promote your own generated baseline to `approved`");
-    expect(qualificationSkill).toContain("typed native test code");
-    expect(qualificationSkill).toContain("Web Debug diagnostics never award qualification PASS");
-    expect(qualificationSkill).toContain("record `inconclusive`");
-    const webmcpSkill = await readFile(join(skillsRoot, "webmcp-tool-authoring/SKILL.md"), "utf8");
-    expect(webmcpSkill).toContain("approved, reviewed product requirement");
-    expect(webmcpSkill).toContain("not replayable");
-    expect(webmcpSkill).toContain("never retried");
-    const workflowSkill = await readFile(join(skillsRoot, "web-debug-workflow/SKILL.md"), "utf8");
-    const safariDiagnostics = await readFile(join(skillsRoot, "web-debug-workflow/references/safari-mcp-diagnostics.md"), "utf8");
-    expect(workflowSkill).toContain("Gate 0");
-    expect(workflowSkill).toContain("MCP_CLIENT_BINDING_UNAVAILABLE");
-    expect(workflowSkill).toContain("MCP_SERVER_STARTUP_UNAVAILABLE");
-    for (const forbidden of ["Playwright", "Puppeteer", "raw CDP", "direct MCP SDK", "npx web-debug-mcp", "web-debug-mcp cleanup"]) expect(workflowSkill).toContain(forbidden);
-    expect(workflowSkill).toContain("Settings → MCP servers → Restart");
-    expect(workflowSkill).toContain("new task/session");
-    expect(workflowSkill).toContain("0.152.0");
+    // Validate discoverability and local reference integrity, not policy wording.
+    for (const directory of directories) {
+      const skillDir = join(skillsRoot, directory);
+      const paths = [join(skillDir, "SKILL.md"), ...(await readdir(join(skillDir, "references"))).filter((name) => name.endsWith(".md")).map((name) => join(skillDir, "references", name))];
+      for (const path of paths) {
+        const text = await readFile(path, "utf8");
+        for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
+          const target = match[1]!.split("#")[0]!;
+          if (!target || /^[a-z]+:/i.test(target)) continue;
+          const resolved = resolve(path, "..", target);
+          await expect(readFile(resolved, "utf8"), `${path}: ${target}`).resolves.toBeTypeOf("string");
+        }
+      }
+    }
     const mcpConfig = JSON.parse(await readFile(resolve("plugins/web-debug/.mcp.json"), "utf8")) as { mcpServers?: Record<string, { required?: unknown }> };
     expect(mcpConfig.mcpServers?.["web-debug-mcp"]?.required).toBeUndefined();
-    expect(workflowSkill).toContain("references/safari-mcp-diagnostics.md");
-    expect(safariDiagnostics).toContain("create_tab");
-    expect(safariDiagnostics).toContain("navigate_to_url");
-    expect(safariDiagnostics).toContain("browser_console_messages");
-    expect(safariDiagnostics).toContain("list_network_requests");
-    expect(safariDiagnostics).toContain("close_tab");
-    expect(safariDiagnostics).toContain("Do not call `list_tabs`");
-    expect(safariDiagnostics).toContain("Do not call `list_tabs`, `switch_tab`, `get_network_request`");
-    expect(safariDiagnostics).toContain("Never merge it into a Web Debug evidence bundle");
-    expect(safariDiagnostics).toContain("qualification PASS");
   });
 });
 

@@ -81,6 +81,9 @@ try {
   }
 
   const assertions = {
+    selectiveSummary: defaultSummary.collection.react === "not-collected" && defaultSummary.collection.vite === "not-collected" && defaultSummary.collection.accessibility === "not-collected" && defaultSummary.summary.webmcp.callableTools === null,
+    freshSelectedEvidence: afterCapture.collection.react === "fresh" && afterCapture.collection.vite === "fresh" && afterCapture.collection.accessibility === "not-collected",
+    stalePausedEvidence: pausedCapture.collection.dom === "stale" && pausedCapture.collection.react === "stale",
     compactDefaultSummary: defaultSummary.profile === "summary" && defaultSummary.details === undefined && Buffer.byteLength(JSON.stringify(defaultSummary)) < 16 * 1024,
     projectRuntimeSeparated: verificationSession.projectCapabilities.react === true && verificationSession.runtimeCapabilities?.javascriptDebugger.state === "supported",
     flowCaptured: verificationCapture.redaction.applied === true,

@@ -1,0 +1,2488 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Protected 1800-second Astra ultra drawer follow-up, two repetitions per arm. Frozen R0; strict browser_cell commands and only 13 preauthorized Web Debug tools. Separate from original short and approval-blocked cohorts.",
+  "workstream": "browser",
+  "experiment": {
+    "id": "browser-repair-gpt-6-astra-ultra",
+    "model": "gpt-6-astra",
+    "reasoning": "ultra",
+    "taskIds": [
+      "responsive-drawer-viewport"
+    ],
+    "variants": [
+      "skills-baseline",
+      "skills-revised"
+    ],
+    "repetitions": 2
+  },
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "blocked": 0,
+    "coverage": "complete",
+    "missingCells": [],
+    "duplicateCells": [],
+    "mismatchedTasks": [],
+    "suitePassed": true
+  },
+  "comparisons": [
+    {
+      "taskId": "responsive-drawer-viewport",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 446924,
+            "toolCalls": 51.5,
+            "inputTokens": 1711185.5,
+            "cachedInputTokens": 1617088,
+            "outputTokens": 8780
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 381513,
+            "toolCalls": 43.5,
+            "inputTokens": 1596679,
+            "cachedInputTokens": 1510464,
+            "outputTokens": 8149.5
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runId": "responsive-drawer-viewport__skills-baseline__1",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 474615,
+        "toolCalls": 48,
+        "inputTokens": 877418,
+        "cachedInputTokens": 811392,
+        "outputTokens": 7920
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json",
+          "independent-review.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Known fixture and skill-example overlap. Protected execution and ambient exposure differ from historical short cohorts; no pure-budget or broad model-quality inference."
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-baseline__2",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 419233,
+        "toolCalls": 55,
+        "inputTokens": 2544953,
+        "cachedInputTokens": 2422784,
+        "outputTokens": 9640
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json",
+          "independent-review.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Known fixture and skill-example overlap. Protected execution and ambient exposure differ from historical short cohorts; no pure-budget or broad model-quality inference."
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-revised__1",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 426003,
+        "toolCalls": 45,
+        "inputTokens": 2100844,
+        "cachedInputTokens": 1998592,
+        "outputTokens": 8812
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json",
+          "independent-review.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Known fixture and skill-example overlap. Protected execution and ambient exposure differ from historical short cohorts; no pure-budget or broad model-quality inference."
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-revised__2",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 337023,
+        "toolCalls": 42,
+        "inputTokens": 1092514,
+        "cachedInputTokens": 1022336,
+        "outputTokens": 7487
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json",
+          "independent-review.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Known fixture and skill-example overlap. Protected execution and ambient exposure differ from historical short cohorts; no pure-budget or broad model-quality inference."
+    }
+  ],
+  "artifactRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer",
+  "experimentSha256": "8b42ec100bc264ff9c5be8e2e4d8c7141e30e940185ce43a50e98e7f0d0ef42d",
+  "limitations": [
+    "Two repetitions per arm/task; descriptive workflow regression evidence, not held-out statistical quality evidence.",
+    "Final repository runtime R1 has a separately verified observation-enum correction; all model arms retain R0 and identical revised-skill files."
+  ],
+  "quality": {
+    "schemaVersion": 1,
+    "model": "gpt-6-astra",
+    "reasoning": "ultra",
+    "tasks": {
+      "responsive-drawer-viewport": {
+        "skills-baseline": [
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 474615,
+            "toolCalls": 48,
+            "mcpToolCalls": 41,
+            "usage": {
+              "input_tokens": 877418,
+              "cached_input_tokens": 811392,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 7920,
+              "reasoning_output_tokens": 2211
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 3,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 18,
+              "exactReplayActionsRepeatedAfterVerification": 3,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-baseline__1",
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "clearlyRedundantSuccessfulRepeats": 0,
+              "semanticRepeatReview": {
+                "rawPostVerifiedBrowserCalls": 18,
+                "rawExactReplayActionsRepeated": 3,
+                "clearlyRedundantSuccessfulRepeats": 0,
+                "groups": [
+                  {
+                    "lines": [
+                      61,
+                      63,
+                      65,
+                      67,
+                      80,
+                      82
+                    ],
+                    "classification": "required actual bounds and hit evidence after weakmarker"
+                  },
+                  {
+                    "lines": [
+                      69,
+                      71
+                    ],
+                    "classification": "after screenshot/console evidence"
+                  },
+                  {
+                    "lines": [
+                      73,
+                      75
+                    ],
+                    "classification": "failedguard overhead"
+                  },
+                  {
+                    "lines": [
+                      84,
+                      86,
+                      88,
+                      90,
+                      92,
+                      94,
+                      96,
+                      98
+                    ],
+                    "classification": "optional Close/reopen regression and reopened-state observations"
+                  }
+                ],
+                "caveat": "May consolidate optional checks for efficiency, but these are not18same-state redundant verifications."
+              },
+              "qualityObservations": [
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    50,
+                    52
+                  ],
+                  "kind": "input-schema-errors",
+                  "observation": "Invalid discriminator then omitted visible fields; corrected54."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    21,
+                    35,
+                    37,
+                    73,
+                    75
+                  ],
+                  "kind": "expected-evaluation-guard",
+                  "observation": "Chrome Possible side-effect rejection, later bounded observations recover;0result-schema errors."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    42,
+                    48
+                  ],
+                  "kind": "wrong-generic-server",
+                  "observation": "Guessed web_debug fails, globalinventoryempty; nativeimagesremainvalid."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    3
+                  ],
+                  "kind": "automatic-stream-recovery",
+                  "observation": "Connection reset/WebSocket no closing handshake; CLI retries sampling1/5 in215ms and completes. Same declared cell, no evaluator capacity or timeout rerun."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    1
+                  ],
+                  "kind": "failed-delegation-outside-cli-json",
+                  "observation": "One no-thread collab spawn failure is present in stderr, no corresponding item in exec JSON events or successful delegate evidence. Preserve separately: raw CLI tool count omits this attempted operation; do not claim complete attempted-action inventory."
+                }
+              ],
+              "independentReview": "independent-review.json"
+            }
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 419233,
+            "toolCalls": 55,
+            "mcpToolCalls": 49,
+            "usage": {
+              "input_tokens": 2544953,
+              "cached_input_tokens": 2422784,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 9640,
+              "reasoning_output_tokens": 2936
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 2,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 17,
+              "exactReplayActionsRepeatedAfterVerification": 1,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-baseline__2",
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "clearlyRedundantSuccessfulRepeats": 0,
+              "semanticRepeatReview": {
+                "rawPostVerifiedBrowserCalls": 17,
+                "rawExactReplayActionsRepeated": 1,
+                "clearlyRedundantSuccessfulRepeats": 0,
+                "groups": [
+                  {
+                    "lines": [
+                      71,
+                      74,
+                      76,
+                      78,
+                      80,
+                      83,
+                      85
+                    ],
+                    "classification": "required full acceptance plus mobile setup and corrected rounded-corner hit sampling"
+                  },
+                  {
+                    "lines": [
+                      87
+                    ],
+                    "classification": "after artifact"
+                  },
+                  {
+                    "lines": [
+                      91,
+                      93,
+                      95,
+                      97
+                    ],
+                    "classification": "changed-scroll regression"
+                  },
+                  {
+                    "lines": [
+                      101,
+                      103,
+                      105,
+                      107
+                    ],
+                    "classification": "optional Close regression"
+                  },
+                  {
+                    "lines": [
+                      113,
+                      115,
+                      117,
+                      119
+                    ],
+                    "classification": "server-survival check after contradictory native probe;3extraMCP calls and1native probe, not drawer repair"
+                  }
+                ],
+                "caveat": "Raw metric includes capture117 but excludes start115/close119. Keep overhead explicit; do not call all17 redundant."
+              },
+              "qualityObservations": [
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    33,
+                    38,
+                    60
+                  ],
+                  "kind": "input-schema-errors",
+                  "observation": "Two evaluation expressions exceed5000characters, then invalid record discriminator; bounded supported requests recover."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    27,
+                    36
+                  ],
+                  "kind": "expected-evaluation-guard",
+                  "observation": "Chrome Possible side-effect rejection; later bounded read-only observations succeed."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    51,
+                    52,
+                    54,
+                    56
+                  ],
+                  "kind": "wrong-generic-server",
+                  "observation": "web_debug unknown; exact web-debug discovered through template inventory."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    58,
+                    48,
+                    69,
+                    87,
+                    89
+                  ],
+                  "kind": "generic-image-truncation",
+                  "observation": "Generic desktop PNG58 truncated/invalidbase64; native48/69 and mobile after artifact support screenshots. Do not claim failed generic baseline image rendered."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    78,
+                    80,
+                    83,
+                    85
+                  ],
+                  "kind": "hit-test-correction",
+                  "observation": "1px corner probes fall outside8px rounded buttons. Cardinal-edge/center probes correct the test, without weakening viewport bounds."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    113,
+                    115,
+                    117,
+                    119
+                  ],
+                  "kind": "server-survival-check",
+                  "observation": "Native loopback curl exits7HTTP000 in network-denied shell context; a new owned MCP session/capture confirms server remains running and is then closed. The native failure alone does not prove server was down."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    5
+                  ],
+                  "kind": "transport-warning",
+                  "observation": "rmcp error sending responseid28 recorded; exact impact unknown, successful evidence/final retained."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    1
+                  ],
+                  "kind": "failed-delegation-outside-cli-json",
+                  "observation": "One failed no-thread spawn is absent from exec JSON toolitems. Preserve additional failed attempt; raw toolcount is incomplete."
+                }
+              ],
+              "independentReview": "independent-review.json"
+            }
+          }
+        ],
+        "skills-revised": [
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 426003,
+            "toolCalls": 45,
+            "mcpToolCalls": 40,
+            "usage": {
+              "input_tokens": 2100844,
+              "cached_input_tokens": 1998592,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 8812,
+              "reasoning_output_tokens": 3252
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 3,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-revised__1",
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "clearlyRedundantSuccessfulRepeats": 0,
+              "semanticRepeatReview": {
+                "rawPostVerifiedBrowserCalls": 0,
+                "rawExactReplayActionsRepeated": 0,
+                "clearlyRedundantSuccessfulRepeats": 0,
+                "groups": [
+                  {
+                    "lines": [
+                      67,
+                      69,
+                      71,
+                      73,
+                      79,
+                      81
+                    ],
+                    "classification": "required afterfixsetup/geometry beforemarker"
+                  },
+                  {
+                    "lines": [
+                      75,
+                      77
+                    ],
+                    "classification": "failedguard overhead"
+                  },
+                  {
+                    "lines": [
+                      84,
+                      86
+                    ],
+                    "classification": "additional changedscrollregression"
+                  },
+                  {
+                    "lines": [
+                      88,
+                      90,
+                      92
+                    ],
+                    "classification": "afterartifact and recordedcheck"
+                  }
+                ],
+                "caveat": "Zero aftermarker reflects ordering, not zero extra verification or better skillquality."
+              },
+              "qualityObservations": [
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    57,
+                    59
+                  ],
+                  "kind": "input-schema-errors",
+                  "observation": "Invalid recorddiscriminator then missingvisible; corrected61."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    19,
+                    30,
+                    75,
+                    77
+                  ],
+                  "kind": "expected-evaluation-guard",
+                  "observation": "Chrome Possible side-effect rejection; successful boundedallowSideEffectsread-onlygeometry after."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    32,
+                    36,
+                    38
+                  ],
+                  "kind": "wrong-generic-server",
+                  "observation": "web_debug guessfails; correctweb-debug discoveredthroughinventory."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    42,
+                    52,
+                    65,
+                    88,
+                    90,
+                    92
+                  ],
+                  "kind": "generic-image-truncation",
+                  "observation": "Generic desktopPNG42 contains truncation marker and stderr invalidbase64; genericmobile65untruncated and native52/88/90/92valid. Distinguish captured baseline artifact from model-rendered image."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    1
+                  ],
+                  "kind": "failed-delegation-outside-cli-json",
+                  "observation": "One no-thread collab spawn failure is present in stderr, no corresponding item in exec JSON events or successful delegate evidence. Preserve separately: raw CLI tool count omits this attempted operation; do not claim complete attempted-action inventory."
+                }
+              ],
+              "independentReview": "independent-review.json"
+            }
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 337023,
+            "toolCalls": 42,
+            "mcpToolCalls": 36,
+            "usage": {
+              "input_tokens": 1092514,
+              "cached_input_tokens": 1022336,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 7487,
+              "reasoning_output_tokens": 2543
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 4,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-revised__2",
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "clearlyRedundantSuccessfulRepeats": 0,
+              "semanticRepeatReview": {
+                "rawPostVerifiedBrowserCalls": 0,
+                "rawExactReplayActionsRepeated": 0,
+                "clearlyRedundantSuccessfulRepeats": 0,
+                "groups": [
+                  {
+                    "lines": [
+                      63,
+                      65,
+                      67,
+                      69,
+                      71,
+                      73
+                    ],
+                    "classification": "required after-fix setup and full acceptance geometry before marker"
+                  },
+                  {
+                    "lines": [
+                      75
+                    ],
+                    "classification": "after artifact"
+                  },
+                  {
+                    "lines": [
+                      80,
+                      82,
+                      84,
+                      86
+                    ],
+                    "classification": "changed-scroll regression"
+                  },
+                  {
+                    "lines": [
+                      88
+                    ],
+                    "classification": "stored matrix check"
+                  }
+                ],
+                "caveat": "Zero post-marker count depends on ordering, not zero further work or better overall quality."
+              },
+              "qualityObservations": [
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    52,
+                    54,
+                    57
+                  ],
+                  "kind": "input-schema-errors",
+                  "observation": "Invalid geometry discriminator twice, then missing visible boolean; record59 valid."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    21,
+                    29
+                  ],
+                  "kind": "expected-evaluation-guard",
+                  "observation": "Chrome Possible side-effect rejection; bounded reads recover."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    36,
+                    38
+                  ],
+                  "kind": "wrong-generic-server",
+                  "observation": "web_debug unknown; global inventory empty. Native images50/75/88 valid."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    3,
+                    4
+                  ],
+                  "kind": "automatic-stream-recovery",
+                  "observation": "Two sampling retries after WebSocket resets,197ms/184ms. Internal CLI recovery in one cell, not evaluator/capacity reruns."
+                },
+                {
+                  "path": "events.jsonl",
+                  "lines": [
+                    9
+                  ],
+                  "kind": "unfulfilled-delegation-plan",
+                  "observation": "Progress says separate CSS review will run; stderr shows failed spawn. Final does not claim delegate evidence."
+                },
+                {
+                  "path": "stderr.txt",
+                  "lines": [
+                    1
+                  ],
+                  "kind": "failed-delegation-outside-cli-json",
+                  "observation": "One failed no-thread spawn is absent from exec JSON toolitems. Preserve additional failed attempt; raw toolcount is incomplete."
+                }
+              ],
+              "independentReview": "independent-review.json"
+            }
+          }
+        ]
+      }
+    },
+    "interpretation": [
+      "Compare matching task and repetition; cross-task latency medians are not quality evidence.",
+      "Raw post-verified and exact-action counts are candidates. Independent reviews distinguish extra acceptance/regression evidence from optional redundancy.",
+      "Deadlines remain declared-grid execution failures even with correct source and passing after oracle.",
+      "Known three-task fixture set and skill-example overlap do not establish held-out/general model quality."
+    ],
+    "oracleImplementationLimits": [
+      "Filter oracle records count text but boolean checks row count/title; acceptance-review.json checks recorded text separately.",
+      "Drawer oracle measures layer/drawer/CTA geometry; backdrop coverage is inferred from unchanged CSS, unless individual model traces directly observed it."
+    ]
+  },
+  "qualitySha256": "0ae684637520bd6aabed3d30c979f809860f163d49c55d460a4113899e06414b",
+  "acceptanceReview": {
+    "schemaVersion": 1,
+    "oracleLimitation": "Filter boolean checks rows/title but count text is recorded separately. Drawer boolean measures containing layer, drawer, and action buttons; backdrop coverage is inferred from its unchanged CSS rather than separately measured.",
+    "reviews": [
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-baseline__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-baseline__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-revised__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-revised__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      }
+    ]
+  },
+  "acceptanceReviewSha256": "5c07d55f503693f8a7f98372781c92bccb7feae0d2b11de93dcd38d52ce6cfd9",
+  "toolExposureAudit": {
+    "schemaVersion": 1,
+    "scope": "Read-only exported completed-call and stderr audit; no new model or browser calls.",
+    "limitations": [
+      "The13tool inventory is the exact frozen Web Debug catalog only; whole-CLI plugin isolation is not established by --ignore-user-config.",
+      "Cloudflare auth-required stderr indicates extra startup/background exposure; it does not establish a model-invoked Cloudflare call or source transfer.",
+      "Tool metrics count completed exported items. Failed dispatches absent from the event export may appear only in stderr; complete internal tool exposure is not available."
+    ],
+    "perArm": {
+      "skills-baseline": {
+        "observedRuns": 2,
+        "observedMCPServers": {
+          "web-debug": 84,
+          "web_debug": 3,
+          "codex": 3
+        },
+        "runsWithCloudflareStartupAuthLog": 0,
+        "runsWithFailedCollabDispatchLog": 2
+      },
+      "skills-revised": {
+        "observedRuns": 2,
+        "observedMCPServers": {
+          "web-debug": 71,
+          "web_debug": 2,
+          "codex": 3
+        },
+        "runsWithCloudflareStartupAuthLog": 0,
+        "runsWithFailedCollabDispatchLog": 2
+      }
+    },
+    "runs": [
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__1",
+        "arm": "skills-baseline",
+        "observedCompletedItemTypes": {
+          "error": 1,
+          "agent_message": 6,
+          "command_execution": 6,
+          "mcp_tool_call": 41,
+          "file_change": 1
+        },
+        "observedMCPServers": {
+          "web-debug": 39,
+          "web_debug": 1,
+          "codex": 1
+        },
+        "otherServerAttempts": [
+          {
+            "line": 42,
+            "server": "web_debug",
+            "tool": "list_mcp_resources",
+            "error": {
+              "message": "resources/list failed: unknown MCP server 'web_debug'"
+            },
+            "resultIsError": null
+          },
+          {
+            "line": 48,
+            "server": "codex",
+            "tool": "list_mcp_resources",
+            "error": null,
+            "resultIsError": null
+          }
+        ],
+        "cloudflareAuthRequiredStderrLines": [],
+        "failedCollabDispatchStderrLines": [
+          1
+        ],
+        "evidenceRefs": [
+          "events.jsonl",
+          "stderr.txt"
+        ]
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-baseline__2",
+        "arm": "skills-baseline",
+        "observedCompletedItemTypes": {
+          "error": 1,
+          "agent_message": 6,
+          "command_execution": 5,
+          "mcp_tool_call": 49,
+          "file_change": 1
+        },
+        "observedMCPServers": {
+          "web-debug": 45,
+          "web_debug": 2,
+          "codex": 2
+        },
+        "otherServerAttempts": [
+          {
+            "line": 51,
+            "server": "web_debug",
+            "tool": "list_mcp_resource_templates",
+            "error": {
+              "message": "resources/templates/list failed: unknown MCP server 'web_debug'"
+            },
+            "resultIsError": null
+          },
+          {
+            "line": 52,
+            "server": "web_debug",
+            "tool": "list_mcp_resources",
+            "error": {
+              "message": "resources/list failed: unknown MCP server 'web_debug'"
+            },
+            "resultIsError": null
+          },
+          {
+            "line": 54,
+            "server": "codex",
+            "tool": "list_mcp_resources",
+            "error": null,
+            "resultIsError": null
+          },
+          {
+            "line": 56,
+            "server": "codex",
+            "tool": "list_mcp_resource_templates",
+            "error": null,
+            "resultIsError": null
+          }
+        ],
+        "cloudflareAuthRequiredStderrLines": [],
+        "failedCollabDispatchStderrLines": [
+          1
+        ],
+        "evidenceRefs": [
+          "events.jsonl",
+          "stderr.txt"
+        ]
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__1",
+        "arm": "skills-revised",
+        "observedCompletedItemTypes": {
+          "error": 1,
+          "agent_message": 6,
+          "command_execution": 4,
+          "mcp_tool_call": 40,
+          "file_change": 1
+        },
+        "observedMCPServers": {
+          "web-debug": 37,
+          "web_debug": 1,
+          "codex": 2
+        },
+        "otherServerAttempts": [
+          {
+            "line": 32,
+            "server": "web_debug",
+            "tool": "list_mcp_resources",
+            "error": {
+              "message": "resources/list failed: unknown MCP server 'web_debug'"
+            },
+            "resultIsError": null
+          },
+          {
+            "line": 36,
+            "server": "codex",
+            "tool": "list_mcp_resources",
+            "error": null,
+            "resultIsError": null
+          },
+          {
+            "line": 38,
+            "server": "codex",
+            "tool": "list_mcp_resource_templates",
+            "error": null,
+            "resultIsError": null
+          }
+        ],
+        "cloudflareAuthRequiredStderrLines": [],
+        "failedCollabDispatchStderrLines": [
+          1
+        ],
+        "evidenceRefs": [
+          "events.jsonl",
+          "stderr.txt"
+        ]
+      },
+      {
+        "runId": "responsive-drawer-viewport__skills-revised__2",
+        "arm": "skills-revised",
+        "observedCompletedItemTypes": {
+          "error": 1,
+          "agent_message": 6,
+          "command_execution": 5,
+          "mcp_tool_call": 36,
+          "file_change": 1
+        },
+        "observedMCPServers": {
+          "web-debug": 34,
+          "web_debug": 1,
+          "codex": 1
+        },
+        "otherServerAttempts": [
+          {
+            "line": 36,
+            "server": "web_debug",
+            "tool": "list_mcp_resources",
+            "error": {
+              "message": "resources/list failed: unknown MCP server 'web_debug'"
+            },
+            "resultIsError": null
+          },
+          {
+            "line": 38,
+            "server": "codex",
+            "tool": "list_mcp_resources",
+            "error": null,
+            "resultIsError": null
+          }
+        ],
+        "cloudflareAuthRequiredStderrLines": [],
+        "failedCollabDispatchStderrLines": [
+          1
+        ],
+        "evidenceRefs": [
+          "events.jsonl",
+          "stderr.txt"
+        ]
+      }
+    ]
+  },
+  "toolExposureAuditSha256": "1cebc5aa5087d4fb05a9a7c88fa49e17b8bae6539b829228231cda2941b16784",
+  "additionalEvidence": [
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/phase-summary.json",
+      "sha256": "1a01f3c28f57cbdc56589ccd167b10d5eafcc1af46974b719112177f45134ba1",
+      "result": {
+        "schemaVersion": 2,
+        "finalizedAt": "2026-09-08T03:48:31.857349+00:00",
+        "model": "gpt-6-astra",
+        "reasoning": "ultra",
+        "tasks": [
+          "responsive-drawer-viewport"
+        ],
+        "declaredModelSeconds": 1800,
+        "declaredRepetitions": 2,
+        "actualAttempts": 4,
+        "grade": {
+          "total": 4,
+          "passed": 4,
+          "blocked": 0,
+          "coverage": "complete",
+          "missingCells": [],
+          "duplicateCells": [],
+          "mismatchedTasks": [],
+          "suitePassed": true
+        },
+        "runs": [
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__1",
+            "taskId": "responsive-drawer-viewport",
+            "arm": "skills-baseline",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 474615,
+            "toolCalls": 48,
+            "mcpToolCalls": 41,
+            "inputSchemaErrors": 2,
+            "resultSchemaErrors": 0,
+            "independentSourceAndAcceptancePassed": true,
+            "modelBrowserQualified": true,
+            "claimsSupported": true,
+            "scopePassed": true,
+            "clearlyRedundantSuccessfulRepeats": 0,
+            "cleanupPassed": true
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__2",
+            "taskId": "responsive-drawer-viewport",
+            "arm": "skills-baseline",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 419233,
+            "toolCalls": 55,
+            "mcpToolCalls": 49,
+            "inputSchemaErrors": 3,
+            "resultSchemaErrors": 0,
+            "independentSourceAndAcceptancePassed": true,
+            "modelBrowserQualified": true,
+            "claimsSupported": true,
+            "scopePassed": true,
+            "clearlyRedundantSuccessfulRepeats": 0,
+            "cleanupPassed": true
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__1",
+            "taskId": "responsive-drawer-viewport",
+            "arm": "skills-revised",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 426003,
+            "toolCalls": 45,
+            "mcpToolCalls": 40,
+            "inputSchemaErrors": 2,
+            "resultSchemaErrors": 0,
+            "independentSourceAndAcceptancePassed": true,
+            "modelBrowserQualified": true,
+            "claimsSupported": true,
+            "scopePassed": true,
+            "clearlyRedundantSuccessfulRepeats": 0,
+            "cleanupPassed": true
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__2",
+            "taskId": "responsive-drawer-viewport",
+            "arm": "skills-revised",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 337023,
+            "toolCalls": 42,
+            "mcpToolCalls": 36,
+            "inputSchemaErrors": 3,
+            "resultSchemaErrors": 0,
+            "independentSourceAndAcceptancePassed": true,
+            "modelBrowserQualified": true,
+            "claimsSupported": true,
+            "scopePassed": true,
+            "clearlyRedundantSuccessfulRepeats": 0,
+            "cleanupPassed": true
+          }
+        ],
+        "selectedTaskScope": "Astra long cohorts rerun the drawer task selected because historical short cohorts had deadline-censored attempts; Luna is a fresh full three-task cohort after its historical pilot was held.",
+        "comparisonProtocol": "Same R0 runtime/skills/fixture/oracle and explicit acceptance. Compared with historical short runs, budget, strict command boundary, ambient exposure controls, ownership guidance and per-tool MCP approval all changed. Within this protected cohort both arms share those changes.",
+        "interpretation": [
+          "Compare matching tasks and repetitions; latency direction may vary. Total wall includes before/after oracle work and is not the precise model-turn duration.",
+          "Raw post-verification counts are not a measure of redundant work; independent semantic groups separate needed acceptance and new regression coverage.",
+          "No general or held-out skill/model quality estimate: known fixture and example overlap remain.",
+          "Native image blocks and generic base64 resource exports are different evidence routes; resource-render-audit.json preserves truncation failures.",
+          "Local headless pinned Chrome evidence does not cover real devices or production."
+        ],
+        "runtimeDigest": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+        "oracleSourceSha256": "ad972dfde81d5a8e79a85ead09ed9d93d01c262e9b7cc27b72487fb878017781",
+        "reviewArtifacts": "Each run retains independent-review.json and quality-review.json; source.patch excludes added binary verification artifacts.",
+        "freezeAndCleanup": "See cohort-summary.json and per-run cleanup; frozen comparisons do not include later working-tree enum-redaction correction.",
+        "metricScope": "Tool calls count completed exported JSONL items; stderr-only failed dispatch attempts and automatic same-cell sampling recoveries are counted separately in transport-attempt-audit.json. No successful delegate is established by a failed-dispatch log."
+      }
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/cohort-summary.json",
+      "sha256": "5230bc49c6374c19d299e35e60bb125ba5a937eef99fd1da6a20ec555f78fb88",
+      "result": {
+        "schemaVersion": 1,
+        "model": "gpt-6-astra",
+        "reasoning": "ultra",
+        "planned": 4,
+        "observed": 4,
+        "metrics": {
+          "skills-baseline": {
+            "attempted": 2,
+            "completedWithinDeadline": 2,
+            "behaviorPassedWithinDeadline": 2,
+            "acceptancePassedIncludingDeadlineFailures": 2,
+            "deadlineFailures": 0,
+            "medianWallTimeMsIncludingDeadlineFailures": 446924.0,
+            "toolCalls": 103,
+            "mcpToolCalls": 90,
+            "qualityTotals": {
+              "inputSchemaErrors": 5,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 5,
+              "verifiedResults": 2,
+              "postVerifiedBrowserCalls": 35,
+              "exactReplayActionsRepeatedAfterVerification": 4
+            }
+          },
+          "skills-revised": {
+            "attempted": 2,
+            "completedWithinDeadline": 2,
+            "behaviorPassedWithinDeadline": 2,
+            "acceptancePassedIncludingDeadlineFailures": 2,
+            "deadlineFailures": 0,
+            "medianWallTimeMsIncludingDeadlineFailures": 381513.0,
+            "toolCalls": 87,
+            "mcpToolCalls": 76,
+            "qualityTotals": {
+              "inputSchemaErrors": 5,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 7,
+              "verifiedResults": 2,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0
+            }
+          }
+        },
+        "freezeIntegrity": {
+          "runtime": {
+            "expected": "a4bf34ccda78c03c740867fb3a9ff14294022486e65936c6ecf49ae06f7f7d2b",
+            "filesChecked": 192,
+            "mismatches": []
+          },
+          "fixture": {
+            "expected": "33a8846f750f454a9fb603aa4fe657cfd012525afa7acfab2726ceefcaaef81b",
+            "filesChecked": 7,
+            "mismatches": []
+          },
+          "skills-baseline": {
+            "expected": "8b235cf8a36dcb688ea7d1c4bb8a3e1a5e1663831c7e811b92d90e09dceaeae6",
+            "filesChecked": 7,
+            "mismatches": []
+          },
+          "skills-revised": {
+            "expected": "cb235d99448954c0cfe6d92b5e3576bb5c1ed1b99eec7b2d911506df1656bbef",
+            "filesChecked": 10,
+            "mismatches": []
+          }
+        },
+        "qualityInterpretation": "Post-verified browser calls and exact replay counts are raw candidates; quality-review.json provides context. Additional regression and missing acceptance checks are not redundant. Timeouts remain execution failures even when independent acceptance passes.",
+        "limitations": [
+          "Only three known fixture tasks and two repetitions per arm; this does not estimate broad model quality.",
+          "Refund task overlaps examples in revised skill; no held-out generalization inference.",
+          "Observed tool/token differences include model behavior and chosen additional coverage; not all extra calls are waste."
+        ],
+        "cleanupPassed": true
+      }
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/resource-render-audit.json",
+      "sha256": "24d1f89a0ebc734cae9f1fe40ab037a1cd47191f0861b5b365baffa19296ccf6",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "Read-only existing generic-resource payload validity audit; no reruns, runtime or score changes.",
+        "runs": [
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__1",
+            "arm": "skills-baseline",
+            "genericResourceImagePayloads": [],
+            "interpretation": "Exported generic resource text can be truncated inside base64. Captured artifact existence is distinct from successful model image rendering; this is separate from runtime result-schema errors."
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__2",
+            "arm": "skills-baseline",
+            "genericResourceImagePayloads": [
+              {
+                "eventsLine": 58,
+                "uri": "web-debug://artifact/3d53c251-1b1d-4285-8412-797910dbf338",
+                "mimeType": "image/png",
+                "base64Length": 47822,
+                "base64ValidInExport": false,
+                "containsToolTextTruncationMarker": true
+              },
+              {
+                "eventsLine": 89,
+                "uri": "web-debug://artifact/cd9e6dce-3ff5-4bae-a17b-c6912fd02e54",
+                "mimeType": "image/png",
+                "base64Length": 36040,
+                "base64ValidInExport": true,
+                "containsToolTextTruncationMarker": false
+              }
+            ],
+            "interpretation": "Exported generic resource text can be truncated inside base64. Captured artifact existence is distinct from successful model image rendering; this is separate from runtime result-schema errors."
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__1",
+            "arm": "skills-revised",
+            "genericResourceImagePayloads": [
+              {
+                "eventsLine": 42,
+                "uri": "web-debug://artifact/edd3091a-fcba-4576-bdbf-ca24271dc5d9",
+                "mimeType": "image/png",
+                "base64Length": 47822,
+                "base64ValidInExport": false,
+                "containsToolTextTruncationMarker": true
+              },
+              {
+                "eventsLine": 65,
+                "uri": "web-debug://artifact/6ed773c0-2c1e-4b92-9a5e-d29d5a42f17c",
+                "mimeType": "image/png",
+                "base64Length": 44584,
+                "base64ValidInExport": true,
+                "containsToolTextTruncationMarker": false
+              }
+            ],
+            "interpretation": "Exported generic resource text can be truncated inside base64. Captured artifact existence is distinct from successful model image rendering; this is separate from runtime result-schema errors."
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__2",
+            "arm": "skills-revised",
+            "genericResourceImagePayloads": [],
+            "interpretation": "Exported generic resource text can be truncated inside base64. Captured artifact existence is distinct from successful model image rendering; this is separate from runtime result-schema errors."
+          }
+        ]
+      }
+    },
+    {
+      "path": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/transport-attempt-audit.json",
+      "sha256": "2c34ef3ff47fc27203e51a9bf7f66d374f43f660a34eb474277b008ed918c056",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "Native read-only trace accounting; no model/browser calls. Completed exported tool items are not a complete attempted-action inventory.",
+        "perArm": {
+          "skills-baseline": {
+            "exportedCompletedToolItems": 103,
+            "stderrOnlyFailedCollabDispatches": 2,
+            "automaticSamplingRecoveries": 1,
+            "evaluatorCapacityRetries": 0
+          },
+          "skills-revised": {
+            "exportedCompletedToolItems": 87,
+            "stderrOnlyFailedCollabDispatches": 2,
+            "automaticSamplingRecoveries": 2,
+            "evaluatorCapacityRetries": 0
+          }
+        },
+        "runs": [
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__1",
+            "arm": "skills-baseline",
+            "exportedCompletedToolItems": 48,
+            "stderrOnlyFailedCollabDispatches": 1,
+            "failedDispatchStderrLines": [
+              1
+            ],
+            "automaticSamplingRecoveries": 1,
+            "samplingRecoveryStderrLines": [
+              3
+            ],
+            "successfulDelegationEstablished": false,
+            "evaluatorCapacityRetries": 0,
+            "capacityRetryScope": "No evaluator capacity retry has occurred in this cohort. Sampling recoveries stay inside the same model invocation.",
+            "evidence": [
+              "events.jsonl",
+              "stderr.txt"
+            ]
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__2",
+            "arm": "skills-baseline",
+            "exportedCompletedToolItems": 55,
+            "stderrOnlyFailedCollabDispatches": 1,
+            "failedDispatchStderrLines": [
+              1
+            ],
+            "automaticSamplingRecoveries": 0,
+            "samplingRecoveryStderrLines": [],
+            "successfulDelegationEstablished": false,
+            "evaluatorCapacityRetries": 0,
+            "capacityRetryScope": "No evaluator capacity retry has occurred in this cohort. Sampling recoveries stay inside the same model invocation.",
+            "evidence": [
+              "events.jsonl",
+              "stderr.txt"
+            ]
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__1",
+            "arm": "skills-revised",
+            "exportedCompletedToolItems": 45,
+            "stderrOnlyFailedCollabDispatches": 1,
+            "failedDispatchStderrLines": [
+              1
+            ],
+            "automaticSamplingRecoveries": 0,
+            "samplingRecoveryStderrLines": [],
+            "successfulDelegationEstablished": false,
+            "evaluatorCapacityRetries": 0,
+            "capacityRetryScope": "No evaluator capacity retry has occurred in this cohort. Sampling recoveries stay inside the same model invocation.",
+            "evidence": [
+              "events.jsonl",
+              "stderr.txt"
+            ]
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__2",
+            "arm": "skills-revised",
+            "exportedCompletedToolItems": 42,
+            "stderrOnlyFailedCollabDispatches": 1,
+            "failedDispatchStderrLines": [
+              1
+            ],
+            "automaticSamplingRecoveries": 2,
+            "samplingRecoveryStderrLines": [
+              3,
+              4
+            ],
+            "successfulDelegationEstablished": false,
+            "evaluatorCapacityRetries": 0,
+            "capacityRetryScope": "No evaluator capacity retry has occurred in this cohort. Sampling recoveries stay inside the same model invocation.",
+            "evidence": [
+              "events.jsonl",
+              "stderr.txt"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "independentReviews": [
+    {
+      "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/protected-browser-independent-reviews/astra-ultra--drawer--skills-baseline--1.json",
+      "sha256": "37fb053e781ea6273070f79b2ca8eea91dfff9e4c27504889da3a2443e39fa24",
+      "result": {
+        "schemaVersion": 1,
+        "reviewer": "eval_research independent read-only review",
+        "reviewedAtUtc": "2026-09-08T03:36:31.770666+00:00",
+        "runRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__1",
+        "decision": "behavior-and-scope-passed",
+        "checks": {
+          "rootCauseCorrect": true,
+          "minimalPatch": true,
+          "independentAcceptancePassed": true,
+          "modelOwnedBrowserEvidence": true,
+          "claimsSupported": true,
+          "noUnnecessaryApproval": true,
+          "scopePassed": true,
+          "ownedSessionsClosed": true,
+          "cleanupPassed": true
+        },
+        "materialIssues": [],
+        "sourceChanges": [
+          {
+            "file": "src/styles.css",
+            "before": "48bb04d7c85ce45b875263c6f5fd1092f5eee2ad5b17cd88b4adee819344f6d4",
+            "after": "22646d37a61c6eee559af44d6502c793f7ef0219b647f8f09361e4885abddbed"
+          }
+        ],
+        "starts": [
+          {
+            "line": 13,
+            "id": "ff30f0f7-0dd9-4fff-9d61-7934d3271eb4",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__1/tmp/web-debug-mcp-unKcDv"
+          },
+          {
+            "line": 25,
+            "id": "0987d35b-bded-4fc9-95e6-e8a47a5e740c",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__1/tmp/web-debug-mcp-26LBzW"
+          }
+        ],
+        "closes": [
+          {
+            "line": 102,
+            "id": "ff30f0f7-0dd9-4fff-9d61-7934d3271eb4",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__1/tmp/web-debug-mcp-unKcDv"
+          },
+          {
+            "line": 104,
+            "id": "0987d35b-bded-4fc9-95e6-e8a47a5e740c",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__1/tmp/web-debug-mcp-26LBzW"
+          }
+        ],
+        "evidence": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              13,
+              25,
+              102,
+              104
+            ],
+            "observation": "Two ready isolated launch-owned sessions; only those IDs closed."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              31,
+              44,
+              46,
+              57
+            ],
+            "observation": "Absolute/76px origin and mobile scroll567 observed before minimalCSSedit."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              59,
+              65,
+              67,
+              80,
+              82
+            ],
+            "observation": "Recorded verification plus full actual layer/backdrop/CTA bounds and visible/enabled/buttoncenter hits meet bothviewport acceptance."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              69,
+              71,
+              84,
+              86,
+              88,
+              90,
+              92,
+              94,
+              96,
+              98
+            ],
+            "observation": "Valid native afterPNG and Close/reopen checks support final scoped claims; no console errors/overflow observed."
+          }
+        ],
+        "qualityObservations": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              50,
+              52
+            ],
+            "kind": "input-schema-errors",
+            "observation": "Invalid discriminator then omitted visible fields; corrected54."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              21,
+              35,
+              37,
+              73,
+              75
+            ],
+            "kind": "expected-evaluation-guard",
+            "observation": "Chrome Possible side-effect rejection, later bounded observations recover;0result-schema errors."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              42,
+              48
+            ],
+            "kind": "wrong-generic-server",
+            "observation": "Guessed web_debug fails, globalinventoryempty; nativeimagesremainvalid."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              3
+            ],
+            "kind": "automatic-stream-recovery",
+            "observation": "Connection reset/WebSocket no closing handshake; CLI retries sampling1/5 in215ms and completes. Same declared cell, no evaluator capacity or timeout rerun."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              1
+            ],
+            "kind": "failed-delegation-outside-cli-json",
+            "observation": "One no-thread collab spawn failure is present in stderr, no corresponding item in exec JSON events or successful delegate evidence. Preserve separately: raw CLI tool count omits this attempted operation; do not claim complete attempted-action inventory."
+          }
+        ],
+        "semanticRepeatReview": {
+          "rawPostVerifiedBrowserCalls": 18,
+          "rawExactReplayActionsRepeated": 3,
+          "clearlyRedundantSuccessfulRepeats": 0,
+          "groups": [
+            {
+              "lines": [
+                61,
+                63,
+                65,
+                67,
+                80,
+                82
+              ],
+              "classification": "required actual bounds and hit evidence after weakmarker"
+            },
+            {
+              "lines": [
+                69,
+                71
+              ],
+              "classification": "after screenshot/console evidence"
+            },
+            {
+              "lines": [
+                73,
+                75
+              ],
+              "classification": "failedguard overhead"
+            },
+            {
+              "lines": [
+                84,
+                86,
+                88,
+                90,
+                92,
+                94,
+                96,
+                98
+              ],
+              "classification": "optional Close/reopen regression and reopened-state observations"
+            }
+          ],
+          "caveat": "May consolidate optional checks for efficiency, but these are not18same-state redundant verifications."
+        },
+        "nativeCommands": [
+          {
+            "line": 6,
+            "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-baseline/web-debug-workflow/SKILL.md'",
+            "exitCode": 0
+          },
+          {
+            "line": 8,
+            "command": "/bin/zsh -lc \"pwd; rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'package.json' -g '\"'!node_modules'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+            "exitCode": 0
+          },
+          {
+            "line": 15,
+            "command": "/bin/zsh -lc \"rg --files -g '\"'!node_modules'\"' -g '\"'!quote-api.js'\"' -g '\"'!package-lock.json'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+            "exitCode": 0
+          },
+          {
+            "line": 17,
+            "command": "/bin/zsh -lc 'cat src/App.jsx src/styles.css package.json'",
+            "exitCode": 0
+          },
+          {
+            "line": 77,
+            "command": "/bin/zsh -lc \"rg -n '\"'^'\"\\\\.drawer-layer|\"'^'\"\\\\.drawer-backdrop|\"'^'\"\\\\.drawer \\\\{|\"'^'\"\\\\.drawer-actions' src/styles.css\"",
+            "exitCode": 0
+          },
+          {
+            "line": 100,
+            "command": "/bin/zsh -lc 'cat src/styles.css'",
+            "exitCode": 0
+          }
+        ],
+        "processSignalCommands": [],
+        "failedDelegationStderrEvidence": [
+          {
+            "line": 1,
+            "text": "2026-09-08T03:25:23.814057Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a07f0b-e582-74a3-84be-4881af6a76b0"
+          }
+        ],
+        "cleanup": {
+          "observedOwned": 36,
+          "leftoversTerminated": [],
+          "remaining": [],
+          "passed": true
+        },
+        "reportedWallTimeMs": 474615,
+        "limits": [
+          "Frozen R0 and example-overlapping drawer, not held-out benchmark.",
+          "Cellwall includes controlleroracles; do not infer420s counterfactual.",
+          "CLIJSON lacks failedspawnattempt present in stderr; raw toolcount is incomplete actioninventory.",
+          "No model/browser/test rerun duringreview.",
+          "No superiority conclusion from same minimalfix across tinycohort."
+        ],
+        "evidenceHashes": {
+          "events.jsonl": "0d79d5c6bfa59f1c48cdfb0dd8455f3a9fb4fd3815ee1a58b07f07816af49bf2",
+          "result.json": "163a699ac5dbb8691713ade285886a5e9bc5ef895d1cc3c1903c28cb3efb2823",
+          "final.txt": "7778f9a302af0f3a53faac589115625aaf9952deb51ce21b41c01d9c7ace9bfc",
+          "prompt.txt": "be06bdb0c0540a304c844e6144fe3d16a76045dd0928e89d39dc7ee310218cd9",
+          "patch.diff": "2e1d50f81a6f8d2391d5a9a4c6ae09242c091c5b34b82aad9f88e3a77be355c7",
+          "quality.json": "e60fbdffa85ab57b1fefe6a730a6e5baaca54d15809f57f493e253d673ca3a60",
+          "stderr.txt": "7cc7ac018222056f7755dc90b1c6f350a328a0453107a69402721d298f88cc00",
+          "configuration-overrides.json": "ae3d784cfd13c19f2febb68ff98a13c7e30498638c6290b9f97d4c7dd9f8ba6e",
+          "argv.json": "419769e5b41736d8468fc28f186543c707c1abcc35bb3f3ae84990ed956a660a",
+          "invocation-freeze.json": "65fe0726f6ae0d01de4741f3c90bc843a6164df6a7b030a3b5927293184d8d64"
+        }
+      }
+    },
+    {
+      "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/protected-browser-independent-reviews/astra-ultra--drawer--skills-baseline--2.json",
+      "sha256": "b45a50654f107205ec618a74d275b6efcfe7c844fb19148944c948481ccb3034",
+      "result": {
+        "schemaVersion": 1,
+        "reviewer": "eval_research independent read-only review",
+        "reviewedAtUtc": "2026-09-08T03:47:53.050484+00:00",
+        "runRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2",
+        "decision": "behavior-and-scope-passed",
+        "checks": {
+          "rootCauseCorrect": true,
+          "minimalPatch": true,
+          "independentAcceptancePassed": true,
+          "modelOwnedBrowserEvidence": true,
+          "claimsSupported": true,
+          "noUnnecessaryApproval": true,
+          "scopePassed": true,
+          "ownedSessionsClosed": true,
+          "cleanupPassed": true
+        },
+        "materialIssues": [],
+        "sourceChanges": [
+          {
+            "file": "src/styles.css",
+            "before": "48bb04d7c85ce45b875263c6f5fd1092f5eee2ad5b17cd88b4adee819344f6d4",
+            "after": "22646d37a61c6eee559af44d6502c793f7ef0219b647f8f09361e4885abddbed"
+          }
+        ],
+        "starts": [
+          {
+            "line": 15,
+            "id": "a2eb1610-68d1-4e35-9e63-36f305286b66",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-nyCvTn"
+          },
+          {
+            "line": 21,
+            "id": "0ac73ca2-a1c9-41de-a78b-364c70745cf7",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-KbVZFX"
+          },
+          {
+            "line": 115,
+            "id": "4ec713ce-ed2b-4c63-a732-b629a5477ab7",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-q8HcN1"
+          }
+        ],
+        "closes": [
+          {
+            "line": 109,
+            "id": "a2eb1610-68d1-4e35-9e63-36f305286b66",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-nyCvTn"
+          },
+          {
+            "line": 111,
+            "id": "0ac73ca2-a1c9-41de-a78b-364c70745cf7",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-KbVZFX"
+          },
+          {
+            "line": 119,
+            "id": "4ec713ce-ed2b-4c63-a732-b629a5477ab7",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-baseline__2/tmp/web-debug-mcp-q8HcN1"
+          }
+        ],
+        "evidence": [
+          {
+            "lines": [
+              15,
+              21,
+              109,
+              111,
+              115,
+              117,
+              119
+            ],
+            "observation": "Two repair sessions plus one server-readiness session are actual ready isolated own launches, all closed."
+          },
+          {
+            "lines": [
+              42,
+              44,
+              65,
+              67,
+              69,
+              71,
+              78,
+              80,
+              83,
+              85
+            ],
+            "observation": "Source and before/after actual full layer/backdrop and CTA geometry support one-line CSS fix. Rounded-corner hit probes are corrected to cardinal edge/center points, preserving geometry assertions."
+          },
+          {
+            "lines": [
+              87,
+              91,
+              93,
+              95,
+              97,
+              101,
+              103,
+              105,
+              107,
+              120
+            ],
+            "observation": "After artifact, changed-scroll and Close tests support numerical final and scoped headless limitation."
+          }
+        ],
+        "qualityObservations": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              33,
+              38,
+              60
+            ],
+            "kind": "input-schema-errors",
+            "observation": "Two evaluation expressions exceed5000characters, then invalid record discriminator; bounded supported requests recover."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              27,
+              36
+            ],
+            "kind": "expected-evaluation-guard",
+            "observation": "Chrome Possible side-effect rejection; later bounded read-only observations succeed."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              51,
+              52,
+              54,
+              56
+            ],
+            "kind": "wrong-generic-server",
+            "observation": "web_debug unknown; exact web-debug discovered through template inventory."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              58,
+              48,
+              69,
+              87,
+              89
+            ],
+            "kind": "generic-image-truncation",
+            "observation": "Generic desktop PNG58 truncated/invalidbase64; native48/69 and mobile after artifact support screenshots. Do not claim failed generic baseline image rendered."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              78,
+              80,
+              83,
+              85
+            ],
+            "kind": "hit-test-correction",
+            "observation": "1px corner probes fall outside8px rounded buttons. Cardinal-edge/center probes correct the test, without weakening viewport bounds."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              113,
+              115,
+              117,
+              119
+            ],
+            "kind": "server-survival-check",
+            "observation": "Native loopback curl exits7HTTP000 in network-denied shell context; a new owned MCP session/capture confirms server remains running and is then closed. The native failure alone does not prove server was down."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              5
+            ],
+            "kind": "transport-warning",
+            "observation": "rmcp error sending responseid28 recorded; exact impact unknown, successful evidence/final retained."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              1
+            ],
+            "kind": "failed-delegation-outside-cli-json",
+            "observation": "One failed no-thread spawn is absent from exec JSON toolitems. Preserve additional failed attempt; raw toolcount is incomplete."
+          }
+        ],
+        "semanticRepeatReview": {
+          "rawPostVerifiedBrowserCalls": 17,
+          "rawExactReplayActionsRepeated": 1,
+          "clearlyRedundantSuccessfulRepeats": 0,
+          "groups": [
+            {
+              "lines": [
+                71,
+                74,
+                76,
+                78,
+                80,
+                83,
+                85
+              ],
+              "classification": "required full acceptance plus mobile setup and corrected rounded-corner hit sampling"
+            },
+            {
+              "lines": [
+                87
+              ],
+              "classification": "after artifact"
+            },
+            {
+              "lines": [
+                91,
+                93,
+                95,
+                97
+              ],
+              "classification": "changed-scroll regression"
+            },
+            {
+              "lines": [
+                101,
+                103,
+                105,
+                107
+              ],
+              "classification": "optional Close regression"
+            },
+            {
+              "lines": [
+                113,
+                115,
+                117,
+                119
+              ],
+              "classification": "server-survival check after contradictory native probe;3extraMCP calls and1native probe, not drawer repair"
+            }
+          ],
+          "caveat": "Raw metric includes capture117 but excludes start115/close119. Keep overhead explicit; do not call all17 redundant."
+        },
+        "nativeCommands": [
+          {
+            "line": 6,
+            "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-baseline/web-debug-workflow/SKILL.md'",
+            "exitCode": 0
+          },
+          {
+            "line": 8,
+            "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'package.json' -g '*.{css,html,js,jsx,ts,tsx}' -g '\"'!node_modules'\"' -g '\"'!dist'\"' -g '\"'!build'\"'\"",
+            "exitCode": 0
+          },
+          {
+            "line": 13,
+            "command": "/bin/zsh -lc \"rg --files --hidden -g '\"'!node_modules'\"' -g '\"'!.git'\"' -g '\"'!dist'\"' -g '\"'!build'\"' && cat package.json src/App.jsx src/styles.css\"",
+            "exitCode": 0
+          },
+          {
+            "line": 99,
+            "command": "/bin/zsh -lc \"rg -n '\"'^'\"\\\\.drawer-layer|\"'^'\"\\\\.drawer-backdrop|\"'^'\"\\\\.drawer \\\\{|\"'^'\"\\\\.drawer-actions' src/styles.css\"",
+            "exitCode": 0
+          },
+          {
+            "line": 113,
+            "command": "/bin/zsh -lc \"curl --max-time 5 --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\\\n' http://127.0.0.1:58061/\"",
+            "exitCode": 7
+          }
+        ],
+        "processSignalCommands": [],
+        "failedDelegationStderrEvidence": [
+          {
+            "line": 1,
+            "text": "2026-09-08T03:33:06.896207Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a07f13-26b9-7b23-81bb-365a19a503c8"
+          }
+        ],
+        "cleanup": {
+          "observedOwned": 38,
+          "leftoversTerminated": [],
+          "remaining": [],
+          "passed": true
+        },
+        "reportedWallTimeMs": 419233,
+        "limits": [
+          "FrozenR0/example overlap, not held-out generalization.",
+          "Cellwall includes controller oracles; no420second counterfactual.",
+          "Raw toolcounts omit failed spawns present in stderr.",
+          "No model/browser/native tests rerun during this review."
+        ],
+        "evidenceHashes": {
+          "events.jsonl": "a27300397a2c3bc3916c635b19fbbcf184b5be45b7524ff2546ced786a64570e",
+          "result.json": "0d5861d55309f354985eab3f1669ca3d60cb3e04684f3ab0e3e79685f626658a",
+          "final.txt": "778f6f3b188581367e235692d0ce28dcdd9de6ca89bcee792d8e0bf6ef06d140",
+          "prompt.txt": "38f01940d8c6d734ba58ca5317de1974e4cd2df738f2621436e6e7ab1170ea56",
+          "patch.diff": "a2a3817749e06a83b40efb6667e549cdd50445fbb610b5f450d3c682d01a121a",
+          "quality.json": "61b3386fe9c8ee7d959bdd84d247235b021c1ddb7576631097199b49f28fa5d8",
+          "stderr.txt": "913cb54fee1b4f7285f468149b7bb75493ba596985b8340318be3ecc00ac5c53",
+          "configuration-overrides.json": "957dec301ee856567feb8413faf035755657be00a5c7a41d075cee69917a8eaa",
+          "argv.json": "b67e07a2e32f16b17a5fa190fabcd03504b0dc03c4489b68d503e1a42e06b7db",
+          "invocation-freeze.json": "d78a4fa55740840f0cb383609b63d24662f7707485b5ba36e969f6c170e66527"
+        }
+      }
+    },
+    {
+      "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/protected-browser-independent-reviews/astra-ultra--drawer--skills-revised--1.json",
+      "sha256": "c81f07072f43d100233a335d7107ab2e2d745b4601599c8212295e1cbf6f48dc",
+      "result": {
+        "schemaVersion": 1,
+        "reviewer": "eval_research independent read-only review",
+        "reviewedAtUtc": "2026-09-08T03:36:31.779682+00:00",
+        "runRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__1",
+        "decision": "behavior-and-scope-passed",
+        "checks": {
+          "rootCauseCorrect": true,
+          "minimalPatch": true,
+          "independentAcceptancePassed": true,
+          "modelOwnedBrowserEvidence": true,
+          "claimsSupported": true,
+          "noUnnecessaryApproval": true,
+          "scopePassed": true,
+          "ownedSessionsClosed": true,
+          "cleanupPassed": true
+        },
+        "materialIssues": [],
+        "sourceChanges": [
+          {
+            "file": "src/styles.css",
+            "before": "48bb04d7c85ce45b875263c6f5fd1092f5eee2ad5b17cd88b4adee819344f6d4",
+            "after": "22646d37a61c6eee559af44d6502c793f7ef0219b647f8f09361e4885abddbed"
+          }
+        ],
+        "starts": [
+          {
+            "line": 15,
+            "id": "fa939ba8-6641-4358-9c19-4ed9ebbed5e5",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__1/tmp/web-debug-mcp-9Zz5z7"
+          },
+          {
+            "line": 44,
+            "id": "e04c6cbf-278e-4e4b-88ae-afb3ba4a0341",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__1/tmp/web-debug-mcp-ZFv0MT"
+          }
+        ],
+        "closes": [
+          {
+            "line": 96,
+            "id": "fa939ba8-6641-4358-9c19-4ed9ebbed5e5",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__1/tmp/web-debug-mcp-9Zz5z7"
+          },
+          {
+            "line": 98,
+            "id": "e04c6cbf-278e-4e4b-88ae-afb3ba4a0341",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__1/tmp/web-debug-mcp-ZFv0MT"
+          }
+        ],
+        "evidence": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              15,
+              44,
+              96,
+              98
+            ],
+            "observation": "Two ready isolated launch-owned sessions; onlythoseclosed."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              34,
+              40,
+              54,
+              63
+            ],
+            "observation": "Observed beforegeometry and existingCSS support absolute76/mobile-491rootcause; onlyCSSlineedit."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              79,
+              81,
+              84,
+              86,
+              88,
+              90,
+              92,
+              99
+            ],
+            "observation": "Actual fullviewport layer/backdrop, visible/contained/unobscuredCTA, scrollback and nativeafter screenshots support final; recordverifiedaftergeometry."
+          }
+        ],
+        "qualityObservations": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              57,
+              59
+            ],
+            "kind": "input-schema-errors",
+            "observation": "Invalid recorddiscriminator then missingvisible; corrected61."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              19,
+              30,
+              75,
+              77
+            ],
+            "kind": "expected-evaluation-guard",
+            "observation": "Chrome Possible side-effect rejection; successful boundedallowSideEffectsread-onlygeometry after."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              32,
+              36,
+              38
+            ],
+            "kind": "wrong-generic-server",
+            "observation": "web_debug guessfails; correctweb-debug discoveredthroughinventory."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              42,
+              52,
+              65,
+              88,
+              90,
+              92
+            ],
+            "kind": "generic-image-truncation",
+            "observation": "Generic desktopPNG42 contains truncation marker and stderr invalidbase64; genericmobile65untruncated and native52/88/90/92valid. Distinguish captured baseline artifact from model-rendered image."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              1
+            ],
+            "kind": "failed-delegation-outside-cli-json",
+            "observation": "One no-thread collab spawn failure is present in stderr, no corresponding item in exec JSON events or successful delegate evidence. Preserve separately: raw CLI tool count omits this attempted operation; do not claim complete attempted-action inventory."
+          }
+        ],
+        "semanticRepeatReview": {
+          "rawPostVerifiedBrowserCalls": 0,
+          "rawExactReplayActionsRepeated": 0,
+          "clearlyRedundantSuccessfulRepeats": 0,
+          "groups": [
+            {
+              "lines": [
+                67,
+                69,
+                71,
+                73,
+                79,
+                81
+              ],
+              "classification": "required afterfixsetup/geometry beforemarker"
+            },
+            {
+              "lines": [
+                75,
+                77
+              ],
+              "classification": "failedguard overhead"
+            },
+            {
+              "lines": [
+                84,
+                86
+              ],
+              "classification": "additional changedscrollregression"
+            },
+            {
+              "lines": [
+                88,
+                90,
+                92
+              ],
+              "classification": "afterartifact and recordedcheck"
+            }
+          ],
+          "caveat": "Zero aftermarker reflects ordering, not zero extra verification or better skillquality."
+        },
+        "nativeCommands": [
+          {
+            "line": 6,
+            "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'SKILL.md' -g 'package.json' -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"' && cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-revised/web-debug-workflow/SKILL.md\"",
+            "exitCode": 0
+          },
+          {
+            "line": 9,
+            "command": "/bin/zsh -lc \"rg --files -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"' -g '\"'!pnpm-lock.yaml'\"' -g '\"'!yarn.lock'\"' -g '\"'!dist'\"' -g '\"'!build'\"' && cat package.json\"",
+            "exitCode": 0
+          },
+          {
+            "line": 13,
+            "command": "/bin/zsh -lc 'cat src/App.jsx src/styles.css && cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-revised/web-debug-workflow/references/evidence-and-verification.md'",
+            "exitCode": 0
+          },
+          {
+            "line": 94,
+            "command": "/bin/zsh -lc \"rg -n '\"'^'\"\\\\.drawer-layer|\"'^'\"\\\\.drawer-backdrop|\"'^'\"\\\\.drawer \\\\{|\"'^'\"\\\\.drawer-actions' src/styles.css\"",
+            "exitCode": 0
+          }
+        ],
+        "processSignalCommands": [],
+        "failedDelegationStderrEvidence": [
+          {
+            "line": 1,
+            "text": "2026-09-08T03:25:06.785291Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a07f0b-e58a-74e3-ad64-85ba8f024379"
+          }
+        ],
+        "cleanup": {
+          "observedOwned": 37,
+          "leftoversTerminated": [],
+          "remaining": [],
+          "passed": true
+        },
+        "reportedWallTimeMs": 426003,
+        "limits": [
+          "Frozen R0 and example-overlapping drawer, not held-out benchmark.",
+          "Cellwall includes controlleroracles; do not infer420s counterfactual.",
+          "CLIJSON lacks failedspawnattempt present in stderr; raw toolcount is incomplete actioninventory.",
+          "No model/browser/test rerun duringreview.",
+          "No superiority conclusion from same minimalfix across tinycohort."
+        ],
+        "evidenceHashes": {
+          "events.jsonl": "65f1c06ede0297f855ed0bfee7114de3d7b4129afb9178d40de95b1339c73b10",
+          "result.json": "b009d975a258ba51553652dde5ba4f2ce2e154333e0b7087b1f94360ecde98bb",
+          "final.txt": "62aeadd2d9be546038177c265bf8566655cba8a3d4821e0ecc7c89f355db615b",
+          "prompt.txt": "37045422c52462ab48f05213f624119aee62368e84444e539cb4e88af98ff1e3",
+          "patch.diff": "5209be2d06c14c7bd657e68b8d55ad0e59452407dea46e8a3a4ac5d8ae7903bf",
+          "quality.json": "f65fb24a007926ecb961dd4d77ea4d81dd0a7f0c23fb379d68498541b8579650",
+          "stderr.txt": "5fc70cb282af8eefbf77451ce579a8edc6dabc90edb57e01f86d6a5c76893895",
+          "configuration-overrides.json": "fdca54af7753abdf4957f3175b2f0c7e0992a77923485b8ec9225f03f4dc4f29",
+          "argv.json": "3472783bf0ec76b6fc14eef4af23d306bd65488cd500345b09d80f654e108dd1",
+          "invocation-freeze.json": "98584621d610381fff33d85412505907ee8a16f9078ddb130669421163a8c394"
+        }
+      }
+    },
+    {
+      "path": "/Users/marlonjd/Developer/monorepos/.astra-eval-routing-settings-qjjiisko/protected-browser-independent-reviews/astra-ultra--drawer--skills-revised--2.json",
+      "sha256": "1c97204fd62d1c403800c59245dda073087753da5faebc3a7c02a4ea3cfae4c3",
+      "result": {
+        "schemaVersion": 1,
+        "reviewer": "eval_research independent read-only review",
+        "reviewedAtUtc": "2026-09-08T03:47:53.058897+00:00",
+        "runRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__2",
+        "decision": "behavior-and-scope-passed",
+        "checks": {
+          "rootCauseCorrect": true,
+          "minimalPatch": true,
+          "independentAcceptancePassed": true,
+          "modelOwnedBrowserEvidence": true,
+          "claimsSupported": true,
+          "noUnnecessaryApproval": true,
+          "scopePassed": true,
+          "ownedSessionsClosed": true,
+          "cleanupPassed": true
+        },
+        "materialIssues": [],
+        "sourceChanges": [
+          {
+            "file": "src/styles.css",
+            "before": "48bb04d7c85ce45b875263c6f5fd1092f5eee2ad5b17cd88b4adee819344f6d4",
+            "after": "22646d37a61c6eee559af44d6502c793f7ef0219b647f8f09361e4885abddbed"
+          }
+        ],
+        "starts": [
+          {
+            "line": 15,
+            "id": "460a7aa7-2bad-4a9e-b2cd-45eddb8ef1d6",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__2/tmp/web-debug-mcp-u9J45A"
+          },
+          {
+            "line": 40,
+            "id": "44d630c9-bda6-43f1-995d-1098517d71ec",
+            "status": "ready",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__2/tmp/web-debug-mcp-zdVk6v"
+          }
+        ],
+        "closes": [
+          {
+            "line": 90,
+            "id": "460a7aa7-2bad-4a9e-b2cd-45eddb8ef1d6",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__2/tmp/web-debug-mcp-u9J45A"
+          },
+          {
+            "line": 92,
+            "id": "44d630c9-bda6-43f1-995d-1098517d71ec",
+            "status": "closed",
+            "artifactDir": "/private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/runs/responsive-drawer-viewport__skills-revised__2/tmp/web-debug-mcp-zdVk6v"
+          }
+        ],
+        "evidence": [
+          {
+            "lines": [
+              15,
+              40,
+              90,
+              92
+            ],
+            "observation": "Two ready isolated own sessions, both closed."
+          },
+          {
+            "lines": [
+              34,
+              48,
+              61,
+              71,
+              73,
+              75,
+              80,
+              82,
+              84,
+              86,
+              88,
+              93
+            ],
+            "observation": "Before/after geometry and original CSS establish cause; full layer/backdrop, visible and unobstructed CTA, changed-scroll checks and matrix replay support final."
+          }
+        ],
+        "qualityObservations": [
+          {
+            "path": "events.jsonl",
+            "lines": [
+              52,
+              54,
+              57
+            ],
+            "kind": "input-schema-errors",
+            "observation": "Invalid geometry discriminator twice, then missing visible boolean; record59 valid."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              21,
+              29
+            ],
+            "kind": "expected-evaluation-guard",
+            "observation": "Chrome Possible side-effect rejection; bounded reads recover."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              36,
+              38
+            ],
+            "kind": "wrong-generic-server",
+            "observation": "web_debug unknown; global inventory empty. Native images50/75/88 valid."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              3,
+              4
+            ],
+            "kind": "automatic-stream-recovery",
+            "observation": "Two sampling retries after WebSocket resets,197ms/184ms. Internal CLI recovery in one cell, not evaluator/capacity reruns."
+          },
+          {
+            "path": "events.jsonl",
+            "lines": [
+              9
+            ],
+            "kind": "unfulfilled-delegation-plan",
+            "observation": "Progress says separate CSS review will run; stderr shows failed spawn. Final does not claim delegate evidence."
+          },
+          {
+            "path": "stderr.txt",
+            "lines": [
+              1
+            ],
+            "kind": "failed-delegation-outside-cli-json",
+            "observation": "One failed no-thread spawn is absent from exec JSON toolitems. Preserve additional failed attempt; raw toolcount is incomplete."
+          }
+        ],
+        "semanticRepeatReview": {
+          "rawPostVerifiedBrowserCalls": 0,
+          "rawExactReplayActionsRepeated": 0,
+          "clearlyRedundantSuccessfulRepeats": 0,
+          "groups": [
+            {
+              "lines": [
+                63,
+                65,
+                67,
+                69,
+                71,
+                73
+              ],
+              "classification": "required after-fix setup and full acceptance geometry before marker"
+            },
+            {
+              "lines": [
+                75
+              ],
+              "classification": "after artifact"
+            },
+            {
+              "lines": [
+                80,
+                82,
+                84,
+                86
+              ],
+              "classification": "changed-scroll regression"
+            },
+            {
+              "lines": [
+                88
+              ],
+              "classification": "stored matrix check"
+            }
+          ],
+          "caveat": "Zero post-marker count depends on ordering, not zero further work or better overall quality."
+        },
+        "nativeCommands": [
+          {
+            "line": 6,
+            "command": "/bin/zsh -lc 'cat /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-revised/web-debug-workflow/SKILL.md'",
+            "exitCode": 0
+          },
+          {
+            "line": 8,
+            "command": "/bin/zsh -lc \"pwd && rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'UI_RULES.md' -g 'package.json' -g '*.css' -g '*.html' -g '*.js' -g '*.tsx' -g '*.ts' -g 'SKILL.md' -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"'\"",
+            "exitCode": 0
+          },
+          {
+            "line": 13,
+            "command": "/bin/zsh -lc \"rg --files -g '\"'!node_modules'\"' -g '\"'!package-lock.json'\"' -g '\"'!.git'\"' -g '\"'!dist'\"' && cat package.json src/styles.css index.html\"",
+            "exitCode": 0
+          },
+          {
+            "line": 17,
+            "command": "/bin/zsh -lc 'cat src/App.jsx /private/tmp/web-debug-astra-browser-repair-aSXDy1/protected-astra-ultra-drawer/skills-revised/web-debug-workflow/references/evidence-and-verification.md'",
+            "exitCode": 0
+          },
+          {
+            "line": 78,
+            "command": "/bin/zsh -lc \"rg -n '\"'^'\"\\\\.drawer-layer|\"'^'\"\\\\.drawer-backdrop|\"'^'\"\\\\.drawer \\\\{|\"'^'\"\\\\.drawer-actions|\"'^'\"\\\\.app-shell|\"'^'\"\\\\.content \\\\{' src/styles.css\"",
+            "exitCode": 0
+          }
+        ],
+        "processSignalCommands": [],
+        "failedDelegationStderrEvidence": [
+          {
+            "line": 1,
+            "text": "2026-09-08T03:32:07.877229Z ERROR codex_core::tools::router: error=collab spawn failed: no thread with id: 01a07f12-6805-75a1-98d6-ca0f26b94782"
+          }
+        ],
+        "cleanup": {
+          "observedOwned": 23,
+          "leftoversTerminated": [],
+          "remaining": [],
+          "passed": true
+        },
+        "reportedWallTimeMs": 337023,
+        "limits": [
+          "FrozenR0/example overlap, not held-out generalization.",
+          "Cellwall includes controller oracles; no420second counterfactual.",
+          "Raw toolcounts omit failed spawns present in stderr.",
+          "No model/browser/native tests rerun during this review."
+        ],
+        "evidenceHashes": {
+          "events.jsonl": "9713d10424390d1b1b82897fbfc4836024852f3de203ba5b4d75546e6bedb578",
+          "result.json": "5dcf7c0b6cac801aac23d54dd3e13fc96a1d6b26056df8cbea706d5af0cfdbb4",
+          "final.txt": "3083fcc72bdfbf657482e355b1838a27d7c6d099e29cc57b18f6f3f2b9a6fa46",
+          "prompt.txt": "b2f4c37f39a5e12c7bcfa743a7311cfb9cde87edbb4b189a8ed475863f6d908b",
+          "patch.diff": "c5ca66c56271047e3a5787ab158d5af689cc24854210d3aded4360425b051c7a",
+          "quality.json": "ae8321c0cd47bdaae298c0cef5d3f3edc0b64445fe724936ee7bd1486ee54c13",
+          "stderr.txt": "4a02e6ed7a66555303174bf9034c99cfec040c9cc658d9009728383e626c9912",
+          "configuration-overrides.json": "3b676e6d4a535ac435849f5a56a7faaf2f63d01c8cb4e7c42cedcd8b5a76ef52",
+          "argv.json": "e18091f392f20aef195a98e13b98a8d02468d4df3c21757c8fb2708542d2e802",
+          "invocation-freeze.json": "c99a3cb3a9fe4d906ce241dfb6a3b1d82f6d0029e3530424ac08ff378f739183"
+        }
+      }
+    }
+  ]
+}

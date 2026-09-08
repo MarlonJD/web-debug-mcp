@@ -3,6 +3,33 @@ import { describe, expect, it, vi } from "vitest";
 import { SafariAdapter } from "../src/adapters/safari.js";
 
 describe("Safari WebDriver adapter", () => {
+  it("refreshes network fallback observations and never calls failed collection fresh", async () => {
+    const adapter = new SafariAdapter("http://127.0.0.1:4444");
+    const internal = adapter as unknown as {
+      enforceOwnedTopLevelState: () => Promise<void>;
+      currentUrl: () => Promise<string>; readDom: () => Promise<unknown>; readTitle: () => Promise<string>;
+      viewport: () => Promise<unknown>; readPerformanceNetwork: () => Promise<unknown[]>;
+    };
+    vi.spyOn(internal, "enforceOwnedTopLevelState").mockResolvedValue();
+    vi.spyOn(internal, "currentUrl").mockResolvedValue("http://127.0.0.1:4176/");
+    vi.spyOn(internal, "readDom").mockResolvedValue({ bodyText: "Ready", elements: [] });
+    vi.spyOn(internal, "readTitle").mockResolvedValue("Fixture");
+    vi.spyOn(internal, "viewport").mockResolvedValue({ width: 800, height: 600 });
+    const performance = vi.spyOn(internal, "readPerformanceNetwork")
+      .mockRejectedValueOnce(new Error("collection failed"))
+      .mockResolvedValueOnce([{ requestId: "first", url: "http://127.0.0.1:4176/api", method: "GET", resourceType: "fetch", status: null, ok: null }])
+      .mockRejectedValueOnce(new Error("refresh failed"))
+      .mockResolvedValueOnce([]);
+    const options = { artifactDir: "/tmp/web-debug-safari-network-test", captureScreenshot: false };
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "unavailable", freshness: "unknown" });
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "pass", freshness: "fresh", provenance: "performance-resource-timing" });
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "pass", freshness: "stale", provenance: "cached" });
+    expect((await adapter.snapshot(options)).observations?.network?.freshness).toBe("fresh");
+    expect(performance).toHaveBeenCalledTimes(4);
+    expect((await adapter.snapshot({ ...options, checksOnly: true })).observations?.network?.state).toBe("unavailable");
+    expect(performance).toHaveBeenCalledTimes(4);
+  });
+
   it("maps a bounded W3C WebDriver session into browser evidence", async () => {
     let currentUrl = "http://127.0.0.1:4176/";
     let bodyText = "Checkout fixture Ready";

@@ -1,0 +1,1518 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "Final frozen baseline/revised skills; original declared-cohort attempts, with any capacity recovery recorded separately",
+  "workstream": "browser",
+  "experiment": {
+    "id": "browser-repair-gpt-6-astra-max",
+    "model": "gpt-6-astra",
+    "reasoning": "max",
+    "taskIds": [
+      "react-filter-stale-memo",
+      "react-latest-response-wins",
+      "responsive-drawer-viewport"
+    ],
+    "variants": [
+      "skills-baseline",
+      "skills-revised"
+    ],
+    "repetitions": 2
+  },
+  "summary": {
+    "total": 12,
+    "passed": 10,
+    "blocked": 0,
+    "coverage": "complete",
+    "missingCells": [],
+    "duplicateCells": [],
+    "mismatchedTasks": [],
+    "suitePassed": false
+  },
+  "comparisons": [
+    {
+      "taskId": "react-filter-stale-memo",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 287348.5,
+            "toolCalls": 39,
+            "inputTokens": 950976,
+            "cachedInputTokens": 860736,
+            "outputTokens": 6156.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 206585,
+            "toolCalls": 19,
+            "inputTokens": 651475,
+            "cachedInputTokens": 588352,
+            "outputTokens": 4483
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "react-latest-response-wins",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 259757,
+            "toolCalls": 22,
+            "inputTokens": 582982,
+            "cachedInputTokens": 523136,
+            "outputTokens": 6090.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 224092,
+            "toolCalls": 23,
+            "inputTokens": 649319,
+            "cachedInputTokens": 582272,
+            "outputTokens": 5326
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "responsive-drawer-viewport",
+      "matchedRepetitions": [],
+      "variants": [
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 1,
+          "passedAll": 1,
+          "samples": 0,
+          "passed": 0,
+          "medians": {
+            "wallTimeMs": null,
+            "toolCalls": null,
+            "inputTokens": null,
+            "cachedInputTokens": null,
+            "outputTokens": null
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 1,
+          "passedAll": 1,
+          "samples": 0,
+          "passed": 0,
+          "medians": {
+            "wallTimeMs": null,
+            "toolCalls": null,
+            "inputTokens": null,
+            "cachedInputTokens": null,
+            "outputTokens": null
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runId": "react-filter-stale-memo__skills-baseline__1",
+      "taskId": "react-filter-stale-memo",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 291521,
+        "toolCalls": 43,
+        "inputTokens": 930624,
+        "cachedInputTokens": 854016,
+        "outputTokens": 6319
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "react-filter-stale-memo__skills-baseline__2",
+      "taskId": "react-filter-stale-memo",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 283176,
+        "toolCalls": 35,
+        "inputTokens": 971328,
+        "cachedInputTokens": 867456,
+        "outputTokens": 5994
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Refund task overlaps stale-list/Refund examples in skills; no held-out general quality claim."
+    },
+    {
+      "runId": "react-filter-stale-memo__skills-revised__1",
+      "taskId": "react-filter-stale-memo",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 207614,
+        "toolCalls": 18,
+        "inputTokens": 614409,
+        "cachedInputTokens": 554368,
+        "outputTokens": 4349
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "react-filter-stale-memo__skills-revised__2",
+      "taskId": "react-filter-stale-memo",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 205556,
+        "toolCalls": 20,
+        "inputTokens": 688541,
+        "cachedInputTokens": 622336,
+        "outputTokens": 4617
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Refund task overlaps stale-list/Refund examples in skills; no held-out general quality claim."
+    },
+    {
+      "runId": "react-latest-response-wins__skills-baseline__1",
+      "taskId": "react-latest-response-wins",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 245485,
+        "toolCalls": 22,
+        "inputTokens": 579100,
+        "cachedInputTokens": 512640,
+        "outputTokens": 5928
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "react-latest-response-wins__skills-baseline__2",
+      "taskId": "react-latest-response-wins",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 274029,
+        "toolCalls": 22,
+        "inputTokens": 586864,
+        "cachedInputTokens": 533632,
+        "outputTokens": 6253
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "react-latest-response-wins__skills-revised__1",
+      "taskId": "react-latest-response-wins",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 221438,
+        "toolCalls": 23,
+        "inputTokens": 577383,
+        "cachedInputTokens": 516224,
+        "outputTokens": 5395
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "react-latest-response-wins__skills-revised__2",
+      "taskId": "react-latest-response-wins",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 226746,
+        "toolCalls": 23,
+        "inputTokens": 721255,
+        "cachedInputTokens": 648320,
+        "outputTokens": 5257
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-baseline__1",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 381659,
+        "toolCalls": 41,
+        "inputTokens": 1506178,
+        "cachedInputTokens": 1404160,
+        "outputTokens": 8349
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-baseline__2",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "failed",
+      "passed": false,
+      "metrics": {
+        "wallTimeMs": 422768,
+        "toolCalls": 50,
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Exceeded the 420 second agent deadline; not retried. Correct source and passing independent acceptance, but exceeded420s without final response; retained failure."
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-revised__1",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "failed",
+      "passed": false,
+      "metrics": {
+        "wallTimeMs": 422811,
+        "toolCalls": 46,
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": "Exceeded the 420 second agent deadline; not retried. Correct source and passing independent acceptance, but execution exceeded420s without final response; retained as failure."
+    },
+    {
+      "runId": "responsive-drawer-viewport__skills-revised__2",
+      "taskId": "responsive-drawer-viewport",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 377491,
+        "toolCalls": 50,
+        "inputTokens": 1449858,
+        "cachedInputTokens": 1320960,
+        "outputTokens": 8309
+      },
+      "review": {
+        "reviewer": "independent-read-only-agent-eval_research",
+        "unnecessaryApprovals": 0,
+        "falseSuccessClaims": 0,
+        "rootCauseCorrect": true,
+        "evidenceRefs": [
+          "events.jsonl",
+          "source.patch",
+          "result.json"
+        ]
+      },
+      "cleanup": {
+        "ownedProcessesRemaining": 0
+      },
+      "limitation": null
+    }
+  ],
+  "artifactRoot": "/tmp/web-debug-astra-browser-repair-aSXDy1/final-astra-max",
+  "experimentSha256": "4ffa7b7ea2328108769bcfc8397f299e8d453d38a481cc0c3274701dd980676c",
+  "limitations": [
+    "Two repetitions; workflow regression tasks overlap skill examples and are not held-out general-quality evidence.",
+    "Deadlines and provider waiting are retained separately from code quality; unknown metrics are not invented.",
+    "CLI invocation requests the exact model and reasoning; provider-served identity is not independently attested.",
+    "Node dependencies use the existing installation; frozen files and locks are checked but dependency contents are not sealed."
+  ],
+  "quality": {
+    "schemaVersion": 1,
+    "model": "gpt-6-astra",
+    "reasoning": "max",
+    "tasks": {
+      "react-filter-stale-memo": {
+        "skills-baseline": [
+          {
+            "runId": "react-filter-stale-memo__skills-baseline__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 291521,
+            "toolCalls": 43,
+            "mcpToolCalls": 34,
+            "usage": {
+              "input_tokens": 930624,
+              "cached_input_tokens": 854016,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 6319,
+              "reasoning_output_tokens": 2427
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 3,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 19,
+              "exactReplayActionsRepeatedAfterVerification": 1,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-filter-stale-memo__skills-baseline__1",
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "19 calls: identity/visibility add acceptance; clearing/status combinations add regression. Two optional framework/console confirmations at50/52. Exact Refund repeat66 is justified because status changed to Open at60."
+            }
+          },
+          {
+            "runId": "react-filter-stale-memo__skills-baseline__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 283176,
+            "toolCalls": 35,
+            "mcpToolCalls": 26,
+            "usage": {
+              "input_tokens": 971328,
+              "cached_input_tokens": 867456,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 5994,
+              "reasoning_output_tokens": 2101
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 4,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 11,
+              "exactReplayActionsRepeatedAfterVerification": 1,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-filter-stale-memo__skills-baseline__2",
+              "inputSchemaErrors": 3,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "11 post-verified calls:44\u201362 clearing/status combinations; exact Refund52 follows Open48 so justified.64 optional duplicate DOM/React/Vite confirmation. Standard3-attempt verification is extra confidence versus revised quick1, not schema failure."
+            }
+          }
+        ],
+        "skills-revised": [
+          {
+            "runId": "react-filter-stale-memo__skills-revised__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 207614,
+            "toolCalls": 18,
+            "mcpToolCalls": 11,
+            "usage": {
+              "input_tokens": 614409,
+              "cached_input_tokens": 554368,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 4349,
+              "reasoning_output_tokens": 1926
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 1,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-filter-stale-memo__skills-revised__1",
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "No post-verified browser calls."
+            }
+          },
+          {
+            "runId": "react-filter-stale-memo__skills-revised__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 205556,
+            "toolCalls": 20,
+            "mcpToolCalls": 12,
+            "usage": {
+              "input_tokens": 688541,
+              "cached_input_tokens": 622336,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 4617,
+              "reasoning_output_tokens": 1869
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 1,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-filter-stale-memo__skills-revised__2",
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "No post-verified browser calls. Final accurately limits verification to one replay."
+            }
+          }
+        ]
+      },
+      "react-latest-response-wins": {
+        "skills-baseline": [
+          {
+            "runId": "react-latest-response-wins__skills-baseline__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 245485,
+            "toolCalls": 22,
+            "mcpToolCalls": 13,
+            "usage": {
+              "input_tokens": 579100,
+              "cached_input_tokens": 512640,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 5928,
+              "reasoning_output_tokens": 2883
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 3,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 1,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-latest-response-wins__skills-baseline__1",
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "One optional redundant final-state/runtime capture38; not a repeated repair flow. Record26 to29 added ordering coverage."
+            }
+          },
+          {
+            "runId": "react-latest-response-wins__skills-baseline__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 274029,
+            "toolCalls": 22,
+            "mcpToolCalls": 15,
+            "usage": {
+              "input_tokens": 586864,
+              "cached_input_tokens": 533632,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 6253,
+              "reasoning_output_tokens": 2752
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 3,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 1,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-latest-response-wins__skills-baseline__2",
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "recoveredResultLimitExceeded": 1,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "42 sole post-verified DOM/console/React capture adds pending-count explanation as optional cause confirmation; no repeated replay.24 broad capture RESULT_LIMIT_EXCEEDED recovered narrowed26; separate from schema errors."
+            }
+          }
+        ],
+        "skills-revised": [
+          {
+            "runId": "react-latest-response-wins__skills-revised__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 221438,
+            "toolCalls": 23,
+            "mcpToolCalls": 16,
+            "usage": {
+              "input_tokens": 577383,
+              "cached_input_tokens": 516224,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 5395,
+              "reasoning_output_tokens": 2318
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 1,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-latest-response-wins__skills-revised__1",
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "No post-verified browser calls."
+            }
+          },
+          {
+            "runId": "react-latest-response-wins__skills-revised__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 226746,
+            "toolCalls": 23,
+            "mcpToolCalls": 15,
+            "usage": {
+              "input_tokens": 721255,
+              "cached_input_tokens": 648320,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 5257,
+              "reasoning_output_tokens": 2394
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 1,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 0,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "react-latest-response-wins__skills-revised__2",
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "No post-verified browser calls."
+            }
+          }
+        ]
+      },
+      "responsive-drawer-viewport": {
+        "skills-baseline": [
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__1",
+            "repetition": 1,
+            "status": "behavior-passed",
+            "wallTimeMs": 381659,
+            "toolCalls": 41,
+            "mcpToolCalls": 34,
+            "usage": {
+              "input_tokens": 1506178,
+              "cached_input_tokens": 1404160,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 8349,
+              "reasoning_output_tokens": 2859
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 2,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 13,
+              "exactReplayActionsRepeatedAfterVerification": 2,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-baseline__1",
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "13 calls add direct geometry/CTA/hit-tests beyond recorded layout marker and useful top-scroll regression. Two exact View clicks are justified. Screenshot81 repeats desktop after reload as optional extra. Three side-effect-guard evaluation errors24/28/30 are runtime errors, not input-schema errors.",
+              "recoveredCDPGuardRejections": 3
+            }
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-baseline__2",
+            "repetition": 2,
+            "status": "timed-out",
+            "wallTimeMs": 422768,
+            "toolCalls": 50,
+            "mcpToolCalls": 40,
+            "usage": null,
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 2,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 17,
+              "exactReplayActionsRepeatedAfterVerification": 2,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-baseline__2",
+              "inputSchemaErrors": 1,
+              "resultSchemaErrors": 0,
+              "recoveredCDPGuardRejections": 4,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "17 postcalls; exact View61/65 establish required direct CTA coverage. Mobile top-scroll88/92 useful regression; desktop scroll86 and remeasure90 optional duplicate since scrollY already0 at72 and unchanged90. CDP guard4(22/67/69/76)."
+            }
+          }
+        ],
+        "skills-revised": [
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__1",
+            "repetition": 1,
+            "status": "timed-out",
+            "wallTimeMs": 422811,
+            "toolCalls": 46,
+            "mcpToolCalls": 38,
+            "usage": null,
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 1,
+              "verifiedResults": 1,
+              "postVerifiedBrowserCalls": 9,
+              "exactReplayActionsRepeatedAfterVerification": 2,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-revised__1",
+              "inputSchemaErrors": 0,
+              "resultSchemaErrors": 0,
+              "redundantRepairFlowRepetitions": 0,
+              "optionalRepeatedVisualFlows": 1,
+              "optionalRepeatedVisualCalls": 3,
+              "postVerifiedInterpretation": "9 calls: mobile reload/click establishes CTA coverage; direct bounds and screenshots add acceptance beyond recorded marker/count. Desktop reload83/click87/screenshot89 repeats passing visible state with no unresolved question: one optional redundant visual loop. Mobile exact candidate justified. Four side-effect-guard errors32/34/37/39 are runtime evaluation errors.",
+              "recoveredCDPGuardRejections": 4
+            }
+          },
+          {
+            "runId": "responsive-drawer-viewport__skills-revised__2",
+            "repetition": 2,
+            "status": "behavior-passed",
+            "wallTimeMs": 377491,
+            "toolCalls": 50,
+            "mcpToolCalls": 43,
+            "usage": {
+              "input_tokens": 1449858,
+              "cached_input_tokens": 1320960,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 8309,
+              "reasoning_output_tokens": 3083
+            },
+            "acceptancePassed": true,
+            "rawQuality": {
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "reproRecordAttempts": 4,
+              "verifiedResults": 2,
+              "postVerifiedBrowserCalls": 1,
+              "exactReplayActionsRepeatedAfterVerification": 0,
+              "repeatClassification": "Exact repeats are candidates; independent review determines whether required regression coverage made them necessary."
+            },
+            "independentQualityReview": {
+              "reviewer": "independent-read-only-agent-eval_research",
+              "runId": "responsive-drawer-viewport__skills-revised__2",
+              "inputSchemaErrors": 2,
+              "resultSchemaErrors": 0,
+              "recoveredCDPGuardRejections": 3,
+              "redundantRepairFlowRepetitions": 0,
+              "postVerifiedInterpretation": "One post-verified call95 is required distinct mobile verification after desktop93, not redundant. Four record attempts:2inputerrors(58geometrykind/60missingvisible)+2validviewportscenarios. Three recovered CDP side-effect guard errors20/37/39."
+            }
+          }
+        ]
+      }
+    },
+    "interpretation": [
+      "Compare matching task and repetition; cross-task latency medians are not quality evidence.",
+      "Raw post-verified and exact-action counts are candidates. Independent reviews distinguish extra acceptance/regression evidence from optional redundancy.",
+      "Deadlines remain declared-grid execution failures even with correct source and passing after oracle.",
+      "Known three-task fixture set and skill-example overlap do not establish held-out/general model quality."
+    ],
+    "oracleImplementationLimits": [
+      "Filter oracle records count text but boolean checks row count/title; acceptance-review.json checks recorded text separately.",
+      "Drawer oracle measures layer/drawer/CTA geometry; backdrop coverage is inferred from unchanged CSS, unless individual model traces directly observed it."
+    ]
+  },
+  "qualitySha256": "77d2babbe99ce03a93e0721440b37a40d39783a920697adb969bfe9258c3fd2e",
+  "acceptanceReview": {
+    "schemaVersion": 1,
+    "oracleLimitation": "Filter boolean checks rows/title but count text is recorded separately. Drawer boolean measures containing layer, drawer, and action buttons; backdrop coverage is inferred from its unchanged CSS rather than separately measured.",
+    "reviews": [
+      {
+        "schemaVersion": 1,
+        "runId": "react-filter-stale-memo__skills-baseline__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "countText": [
+          "Showing 1 incidents"
+        ],
+        "countTextIndicatesOneIncident": true,
+        "evidenceType": "independent existing browser observation"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-filter-stale-memo__skills-baseline__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "countText": [
+          "Showing 1 incidents"
+        ],
+        "countTextIndicatesOneIncident": true,
+        "evidenceType": "independent existing browser observation"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-filter-stale-memo__skills-revised__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "countText": [
+          "Showing 1 incidents"
+        ],
+        "countTextIndicatesOneIncident": true,
+        "evidenceType": "independent existing browser observation"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-filter-stale-memo__skills-revised__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "countText": [
+          "Showing 1 incidents"
+        ],
+        "countTextIndicatesOneIncident": true,
+        "evidenceType": "independent existing browser observation"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-latest-response-wins__skills-baseline__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "evidenceType": "independent existing browser observations",
+        "settledResult": [
+          {
+            "result": "Quote v2 applied: $110.76",
+            "settled": "All quote requests settled"
+          }
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-latest-response-wins__skills-baseline__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "evidenceType": "independent existing browser observations",
+        "settledResult": [
+          {
+            "result": "Quote v2 applied: $110.76",
+            "settled": "All quote requests settled"
+          }
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-latest-response-wins__skills-revised__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "evidenceType": "independent existing browser observations",
+        "settledResult": [
+          {
+            "result": "Quote v2 applied: $110.76",
+            "settled": "All quote requests settled"
+          }
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "react-latest-response-wins__skills-revised__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "evidenceType": "independent existing browser observations",
+        "settledResult": [
+          {
+            "result": "Quote v2 applied: $110.76",
+            "settled": "All quote requests settled"
+          }
+        ]
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-baseline__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-baseline__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-revised__1",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      },
+      {
+        "schemaVersion": 1,
+        "runId": "responsive-drawer-viewport__skills-revised__2",
+        "method": "Read-only review of already recorded acceptance evidence; frozen oracle and scores unchanged.",
+        "evidenceRefs": [
+          "result.json",
+          "source.patch"
+        ],
+        "backdropRuleUnchanged": true,
+        "backdropRule": ".drawer-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }",
+        "layerCoverageIndependentlyObserved": true,
+        "backdropCoverageSupportedByCSSInference": true,
+        "evidenceType": "inference from unchanged absolute inset:0, width/height100% backdrop CSS and independently observed containing layer; backdrop rectangle not independently measured"
+      }
+    ]
+  },
+  "acceptanceReviewSha256": "12e9a424ee473ee235c462c707d3330b84009dfcba641a8d0b812cc47b4030f8",
+  "toolExposureAudit": {
+    "artifact": "/tmp/web-debug-astra-browser-repair-aSXDy1/final-astra-max/exposure-audit.json",
+    "sha256": "8bd830e530dfac598e16f6e133e27ae4cc597a68553eed5c2d23753acc6bdc38",
+    "review": {
+      "schemaVersion": 1,
+      "scope": "Read-only exported completed-call and stderr audit; no new model or browser calls.",
+      "limitations": [
+        "The13tool inventory is the exact frozen Web Debug catalog only; whole-CLI plugin isolation is not established by --ignore-user-config.",
+        "Cloudflare auth-required stderr indicates extra startup/background exposure; it does not establish a model-invoked Cloudflare call or source transfer.",
+        "Tool metrics count completed exported items. Failed dispatches absent from the event export may appear only in stderr; complete internal tool exposure is not available."
+      ],
+      "perArm": {
+        "skills-baseline": {
+          "observedRuns": 6,
+          "observedMCPServers": {
+            "web-debug": 157,
+            "web_debug": 3,
+            "codex": 2
+          },
+          "runsWithCloudflareStartupAuthLog": 6,
+          "runsWithFailedCollabDispatchLog": 0
+        },
+        "skills-revised": {
+          "observedRuns": 6,
+          "observedMCPServers": {
+            "web-debug": 131,
+            "web_debug": 2,
+            "codex": 2
+          },
+          "runsWithCloudflareStartupAuthLog": 6,
+          "runsWithFailedCollabDispatchLog": 0
+        }
+      },
+      "runs": [
+        {
+          "runId": "react-filter-stale-memo__skills-baseline__1",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 8,
+            "mcp_tool_call": 34,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 34
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-filter-stale-memo__skills-baseline__2",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 8,
+            "mcp_tool_call": 26,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 26
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-filter-stale-memo__skills-revised__1",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 6,
+            "mcp_tool_call": 11,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 11
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-filter-stale-memo__skills-revised__2",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 7,
+            "mcp_tool_call": 12,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 12
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-latest-response-wins__skills-baseline__1",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 8,
+            "mcp_tool_call": 13,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 13
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-latest-response-wins__skills-baseline__2",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 6,
+            "command_execution": 6,
+            "mcp_tool_call": 15,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 15
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-latest-response-wins__skills-revised__1",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 6,
+            "mcp_tool_call": 16,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 16
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "react-latest-response-wins__skills-revised__2",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 7,
+            "mcp_tool_call": 15,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 15
+          },
+          "otherServerAttempts": [],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-baseline__1",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 6,
+            "command_execution": 6,
+            "mcp_tool_call": 34,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 32,
+            "web_debug": 1,
+            "codex": 1
+          },
+          "otherServerAttempts": [
+            {
+              "line": 41,
+              "server": "web_debug",
+              "tool": "list_mcp_resources",
+              "error": {
+                "message": "resources/list failed: unknown MCP server 'web_debug'"
+              },
+              "resultIsError": null
+            },
+            {
+              "line": 43,
+              "server": "codex",
+              "tool": "list_mcp_resources",
+              "error": null,
+              "resultIsError": null
+            }
+          ],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-baseline__2",
+          "arm": "skills-baseline",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 9,
+            "mcp_tool_call": 40,
+            "file_change": 1
+          },
+          "observedMCPServers": {
+            "web-debug": 37,
+            "web_debug": 2,
+            "codex": 1
+          },
+          "otherServerAttempts": [
+            {
+              "line": 25,
+              "server": "web_debug",
+              "tool": "list_mcp_resource_templates",
+              "error": {
+                "message": "resources/templates/list failed: unknown MCP server 'web_debug'"
+              },
+              "resultIsError": null
+            },
+            {
+              "line": 26,
+              "server": "web_debug",
+              "tool": "list_mcp_resources",
+              "error": {
+                "message": "resources/list failed: unknown MCP server 'web_debug'"
+              },
+              "resultIsError": null
+            },
+            {
+              "line": 32,
+              "server": "codex",
+              "tool": "list_mcp_resources",
+              "error": null,
+              "resultIsError": null
+            }
+          ],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-revised__1",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 5,
+            "command_execution": 6,
+            "mcp_tool_call": 38,
+            "file_change": 2
+          },
+          "observedMCPServers": {
+            "web-debug": 35,
+            "web_debug": 1,
+            "codex": 2
+          },
+          "otherServerAttempts": [
+            {
+              "line": 49,
+              "server": "web_debug",
+              "tool": "list_mcp_resources",
+              "error": {
+                "message": "resources/list failed: unknown MCP server 'web_debug'"
+              },
+              "resultIsError": null
+            },
+            {
+              "line": 52,
+              "server": "codex",
+              "tool": "list_mcp_resource_templates",
+              "error": null,
+              "resultIsError": null
+            },
+            {
+              "line": 53,
+              "server": "codex",
+              "tool": "list_mcp_resources",
+              "error": null,
+              "resultIsError": null
+            }
+          ],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        },
+        {
+          "runId": "responsive-drawer-viewport__skills-revised__2",
+          "arm": "skills-revised",
+          "observedCompletedItemTypes": {
+            "agent_message": 6,
+            "command_execution": 5,
+            "mcp_tool_call": 43,
+            "file_change": 2
+          },
+          "observedMCPServers": {
+            "web-debug": 42,
+            "web_debug": 1
+          },
+          "otherServerAttempts": [
+            {
+              "line": 49,
+              "server": "web_debug",
+              "tool": "list_mcp_resources",
+              "error": {
+                "message": "resources/list failed: unknown MCP server 'web_debug'"
+              },
+              "resultIsError": null
+            }
+          ],
+          "cloudflareAuthRequiredStderrLines": [
+            20
+          ],
+          "failedCollabDispatchStderrLines": [],
+          "evidenceRefs": [
+            "events.jsonl",
+            "stderr.txt"
+          ]
+        }
+      ]
+    }
+  }
+}

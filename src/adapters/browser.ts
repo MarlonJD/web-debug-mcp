@@ -13,6 +13,7 @@ import type {
   LocatorProbeResult,
   LocatorProperty,
   PlaywrightStorageState,
+  CaptureSurface,
   ViewportSize,
 } from "../domain/types.js";
 
@@ -38,6 +39,8 @@ export interface BrowserStartOptions {
 export interface SnapshotOptions {
   artifactDir: string;
   captureScreenshot: boolean;
+  /** Optional enrichment requested by a manual capture; omission means full evidence. */
+  surfaces?: readonly CaptureSurface[];
   /** Checks-only snapshots never request screenshots or optional framework enrichment. */
   checksOnly?: boolean;
   /** Manual replay frames may retain observer data for the following full capture. */

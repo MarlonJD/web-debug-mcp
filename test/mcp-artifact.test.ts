@@ -1,3 +1,4 @@
+import { CAPTURE_SURFACES } from "../src/domain/types.js";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,7 +24,8 @@ describe("MCP screenshot resource registration", () => {
     const manager = {
       capture: async () => {
         const capture: Record<PropertyKey, unknown> = {
-          schemaVersion: 5,
+          schemaVersion: 6,
+          collection: Object.fromEntries(CAPTURE_SURFACES.map((surface) => [surface, "fresh"])),
           profile: "full",
           capturedAt: "2026-08-30T00:00:00.000Z",
           cursor: "00000000-0000-4000-8000-000000000003",

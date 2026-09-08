@@ -125,7 +125,7 @@ describe("direct WebMCP contract", () => {
     expect(result).toMatchObject({ schemaVersion: 1, kind: "webmcp", toolResult: "[REDACTED_INPUT]" });
     expect(adapter.actions).toBe(1);
     const capture = await manager.capture(session.id, { profile: "full" });
-    expect(capture.schemaVersion).toBe(5);
+    expect(capture.schemaVersion).toBe(6);
     expect(capture.summary.replay).toMatchObject({ restorable: false, restoreBlockedReason: "webmcp-direct-action" });
     expect(capture.details?.screenshot).toEqual({ status: "suppressed" });
     expect(capture.details?.replay?.frames.every((frame) => frame.action === null)).toBe(true);

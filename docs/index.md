@@ -10,7 +10,8 @@
 | Security | [`SECURITY.md`](SECURITY.md) | Sensitive data, trust boundary, or permission changes |
 | Reliability | [`RELIABILITY.md`](RELIABILITY.md) | Lifecycle, timeout, retry, or cleanup changes |
 | Comparison demo | [`demos/comparison.md`](demos/comparison.md) | Before/after debugging examples and measured local evidence coverage |
-| Agent task evaluation | [`demos/agent-evaluation.md`](demos/agent-evaluation.md) | Frozen repair prompts, deterministic graders, or run metadata changes |
+| Agent task evaluation | [`demos/agent-evaluation.md`](demos/agent-evaluation.md) | Frozen repair/routing/authority prompts, isolated comparison protocol, independent oracles, or run metadata changes |
+| Astra and Luna skill evaluation | [`demos/astra-skill-evaluation.md`](demos/astra-skill-evaluation.md) | Runtime measurements, actual model comparisons, and their evidence limits |
 | Release notes | [`releases/0.6.0.md`](releases/0.6.0.md) | Public release behavior, migration, qualification, or verification scope changes |
 | Compatibility | [`COMPATIBILITY.md`](COMPATIBILITY.md) and [`compatibility-evidence.json`](compatibility-evidence.json) | Declared or locally verified runtime/framework versions change |
 | Examples and evidence | [`examples-evidence.md`](examples-evidence.md) | User-facing before/after stories, evidence snippets, and why to use the MCP |

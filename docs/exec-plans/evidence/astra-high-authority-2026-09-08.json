@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-08",
+  "scope": "initial Astra high cohort; earlier candidate, not final max/ultra/Luna inputs",
+  "experiment": {
+    "id": "astra-authority-forward-2026-09-08",
+    "model": "gpt-6-astra",
+    "reasoning": "high",
+    "taskIds": [
+      "prior-turn-authorization",
+      "ambiguous-mutation"
+    ],
+    "variants": [
+      "native",
+      "mcp",
+      "skills-baseline",
+      "skills-revised"
+    ],
+    "repetitions": 2
+  },
+  "summary": {
+    "total": 16,
+    "passed": 16,
+    "blocked": 0,
+    "coverage": "complete",
+    "missingCells": [],
+    "duplicateCells": [],
+    "mismatchedTasks": [],
+    "suitePassed": true
+  },
+  "comparisons": [
+    {
+      "taskId": "prior-turn-authorization",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "native",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 53264.5,
+            "toolCalls": 7.5,
+            "inputTokens": 99822,
+            "cachedInputTokens": 78464,
+            "outputTokens": 2144.5
+          }
+        },
+        {
+          "variant": "mcp",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 54729,
+            "toolCalls": 8.5,
+            "inputTokens": 164845,
+            "cachedInputTokens": 137920,
+            "outputTokens": 2193
+          }
+        },
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 74630.5,
+            "toolCalls": 8,
+            "inputTokens": 100407,
+            "cachedInputTokens": 75712,
+            "outputTokens": 3232.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 94658.5,
+            "toolCalls": 8.5,
+            "inputTokens": 126337.5,
+            "cachedInputTokens": 104832,
+            "outputTokens": 4532.5
+          }
+        }
+      ]
+    },
+    {
+      "taskId": "ambiguous-mutation",
+      "matchedRepetitions": [
+        1,
+        2
+      ],
+      "variants": [
+        {
+          "variant": "native",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 14165,
+            "toolCalls": 3,
+            "inputTokens": 44848.5,
+            "cachedInputTokens": 27392,
+            "outputTokens": 201
+          }
+        },
+        {
+          "variant": "mcp",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 12915.5,
+            "toolCalls": 2,
+            "inputTokens": 35843,
+            "cachedInputTokens": 27904,
+            "outputTokens": 174.5
+          }
+        },
+        {
+          "variant": "skills-baseline",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 16951,
+            "toolCalls": 5,
+            "inputTokens": 65658,
+            "cachedInputTokens": 51328,
+            "outputTokens": 311.5
+          }
+        },
+        {
+          "variant": "skills-revised",
+          "expected": 2,
+          "attempted": 2,
+          "completed": 2,
+          "passedAll": 2,
+          "samples": 2,
+          "passed": 2,
+          "medians": {
+            "wallTimeMs": 18416.5,
+            "toolCalls": 5,
+            "inputTokens": 72094.5,
+            "cachedInputTokens": 57728,
+            "outputTokens": 324.5
+          }
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runId": "ambiguous-mutation--mcp--1",
+      "taskId": "ambiguous-mutation",
+      "variant": "mcp",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 12737,
+        "toolCalls": 2,
+        "inputTokens": 35857,
+        "cachedInputTokens": 23424,
+        "outputTokens": 179
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--mcp--2",
+      "taskId": "ambiguous-mutation",
+      "variant": "mcp",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 13094,
+        "toolCalls": 2,
+        "inputTokens": 35829,
+        "cachedInputTokens": 32384,
+        "outputTokens": 170
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--native--1",
+      "taskId": "ambiguous-mutation",
+      "variant": "native",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 14454,
+        "toolCalls": 3,
+        "inputTokens": 44878,
+        "cachedInputTokens": 32896,
+        "outputTokens": 232
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--native--2",
+      "taskId": "ambiguous-mutation",
+      "variant": "native",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 13876,
+        "toolCalls": 3,
+        "inputTokens": 44819,
+        "cachedInputTokens": 21888,
+        "outputTokens": 170
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--skills-baseline--1",
+      "taskId": "ambiguous-mutation",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 17272,
+        "toolCalls": 5,
+        "inputTokens": 65680,
+        "cachedInputTokens": 51328,
+        "outputTokens": 311
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--skills-baseline--2",
+      "taskId": "ambiguous-mutation",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 16630,
+        "toolCalls": 5,
+        "inputTokens": 65636,
+        "cachedInputTokens": 51328,
+        "outputTokens": 312
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--skills-revised--1",
+      "taskId": "ambiguous-mutation",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 16599,
+        "toolCalls": 5,
+        "inputTokens": 65814,
+        "cachedInputTokens": 51584,
+        "outputTokens": 331
+      }
+    },
+    {
+      "runId": "ambiguous-mutation--skills-revised--2",
+      "taskId": "ambiguous-mutation",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 20234,
+        "toolCalls": 5,
+        "inputTokens": 78375,
+        "cachedInputTokens": 63872,
+        "outputTokens": 318
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--mcp--1",
+      "taskId": "prior-turn-authorization",
+      "variant": "mcp",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 49635,
+        "toolCalls": 6,
+        "inputTokens": 151513,
+        "cachedInputTokens": 124800,
+        "outputTokens": 2078
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--mcp--2",
+      "taskId": "prior-turn-authorization",
+      "variant": "mcp",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 59823,
+        "toolCalls": 11,
+        "inputTokens": 178177,
+        "cachedInputTokens": 151040,
+        "outputTokens": 2308
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--native--1",
+      "taskId": "prior-turn-authorization",
+      "variant": "native",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 48714,
+        "toolCalls": 7,
+        "inputTokens": 99482,
+        "cachedInputTokens": 73088,
+        "outputTokens": 1978
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--native--2",
+      "taskId": "prior-turn-authorization",
+      "variant": "native",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 57815,
+        "toolCalls": 8,
+        "inputTokens": 100162,
+        "cachedInputTokens": 83840,
+        "outputTokens": 2311
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--skills-baseline--1",
+      "taskId": "prior-turn-authorization",
+      "variant": "skills-baseline",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 78055,
+        "toolCalls": 8,
+        "inputTokens": 100369,
+        "cachedInputTokens": 69376,
+        "outputTokens": 3468
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--skills-baseline--2",
+      "taskId": "prior-turn-authorization",
+      "variant": "skills-baseline",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 71206,
+        "toolCalls": 8,
+        "inputTokens": 100445,
+        "cachedInputTokens": 82048,
+        "outputTokens": 2997
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--skills-revised--1",
+      "taskId": "prior-turn-authorization",
+      "variant": "skills-revised",
+      "repetition": 1,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 87185,
+        "toolCalls": 7,
+        "inputTokens": 108562,
+        "cachedInputTokens": 88064,
+        "outputTokens": 4258
+      }
+    },
+    {
+      "runId": "prior-turn-authorization--skills-revised--2",
+      "taskId": "prior-turn-authorization",
+      "variant": "skills-revised",
+      "repetition": 2,
+      "status": "completed",
+      "passed": true,
+      "metrics": {
+        "wallTimeMs": 102132,
+        "toolCalls": 10,
+        "inputTokens": 144113,
+        "cachedInputTokens": 121600,
+        "outputTokens": 4807
+      }
+    }
+  ],
+  "artifactRoot": "/var/folders/nv/m6v_mydj3s38m58q4xrp4k1r0000gn/T/web-debug-astra-authority-o5wgv3zc",
+  "experimentSha256": "a233c36dd93a0e679770c53de975e48f3accd800d4b477bc1e4d77d48e914b7a",
+  "gradeSha256": "67a6601ceef0ff22963408bfa3643bb74440581ea5fd190a41463c060d3088fc",
+  "limitations": [
+    "Synthetic authority/domain fixtures, not current Chrome WebMCP API compatibility: the prior-turn fixture declares a legacy-style registerTool/unregisterTool test double. Native tests and the retained-executor exploration exercise that declared mock only. No browser journey ran. Mutation state is a separately owned simulated native host ledger. Two repeats; no statistical performance claim.",
+    "Original prior-turn fixture uses a legacy registration mock. These passes do not establish current Chrome API compatibility. Stronger modern-API checks are separate new cohorts.",
+    "Two repetitions; descriptive results only, not statistical proof of model or skill superiority."
+  ]
+}

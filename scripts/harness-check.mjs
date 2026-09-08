@@ -198,9 +198,6 @@ const claudeManifestText = read("plugins/web-debug/.claude-plugin/plugin.json");
 const claudeManifest = claudeManifestText ? JSON.parse(claudeManifestText) : {};
 const claudeMarketplaceText = read(".claude-plugin/marketplace.json");
 const claudeMarketplace = claudeMarketplaceText ? JSON.parse(claudeMarketplaceText) : {};
-const pluginSkill = read("plugins/web-debug/skills/web-debug-workflow/SKILL.md");
-const safariMcpDiagnostics = read("plugins/web-debug/skills/web-debug-workflow/references/safari-mcp-diagnostics.md");
-const qualificationSkill = read("plugins/web-debug/skills/manual-parity-qualification/SKILL.md");
 const qualificationContract = read("plugins/web-debug/skills/manual-parity-qualification/references/artifact-contract.md");
 const qualificationValidator = read("plugins/web-debug/skills/manual-parity-qualification/scripts/validate-manual-parity.mjs");
 const pluginSkillDirectories = readdirSync(join(root, "plugins/web-debug/skills"), { withFileTypes: true })
@@ -230,17 +227,22 @@ check(claudeManifest.displayName === "Web Debug", "Claude Code plugin manifest m
 check(claudeMarketplace.name === "web-debug", "Claude Code marketplace must use the web-debug identity");
 check(claudeMarketplaceEntry?.source === "./plugins/web-debug", "Claude Code marketplace must point to the web-debug package");
 check(claudeMarketplaceEntry?.version === releasedPluginVersion && claudeMarketplaceEntry?.category === "Developer Tools", "Claude Code marketplace metadata must match the released plugin runtime");
-check(pluginSkill.includes("web_project_detect") && pluginSkill.includes("web_issue_capture") && pluginSkill.includes("web_session_close"), "Plugin skill must document the core web-debug workflow");
-check(pluginSkill.includes("Gate 0") && pluginSkill.includes("MCP_CLIENT_BINDING_UNAVAILABLE") && pluginSkill.includes("MCP_SERVER_STARTUP_UNAVAILABLE") && pluginSkill.includes("Settings → MCP servers → Restart") && pluginSkill.includes("new task/session"), "Web Debug skill must fail closed when the current MCP binding is unavailable and name supported recovery");
-for (const forbidden of ["Playwright", "Puppeteer", "raw CDP", "direct MCP SDK", "npx web-debug-mcp", "web-debug-mcp cleanup"]) check(pluginSkill.includes(forbidden), `Web Debug Gate 0 must explicitly prohibit fallback: ${forbidden}`);
-check(pluginSkill.includes("@Web Debug") && pluginSkill.includes("build-web-apps") && pluginSkill.includes("Vitest") && pluginSkill.includes("Go") && pluginSkill.includes("Do not claim Web Debug evidence"), "Plugin skill must define Web Debug/native-runner routing boundaries");
-check(pluginSkill.includes("references/safari-mcp-diagnostics.md") && safariMcpDiagnostics.includes("create_tab") && safariMcpDiagnostics.includes("navigate_to_url") && safariMcpDiagnostics.includes("browser_console_messages") && safariMcpDiagnostics.includes("list_network_requests") && safariMcpDiagnostics.includes("close_tab"), "Web Debug workflow must route the exact Safari MCP owned-handle diagnostic subset");
-check(safariMcpDiagnostics.includes("Do not call `list_tabs`, `switch_tab`, `get_network_request`") && safariMcpDiagnostics.includes("Never merge it into a Web Debug evidence bundle") && safariMcpDiagnostics.includes("qualification PASS"), "Safari MCP diagnostics must forbid ambient/full-detail tools and remain separate diagnostic-only evidence");
-check(qualificationSkill.includes("Never promote your own generated baseline") && qualificationSkill.includes("typed native test code") && qualificationSkill.includes("Web Debug diagnostics never award qualification PASS") && qualificationSkill.includes("record `inconclusive`"), "Qualification skill must preserve reviewer, native-runner, diagnostic-only, and ambiguous-mutation boundaries");
-const webmcpSkill = read("plugins/web-debug/skills/webmcp-tool-authoring/SKILL.md");
-const webmcpReference = read("plugins/web-debug/skills/webmcp-tool-authoring/references/tool-quality-and-security.md");
-check(webmcpSkill.includes("approved, reviewed product requirement") && webmcpSkill.includes("never retried") && webmcpSkill.includes("not replayable"), "WebMCP authoring skill must require authority and direct-only safety");
-check(webmcpReference.includes("independent authoritative state") && webmcpReference.includes("untrusted page content"), "WebMCP reference must preserve independent oracle and untrusted-content boundaries");
+// Skill packaging is structural; behavioral routing and authority are evaluated by
+// the isolated task catalog and its digest-bound run records, not phrase matching.
+for (const directory of pluginSkillDirectories) {
+  const skillPath = `plugins/web-debug/skills/${directory}/SKILL.md`;
+  const source = read(skillPath);
+  check(source.startsWith(`---\nname: ${directory}\n`), `Skill frontmatter must identify ${directory}`);
+  check(/^description: .+/m.test(source), `Skill must declare a trigger description: ${directory}`);
+  check(source.split("\n").length < 500, `Skill entry point must stay below 500 lines: ${directory}`);
+  for (const match of source.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
+    const target = match[1].split("#")[0];
+    if (!target || /^[a-z]+:/i.test(target)) continue;
+    check(existsSync(resolve(root, "plugins/web-debug/skills", directory, target)), `Skill reference must resolve: ${directory}/${target}`);
+  }
+}
+const evalCatalog = JSON.parse(execFileSync(process.execPath, ["scripts/agent-eval.mjs", "--catalog"], { cwd: root, encoding: "utf8" }));
+check(evalCatalog.schemaVersion === 2 && evalCatalog.tasks.length === 8 && evalCatalog.variants.length === 4, "Agent catalog must cover repair, routing, and authority across four isolated variants");
 check(qualificationContract.includes("non-executable metadata") && qualificationContract.includes("coverage") && qualificationContract.includes("execution") && qualificationContract.includes("stability") && qualificationContract.includes("structural-only"), "Qualification artifact contract must keep metadata non-executable and verdict axes explicit");
 check(qualificationValidator.includes("realpath") && qualificationValidator.includes("crosswalkDigest") && qualificationValidator.includes("ambiguous mutation certainty forces inconclusive execution") && !qualificationValidator.includes("playwright"), "Qualification validator must stay contained, drift-aware, mutation-safe, and independent of browser execution");
 

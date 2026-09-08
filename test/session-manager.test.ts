@@ -22,6 +22,8 @@ import { NextAdapter } from "../src/adapters/next.js";
 import { ViteAdapter } from "../src/adapters/vite.js";
 import { MAX_ARTIFACT_BYTES, MAX_SESSION_SCREENSHOTS } from "../src/core/artifact-store.js";
 import { chromiumRuntimeCapabilities, safariRuntimeCapabilities } from "../src/adapters/runtime-capabilities.js";
+import { issueCaptureResultSchema } from "../src/domain/wire-schemas.js";
+import { scrubBrowserSnapshot } from "../src/core/session-evidence.js";
 
 type SnapshotScript = BrowserSnapshot | Error | ((options: SnapshotOptions, adapter: ScriptedBrowserAdapter) => BrowserSnapshot | Promise<BrowserSnapshot>);
 
@@ -276,6 +278,53 @@ async function record(manager: SessionManager, sessionId: string, overrides: Par
 }
 
 describe("session manager adaptive contract", () => {
+  it.each([
+    { secret: "stale", state: "pass", freshness: "stale", provenance: "cached", collection: "stale" },
+    { secret: "unavailable", state: "unavailable", freshness: "fresh", provenance: "browser", collection: "unavailable" },
+    { secret: "unknown", state: "pass", freshness: "unknown", provenance: "unknown", collection: "unavailable" },
+    { secret: "browser", state: "pass", freshness: "fresh", provenance: "browser", collection: "fresh" },
+    { secret: "pass", state: "pass", freshness: "fresh", provenance: "browser", collection: "fresh" },
+  ] as const)("preserves observation metadata when private input is $secret", async ({ secret, state, freshness, provenance, collection }) => {
+    const observation = { state, freshness, provenance, observed: `Echo ${secret}`, warning: `Page ${secret}` };
+    const browser = snapshotFor(`Echo ${secret}`, { observations: { url: { ...observation }, dom: { ...observation }, console: { ...observation }, network: { ...observation } } });
+    browser.debugger.paused = freshness === "stale";
+    const action = { kind: "fill" as const, locator: { kind: "css" as const, value: "#input" }, value: secret };
+    const scrubbed = scrubBrowserSnapshot(browser, [action]);
+    for (const value of Object.values(scrubbed.observations!)) {
+      expect(value).toEqual({ state, freshness, provenance, observed: "Echo [REDACTED_INPUT]", warning: "Page [REDACTED_INPUT]" });
+    }
+    const { manager } = managerFor(Array.from({ length: 4 }, () => structuredClone(browser)), { mode: "attach" });
+    const session = await start(manager);
+    try {
+      await manager.act(session.id, action);
+      const capture = await manager.capture(session.id, { profile: "full" });
+      expect(capture.collection).toMatchObject({ dom: collection, console: collection, network: collection });
+      expect(capture.details?.dom?.bodyText).toBe("Echo [REDACTED_INPUT]");
+      expect(capture.details?.debugger?.paused).toBe(freshness === "stale");
+      expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
+    } finally { await manager.close(session.id, "delete"); }
+  });
+
+  it("preserves owned session identity after short numeric fills while redacting page echoes", async () => {
+    let secret = "3";
+    const { manager } = managerFor(Array.from({ length: 4 }, () => () => ({
+      ...snapshotFor(`Quantity ${secret}`),
+      webmcp: { provenance: "webmcp-page-api" as const, observedAt: "2026-09-08T00:00:00.000Z", total: 0, truncated: false, tools: [] },
+    })), { mode: "attach" });
+    const session = await start(manager);
+    secret = session.id.match(/\d/)![0];
+    try {
+      await manager.act(session.id, { kind: "fill", locator: { kind: "css", value: "#quantity" }, value: secret });
+      const capture = await manager.capture(session.id, { profile: "full" });
+      expect(capture.session.id).toBe(session.id);
+      expect(capture.capturedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(capture.details?.dom?.bodyText).toBe("Quantity [REDACTED_INPUT]");
+      expect(capture.details?.screenshot?.status).toBe("suppressed");
+      const parsed = issueCaptureResultSchema.safeParse(capture);
+      expect(parsed.error?.issues).toBeUndefined();
+    } finally { await manager.close(session.id, "delete"); }
+  });
+
   it("defaults manual capture to a compact non-pixel summary and projects only requested surfaces", async () => {
     const browser = snapshotFor("A compact body", {
       console: [{ level: "error", text: "boom" }],
@@ -297,6 +346,54 @@ describe("session manager adaptive contract", () => {
     expect(Object.keys(included.details ?? {})).toEqual(["dom", "console"]);
     expect(included.details).not.toHaveProperty("network");
     await manager.close(session.id, "delete");
+  });
+
+  it("collects only requested enrichment and does not inherit cursor knowledge through summary", async () => {
+    const vite = vi.spyOn(ViteAdapter.prototype, "snapshot").mockResolvedValue(null as never);
+    const { manager, adapters } = managerFor(Array.from({ length: 6 }, () => snapshotFor("Same")), { mode: "attach" });
+    const session = await start(manager, { projectRoot: "fixtures/react-vite" });
+    try {
+      const summary = await manager.capture(session.id);
+      expect(summary.collection).toMatchObject({ react: "not-collected", vite: "not-collected", accessibility: "not-collected" });
+      expect(summary.summary.runtimes.react).toBe("not-collected");
+      expect(summary.summary.webmcp.callableTools).toBeNull();
+      expect(adapters[0]?.snapshotOptions.at(-1)).toMatchObject({ surfaces: [], accessibility: false });
+      expect(vite).not.toHaveBeenCalled();
+      const first = await manager.capture(session.id, { profile: "include", surfaces: ["vite"] });
+      expect(vite).toHaveBeenCalledTimes(1);
+      expect(first.collection.vite).toBe("unavailable");
+      const secondSummary = await manager.capture(session.id);
+      const delta = await manager.capture(session.id, { profile: "delta", cursor: secondSummary.cursor, surfaces: ["vite"] });
+      expect(delta.changedSurfaces).toEqual(["vite"]);
+      expect(vite).toHaveBeenCalledTimes(2);
+      await manager.capture(session.id, { profile: "include", surfaces: ["react"] });
+      expect(vite).toHaveBeenCalledTimes(2);
+      expect(adapters[0]?.snapshotOptions.at(-1)?.surfaces).toEqual(["react"]);
+    } finally { await manager.close(session.id, "delete"); vite.mockRestore(); }
+  });
+
+  it("does not run Next enrichment for an unrequested surface", async () => {
+    const next = vi.spyOn(NextAdapter.prototype, "snapshot").mockResolvedValue(null as never);
+    const { manager } = managerFor([], { mode: "attach" });
+    const session = await start(manager, { projectRoot: "fixtures/next" });
+    try {
+      await manager.capture(session.id);
+      await manager.capture(session.id, { profile: "include", surfaces: ["network"] });
+      expect(next).not.toHaveBeenCalled();
+      await manager.capture(session.id, { profile: "include", surfaces: ["next"] });
+      expect(next).toHaveBeenCalledTimes(1);
+    } finally { await manager.close(session.id, "delete"); next.mockRestore(); }
+  });
+
+  it("does not mark unsupported or unknown evidence fresh", async () => {
+    const raw = snapshotFor("Cached");
+    raw.observations = undefined;
+    const { manager } = managerFor([raw], { browser: "safari", mode: "webdriver" });
+    const session = await start(manager, { browser: "safari" });
+    try {
+      const capture = await manager.capture(session.id);
+      expect(capture.collection).toMatchObject({ dom: "unavailable", console: "unavailable", network: "unavailable", debugger: "unavailable", accessibility: "unavailable" });
+    } finally { await manager.close(session.id, "delete"); }
   });
 
   it("deterministically fits maximal bounded failures into the default summary budget", async () => {
@@ -326,11 +423,11 @@ describe("session manager adaptive contract", () => {
     const session = await start(manager);
     const baseline = await manager.capture(session.id);
     const unchanged = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor });
-    expect(unchanged.changedSurfaces).toEqual([]);
+    expect(unchanged.changedSurfaces).toEqual(["accessibility", "webmcp"]);
     expect(unchanged.unchangedSurfaces).toContain("dom");
     expect(unchanged.unchangedSurfaces).not.toContain("replay");
     expect(unchanged.unchangedSurfaces).not.toContain("screenshot");
-    expect(unchanged.details).toEqual({});
+    expect(unchanged.details).toEqual({ accessibility: null, webmcp: null });
 
     const changed = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom", "console"] });
     expect(changed.changedSurfaces).toEqual(["dom"]);

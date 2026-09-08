@@ -38,6 +38,7 @@ import type {
   PlaywrightStorageState,
 } from "../domain/types.js";
 import {
+  CAPTURE_SURFACES,
   MAX_AX_NODES,
   MAX_LOCATOR_SUGGESTIONS,
   MAX_LOCATOR_CHARS,
@@ -461,9 +462,12 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.assertSelectedTopLevelState();
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
-    let react = options.checksOnly ? null : this.lastKnownReact;
-    let angular = options.checksOnly ? null : this.lastKnownAngular;
-    let vue = options.checksOnly ? null : this.lastKnownVue;
+    let domReadFailed = false;
+    const wants = (surface: typeof CAPTURE_SURFACES[number]) => !options.checksOnly && (options.surfaces ?? CAPTURE_SURFACES).includes(surface);
+    // Cached framework data is returned only while execution is explicitly paused.
+    let react = wants("react") && this.pausedEvent ? this.lastKnownReact : null;
+    let angular = wants("angular") && this.pausedEvent ? this.lastKnownAngular : null;
+    let vue = wants("vue") && this.pausedEvent ? this.lastKnownVue : null;
 
     if (this.pausedEvent) {
       warnings.push("JavaScript is paused; DOM text is the last known unpaused snapshot.");
@@ -475,14 +479,15 @@ export class ChromiumAdapter implements BrowserAdapter {
         dom = await this.readDom(page);
         this.lastKnownDom = dom;
       } catch (error) {
+        domReadFailed = true;
         warnings.push(`DOM snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
       if (!options.checksOnly) {
         const optionalBudget = optionalBudgetMs(context, 1_000);
         const selected = [
-          ...(this.frameworks.has("react") ? [{ name: "React", capture: () => this.reactAdapter.snapshot(page) }] : []),
-          ...(this.frameworks.has("angular") ? [{ name: "Angular", capture: () => this.angularAdapter.snapshot(page) }] : []),
-          ...(this.frameworks.has("vue") ? [{ name: "Vue", capture: () => this.vueAdapter.snapshot(page) }] : []),
+          ...(wants("react") && this.frameworks.has("react") ? [{ name: "React", capture: () => this.reactAdapter.snapshot(page) }] : []),
+          ...(wants("angular") && this.frameworks.has("angular") ? [{ name: "Angular", capture: () => this.angularAdapter.snapshot(page) }] : []),
+          ...(wants("vue") && this.frameworks.has("vue") ? [{ name: "Vue", capture: () => this.vueAdapter.snapshot(page) }] : []),
         ];
         if (optionalBudget === 0 && selected.length > 0) {
           warnings.push("Framework snapshots skipped because the shared deadline left no optional-enrichment budget.");
@@ -565,11 +570,11 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
 
-    const accessibility = !this.pausedEvent && !options.checksOnly && options.accessibility === true
+    const accessibility = !this.pausedEvent && wants("accessibility") && options.accessibility === true
       ? await this.collectAccessibility(context, warnings)
       : null;
     let webmcp = null;
-    if (!options.checksOnly && this.webmcp && this.webmcpAvailable === true && !this.pausedEvent) {
+    if (wants("webmcp") && this.webmcp && this.webmcpAvailable === true && !this.pausedEvent) {
       const optionalBudget = optionalBudgetMs(context, 1_000);
       if (optionalBudget > 0) {
         const inspected = await withTimeout(trackPending(this.webmcp.inspect(context), context), optionalBudget);
@@ -603,8 +608,9 @@ export class ChromiumAdapter implements BrowserAdapter {
       warnings,
       observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
-        dom: { state: "pass", freshness: this.pausedEvent ? "stale" : "fresh", provenance: this.pausedEvent ? "cached" : "browser" },
+        dom: { state: domReadFailed ? "unavailable" : "pass", freshness: this.pausedEvent || domReadFailed ? "stale" : "fresh", provenance: this.pausedEvent || domReadFailed ? "cached" : "browser" },
         console: { state: "pass", freshness: "fresh", provenance: "browser" },
+        network: options.checksOnly ? { state: "unavailable", freshness: "unknown", provenance: "unknown" } : { state: "pass", freshness: "fresh", provenance: "browser" },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
