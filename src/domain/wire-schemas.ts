@@ -275,6 +275,31 @@ const webmcpDetailSchema = z.object({
   tools: z.array(webmcpToolSchema).max(16),
 }).strict();
 
+const interactiveElementBoundsSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+  width: z.number().finite().nonnegative(),
+  height: z.number().finite().nonnegative(),
+}).strict();
+const interactiveElementSchema = z.object({
+  tag: z.string().max(40),
+  role: z.string().max(100).nullable(),
+  name: z.string().max(300),
+  text: z.string().max(300),
+  locator: locatorSchema,
+  matchCount: z.number().int().nonnegative(),
+  uniqueAtCapture: z.boolean(),
+  visible: z.boolean(),
+  enabled: z.boolean(),
+  checked: z.boolean().nullable(),
+  bounds: interactiveElementBoundsSchema.nullable(),
+}).strict();
+const interactiveElementsSchema = z.object({
+  elements: z.array(interactiveElementSchema).max(64),
+  truncated: z.boolean(),
+  warnings: z.array(warningSchema).max(20),
+}).strict().meta({ id: "InteractiveElementsOutput" });
+
 const captureSurfaceSchema = z.enum(CAPTURE_SURFACES);
 const captureDetailsSchema = z.object({
   dom: domSchema.optional(),
@@ -287,6 +312,7 @@ const captureDetailsSchema = z.object({
   next: sharedJsonSchema.nullable().optional(),
   vite: sharedJsonSchema.nullable().optional(),
   accessibility: sharedJsonSchema.nullable().optional(),
+  interactiveElements: interactiveElementsSchema.nullable().optional(),
   replay: replayTimelineSchema.optional(),
   screenshot: z.object({ status: z.enum(["captured", "suppressed", "unavailable"]) }).strict().optional(),
   webmcp: webmcpDetailSchema.nullable().optional(),

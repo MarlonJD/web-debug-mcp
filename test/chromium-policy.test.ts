@@ -193,7 +193,7 @@ describe("Chromium remote target policy", () => {
       expect(full.angular).toBeNull();
       expect(full.vue).toBeNull();
       expect(full.network).toHaveLength(1);
-      expect(page.evaluateCalls).toBe(2);
+      expect(page.evaluateCalls).toBe(3);
     } finally {
       await adapter.close();
       connect.mockRestore();

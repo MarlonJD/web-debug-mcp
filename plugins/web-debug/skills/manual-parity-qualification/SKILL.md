@@ -24,6 +24,7 @@ Build a reviewable qualification system around the target repository's native te
 ## Design qualification coverage
 
 - Separate a short ordered golden journey from atomic branches. The golden journey is witness/smoke evidence; atomic authorization, transition, privacy, and no-drift branches are the principal correctness evidence.
+- When a browser flow is unfamiliar, use Web Debug's selected `interactiveElements` surface as a bounded discovery aid: inspect visible roles/names, live locator uniqueness, enabled/checked state, and geometry, then write the final selectors and assertions in typed native test code. Discovery output is not an approved requirement, an assertion oracle, or executable test metadata.
 - Give every source, requirement, manual case, actor, native test, and campaign a stable unique ID.
 - Give every requirement source provenance, one canonical owning manual case, required evidence facets, review state, and mutation policy.
 - Keep coverage, execution, and stability independent:
@@ -48,6 +49,8 @@ Before creating or validating qualification artifacts, read [references/artifact
 3. After a mutable UI action, use an authenticated API/domain read-back. For high-risk transitions, add independent history, audit, outbox, privacy, or read-only domain evidence when available.
 4. Never blindly retry an ambiguous mutable action. Check its idempotency key, correlation/receipt, expected revision, or authoritative final state. Confirmed mutation evidence must name the same execution namespace and a digest-bound receipt/object correlation. Without evidence tying the observed state to the attempted action, record `inconclusive` and start a fresh execution namespace for any later rerun.
 5. Keep screenshots, traces, logs, and Web Debug captures as artifact references. They support diagnosis and review but are not qualifying evidence facets by themselves.
+
+For the Marionette-style explore-to-test handoff, keep the boundary explicit: `interactiveElements` helps an agent find and exercise the current UI, `web_repro_record` can preserve a session-bound diagnostic reproduction, and only reviewed repository-native tests become durable CI coverage. A returned `uniqueAtCapture` flag describes one capture moment; it does not make a selector stable across releases.
 
 ## Validate and run
 

@@ -140,7 +140,7 @@ function captureResult() {
     },
     redaction: { applied: true as const, policy: "default-sensitive-fields" as const },
     warnings: [],
-    truncation: { applied: false, omittedSurfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "replay", "screenshot", "webmcp"] },
+    truncation: { applied: false, omittedSurfaces: ["dom", "console", "network", "debugger", "react", "angular", "vue", "next", "vite", "accessibility", "interactiveElements", "replay", "screenshot", "webmcp"] },
   };
 }
 

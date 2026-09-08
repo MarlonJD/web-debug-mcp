@@ -36,6 +36,11 @@ try {
     throw new Error("Safari WebDriver evidence capture returned no evidence.");
   }
   const evidence = verificationCapture.details;
+  const interactive = evidence.interactiveElements?.elements ?? [];
+  const submit = interactive.find((element) => element.name === "Submit payment");
+  const amount = interactive.find((element) => element.name === "Amount");
+  const disabled = interactive.find((element) => element.name === "Disabled action");
+  const remember = interactive.find((element) => element.name === "Remember this device");
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
     networkFreshness: verificationCapture.collection.network === "fresh" && verificationCapture.summary.observations?.network?.freshness === "fresh",
@@ -49,6 +54,10 @@ try {
     networkSourceDisclosed: !usesPerformanceNetwork || verificationCapture.warnings.some((warning) => warning.includes("Performance Resource Timing")),
     bidiConsoleEvidence: evidence.console.some((entry) => entry.text.includes("Safari BiDi smoke event")),
     debuggerUnavailableIsExplicit: evidence.debugger.paused === false && verificationCapture.warnings.some((warning) => warning.includes("JavaScript debugger")),
+    interactiveMap: Boolean(submit?.uniqueAtCapture && submit.locator.kind === "css" && submit.locator.value === "#submit"),
+    interactiveGeometry: Boolean((submit?.bounds?.width ?? 0) > 0 && (submit?.bounds?.height ?? 0) > 0),
+    interactiveInputValueNotExposed: !JSON.stringify(amount ?? {}).includes("249.90") && amount?.text === "",
+    interactiveState: disabled?.enabled === false && remember?.checked === true && !interactive.some((element) => element.name === "Hidden action") && !interactive.some((element) => element.role === "status"),
   };
   const passed = Object.values(assertions).every(Boolean);
   const status = passed ? "verified" : assertions.bidiConsoleEvidence ? "failed" : "blocked";

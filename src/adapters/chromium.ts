@@ -35,6 +35,7 @@ import type {
   AccessibilityDiagnostics,
   AccessibilityNode,
   LocatorSuggestion,
+  InteractiveElements,
   PlaywrightStorageState,
 } from "../domain/types.js";
 import {
@@ -55,6 +56,12 @@ import { AngularAdapter } from "./angular.js";
 import { ANGULAR_DEBUG_BRIDGE_SCRIPT } from "./angular-bridge.js";
 import { VueAdapter } from "./vue.js";
 import { VUE_DEBUG_BRIDGE_SCRIPT } from "./vue-bridge.js";
+import {
+  chromiumInteractiveLocator,
+  discoverInteractiveElements,
+  normalizeInteractiveElement,
+  parseRawInteractiveElements,
+} from "./interactive-elements.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -573,6 +580,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     const accessibility = !this.pausedEvent && wants("accessibility") && options.accessibility === true
       ? await this.collectAccessibility(context, warnings)
       : null;
+    const interactiveElements = !this.pausedEvent && wants("interactiveElements")
+      ? await this.collectInteractiveElements(context, warnings)
+      : null;
+    if (this.pausedEvent && wants("interactiveElements")) warnings.push("Interactive element map unavailable while JavaScript is paused.");
     let webmcp = null;
     if (wants("webmcp") && this.webmcp && this.webmcpAvailable === true && !this.pausedEvent) {
       const optionalBudget = optionalBudgetMs(context, 1_000);
@@ -605,6 +616,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       vite: null,
       webmcp,
       accessibility,
+      interactiveElements,
       warnings,
       observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
@@ -783,6 +795,50 @@ export class ChromiumAdapter implements BrowserAdapter {
       return { nodes: normalized, suggestions, truncated, warnings: [] };
     } catch (error) {
       warnings.push(`Accessibility diagnostics unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      return null;
+    }
+  }
+
+  private async collectInteractiveElements(context: OperationContext, warnings: string[]): Promise<InteractiveElements | null> {
+    try {
+      const rawValue = await withTimeout(
+        trackPending(this.requirePage().evaluate(discoverInteractiveElements), context),
+        optionalBudgetMs(context, 750),
+      );
+      const raw = parseRawInteractiveElements(rawValue);
+      if (!raw) {
+        warnings.push("Interactive element map unavailable: optional DOM discovery failed.");
+        return null;
+      }
+      const candidates = raw.elements.flatMap((candidate) => {
+        const locator = chromiumInteractiveLocator(candidate);
+        return locator ? [{ candidate, locator }] : [];
+      });
+      const validated = await withTimeout(
+        trackPending(Promise.all(candidates.map(async ({ candidate, locator }) => {
+          try {
+            const probe = await this.probe(locator, ["count", "visible", "enabled", "checked"], context);
+            return normalizeInteractiveElement(candidate, locator, probe);
+          } catch {
+            return null;
+          }
+        })), context),
+        optionalBudgetMs(context, 750),
+      );
+      if (!validated) {
+        warnings.push("Interactive element map unavailable: locator validation timed out.");
+        return null;
+      }
+      const elements = validated.filter((element): element is NonNullable<typeof element> => element !== null);
+      const detailWarnings: string[] = [];
+      const omitted = raw.elements.length - candidates.length;
+      const failed = validated.length - elements.length;
+      if (omitted > 0) detailWarnings.push(`${omitted} interactive candidates were omitted because no bounded locator was available.`);
+      if (failed > 0) detailWarnings.push(`${failed} interactive locators could not be live-validated.`);
+      if (raw.truncated) detailWarnings.push("Interactive element candidates were truncated to the bounded capture limit.");
+      return { elements, truncated: raw.truncated, warnings: detailWarnings };
+    } catch (error) {
+      warnings.push(`Interactive element map unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
       return null;
     }
   }

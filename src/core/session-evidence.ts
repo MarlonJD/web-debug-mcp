@@ -8,13 +8,15 @@ import type {
   CaptureSummary,
   CaptureView,
   ReplayableBrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserRuntimeCapabilities,
   BrowserObservations,
   EvidenceBundle,
+  InteractiveElement,
   IssueCaptureResult,
 } from "../domain/types.js";
-import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES, MAX_WEBMCP_DETAIL_BYTES } from "../domain/types.js";
+import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES, MAX_INTERACTIVE_ELEMENTS, MAX_INTERACTIVE_TEXT_CHARS, MAX_WEBMCP_DETAIL_BYTES } from "../domain/types.js";
 import { WebDebugError } from "./errors.js";
 import { boundText } from "./redaction.js";
 import { actionSecrets, cloneJson, replaceSecrets, scrubReplayFrame } from "./private-values.js";
@@ -185,6 +187,7 @@ function captureSurfaces(evidence: EvidenceBundle, screenshotStatus: NonNullable
     next: evidence.browser.next,
     vite: evidence.browser.vite,
     accessibility: evidence.browser.accessibility ?? null,
+    interactiveElements: evidence.browser.interactiveElements ?? null,
     replay: evidence.replay,
     screenshot: { status: screenshotStatus },
     webmcp: evidence.browser.webmcp ?? null,
@@ -213,6 +216,10 @@ function captureCollection(evidence: EvidenceBundle, view: CaptureView, screensh
       if (["react", "angular", "vue"].includes(surface) && runtime?.pageRuntimeEnrichment.state === "unsupported") return "unavailable";
     }
     if (surface === "accessibility" && runtime?.accessibility.state === "unsupported") return "unavailable";
+    if (surface === "interactiveElements") {
+      if (!selected.has(surface)) return "not-collected";
+      return browser.interactiveElements ? "fresh" : "unavailable";
+    }
     if (surface === "webmcp" && runtime?.webmcp.state === "unsupported") return "unavailable";
     if (!selected.has(surface)) return "not-collected";
     const value = browser[surface as "react" | "angular" | "vue" | "next" | "vite" | "accessibility" | "webmcp"];
@@ -306,6 +313,7 @@ function captureWarnings(evidence: EvidenceBundle): string[] {
     ...(evidence.browser.next?.warnings ?? []),
     ...(evidence.browser.vite?.warnings ?? []),
     ...(evidence.browser.accessibility?.warnings ?? []),
+    ...(evidence.browser.interactiveElements?.warnings ?? []),
     ...evidence.session.warnings,
   ].map((warning) => boundText(warning, 300)))].slice(0, 6);
 }
@@ -388,6 +396,12 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     bounded.browser.accessibility.nodes = bounded.browser.accessibility.nodes.slice(0, 128);
     bounded.browser.accessibility.suggestions = bounded.browser.accessibility.suggestions.slice(0, 32);
   }
+  if (bounded.browser.interactiveElements) {
+    bounded.browser.interactiveElements.elements = bounded.browser.interactiveElements.elements
+      .slice(0, MAX_INTERACTIVE_ELEMENTS)
+      .map((element) => boundInteractiveElement(element));
+    bounded.browser.interactiveElements.warnings = bounded.browser.interactiveElements.warnings.slice(0, 20).map((warning) => boundText(warning, 500));
+  }
   if (bounded.browser.webmcp) pruneWebMcpDetail(bounded.browser.webmcp);
   bounded.replay.frames = bounded.replay.frames.slice(-8);
   if (serializedBytes(bounded) > MAX_EVIDENCE_BUNDLE_BYTES) {
@@ -398,6 +412,7 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     bounded.browser.vue = null;
     bounded.browser.vite = null;
     bounded.browser.accessibility = null;
+    bounded.browser.interactiveElements = null;
     if (bounded.browser.next) {
       bounded.browser.next.projectMetadata = null;
       bounded.browser.next.pageMetadata = null;
@@ -475,6 +490,7 @@ export function pruneEvidence(evidence: EvidenceBundle): EvidenceBundle {
   pruned.browser.angular = null;
   pruned.browser.vue = null;
   pruned.browser.vite = null;
+  pruned.browser.interactiveElements = null;
   if (pruned.browser.next) {
     pruned.browser.next.requestTraces = pruned.browser.next.requestTraces.slice(-2).map((trace) => ({ ...trace, spans: trace.spans.slice(0, 5), fetches: trace.fetches.slice(0, 5) }));
     pruned.browser.next.serverActionExecutions = pruned.browser.next.serverActionExecutions.slice(-2).map((execution) => ({ ...execution, trace: execution.trace ? { ...execution.trace, spans: execution.trace.spans.slice(0, 5), fetches: execution.trace.fetches.slice(0, 5) } : null }));
@@ -516,4 +532,38 @@ function pruneWebMcpDetail(detail: NonNullable<BrowserSnapshot["webmcp"]>): void
   for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.inputSchemaJson = null;
   for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.description = "";
   while (detail.tools.length > 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES) detail.tools.pop();
+}
+
+function boundInteractiveElement(element: InteractiveElement): InteractiveElement {
+  const matchCount = Number.isInteger(element.matchCount) && element.matchCount >= 0 ? element.matchCount : 0;
+  return {
+    ...element,
+    tag: boundText(element.tag, 40),
+    role: element.role ? boundText(element.role, 100) : null,
+    name: boundText(element.name, 300),
+    text: boundText(element.text, MAX_INTERACTIVE_TEXT_CHARS),
+    locator: boundLocator(element.locator),
+    matchCount,
+    uniqueAtCapture: matchCount === 1,
+    bounds: element.bounds ? {
+      x: finiteBound(element.bounds.x),
+      y: finiteBound(element.bounds.y),
+      width: Math.max(0, finiteBound(element.bounds.width)),
+      height: Math.max(0, finiteBound(element.bounds.height)),
+    } : null,
+  };
+}
+
+function boundLocator(locator: BrowserLocator): BrowserLocator {
+  switch (locator.kind) {
+    case "css": return { kind: "css", value: boundText(locator.value, 500) };
+    case "role": return { kind: "role", role: boundText(locator.role, 100), ...(locator.name === undefined ? {} : { name: boundText(locator.name, 300) }) };
+    case "text": return { kind: "text", text: boundText(locator.text, 500) };
+    case "label": return { kind: "label", text: boundText(locator.text, 500) };
+    case "testId": return { kind: "testId", value: boundText(locator.value, 500) };
+  }
+}
+
+function finiteBound(value: number): number {
+  return Number.isFinite(value) ? value : 0;
 }

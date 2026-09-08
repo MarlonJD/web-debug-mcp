@@ -15,6 +15,8 @@ project detect → isolated browser session → reproduce → capture evidence
 
 The result is not “more logs.” It is a redacted, bounded structured MCP result with a retained replay timeline, framework context where available, explicit tri-state checks, and an opaque screenshot resource when capture succeeds. Recorded flows first prove a session-bound pre-fix failure signature, then `web_fix_verify` reports `verified`, `failed`, or `inconclusive` with adaptive level, rates, attempt summaries, progress when requested, and representative evidence.
 
+For agent-assisted UI work, request `include` with `interactiveElements` after the summary. The map exposes only visible actionable candidates, bounded names/text, an existing locator, live match count/uniqueness, enabled/checked state, and viewport geometry. Use it to select the next action, then confirm the behavior with a fresh probe/action and keep durable coverage in native tests.
+
 ## Examples
 
 | Example | What is broken | What the baseline sees | What MCP adds | Fixed result |

@@ -149,6 +149,7 @@ describe("MCP server contract", () => {
     }
     expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_project_detect")?.outputSchema)).toContain("frameworkDetections");
     expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_issue_capture")?.outputSchema)).toContain("changedSurfaces");
+    expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_issue_capture")?.outputSchema)).toContain("interactiveElements");
     expect(JSON.stringify(listed.tools.find((tool) => tool.name === "web_debug_evaluate")?.outputSchema)).toContain("description");
     const replayTool = listed.tools.find((tool) => tool.name === "web_replay_seek");
     expect(replayTool?.description).toContain("mutate live state");
@@ -285,6 +286,10 @@ describe("MCP server contract", () => {
       expect(projected.isError).not.toBe(true);
       expect(issueCaptureResultSchema.safeParse(structuredData(projected)).success).toBe(true);
     }
+    const interactiveCapture = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view: { profile: "include", surfaces: ["interactiveElements"] } } }));
+    expect(interactiveCapture.isError).not.toBe(true);
+    expect(structuredData(interactiveCapture)).toMatchObject({ profile: "include", includedSurfaces: ["interactiveElements"] });
+    expect(issueCaptureResultSchema.safeParse(structuredData(interactiveCapture)).success).toBe(true);
 
     expect(issueCaptureResultSchema.safeParse({ ...capture, profile: "delta" }).success).toBe(false);
     expect(issueCaptureResultSchema.safeParse({ ...capture, changedSurfaces: ["dom"] }).success).toBe(false);

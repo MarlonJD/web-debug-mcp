@@ -83,6 +83,7 @@ const requiredFiles = [
   "src/core/mcp-response.ts",
   "src/core/doctor.ts",
   "src/adapters/chromium.ts",
+  "src/adapters/interactive-elements.ts",
   "src/adapters/webmcp.ts",
   "fixtures/vanilla/index.html",
   "fixtures/vanilla/app.js",
@@ -164,6 +165,7 @@ const requiredFiles = [
   "test/eval-contract.test.ts",
   "test/plugin-skill-contract.test.ts",
   "test/webmcp.test.ts",
+  "test/interactive-elements.test.ts",
   "test/compatibility.test.ts",
   "tsconfig.test.json",
 ];
@@ -266,6 +268,7 @@ const reactBridgeSource = read("src/adapters/react-bridge.ts");
 const angularBridgeSource = read("src/adapters/angular-bridge.ts");
 const vueBridgeSource = read("src/adapters/vue-bridge.ts");
 const safariSource = read("src/adapters/safari.ts");
+const interactiveSource = read("src/adapters/interactive-elements.ts");
 const sessionSource = read("src/core/session-manager.ts");
 const extractedSessionReplayPath = join(root, "src/core/session-replay.ts");
 const sessionReplaySource = existsSync(extractedSessionReplayPath) ? readFileSync(extractedSessionReplayPath, "utf8") : "";
@@ -294,6 +297,7 @@ check(angularBridgeSource.includes("window.__WEB_DEBUG_ANGULAR__") && angularBri
 check(vueBridgeSource.includes("window.__WEB_DEBUG_VUE__") && vueBridgeSource.includes("component:updated") && !vueBridgeSource.includes("__vueParentComponent"), "Vue bridge must use the bounded hook contract without a DOM-private fallback");
 check(chromiumSource.includes("bridgeScriptIdentifiers") && chromiumSource.includes("frameworks.has(\"angular\")") && chromiumSource.includes("frameworks.has(\"vue\")"), "Chromium must select and clean up Angular/Vue target-scoped bridges");
 check(chromiumSource.includes("WebMcpPageApi") && chromiumSource.includes("case \"webmcp\""), "Chromium must expose the bounded direct-only WebMCP page API path");
+check(interactiveSource.includes("data-testid") && interactiveSource.includes("uniqueAtCapture") && chromiumSource.includes("collectInteractiveElements") && safariSource.includes("collectInteractiveElements"), "Interactive capture must expose bounded locator-aware collection in both browser adapters");
 check(read("src/adapters/webmcp.ts").includes("webmcp-page-api") && read("src/adapters/webmcp.ts").includes("executeTool(topLevelMatches[0], json"), "WebMCP adapter must retain truthful provenance and the documented JSON-string call convention");
 check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
 check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");

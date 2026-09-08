@@ -18,8 +18,9 @@ import type {
   OperationContext,
   LocatorProbeResult,
   LocatorProperty,
+  InteractiveElements,
 } from "../domain/types.js";
-import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
+import { CAPTURE_SURFACES, MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { MAX_SCREENSHOT_RESPONSE_BYTES, MAX_WEBDRIVER_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
@@ -31,6 +32,12 @@ import type {
   SnapshotOptions,
 } from "./browser.js";
 import { safariRuntimeCapabilities } from "./runtime-capabilities.js";
+import {
+  normalizeInteractiveElement,
+  parseRawInteractiveElements,
+  safariInteractiveLocator,
+  interactiveElementsScript,
+} from "./interactive-elements.js";
 
 const DEFAULT_DRIVER_ENDPOINT = "http://127.0.0.1:4444";
 const MAX_REQUEST_MS = 5_000;
@@ -332,6 +339,11 @@ export class SafariAdapter implements BrowserAdapter {
       warnings.push("Safari WebDriver BiDi did not emit network events; network evidence uses bounded Performance Resource Timing metadata.");
     }
 
+    const wantsInteractiveElements = !options.checksOnly && (options.surfaces ?? CAPTURE_SURFACES).includes("interactiveElements");
+    const interactiveElements = wantsInteractiveElements
+      ? await this.collectInteractiveElements(context, warnings)
+      : null;
+
     const consoleBound = boundItems(this.consoleEntries, 100);
     const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
     if (consoleBound.truncated) warnings.push("Safari console entries were truncated to 100 items.");
@@ -352,6 +364,7 @@ export class SafariAdapter implements BrowserAdapter {
       next: null,
       vite: null,
       accessibility: null,
+      interactiveElements,
       webmcp: null,
       warnings,
       observations: {
@@ -367,6 +380,57 @@ export class SafariAdapter implements BrowserAdapter {
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
     return snapshot;
+  }
+
+  private async collectInteractiveElements(context: OperationContext, warnings: string[]): Promise<InteractiveElements | null> {
+    try {
+      const raw = parseRawInteractiveElements(await this.executeSync<unknown>(interactiveElementsScript(), [], context));
+      if (!raw) {
+        warnings.push("Interactive element map unavailable: optional DOM discovery failed.");
+        return null;
+      }
+      const candidates = raw.elements.flatMap((candidate) => {
+        const locator = safariInteractiveLocator(candidate);
+        return locator?.kind === "css" ? [{ candidate, locator }] : [];
+      });
+      const selectors = candidates.map(({ locator }) => locator.value);
+      const values = selectors.length === 0
+        ? []
+        : await this.executeSync<Array<{ count?: unknown; visible?: unknown; enabled?: unknown; checked?: unknown }>>(
+          `return arguments[0].map((css) => {
+            const elements = Array.from(document.querySelectorAll(css));
+            const element = elements[0];
+            const style = element ? getComputedStyle(element) : null;
+            const disabled = Boolean(element && ((typeof element.disabled === "boolean" && element.disabled) || element.getAttribute("aria-disabled") === "true"));
+            return {
+              count: elements.length,
+              visible: Boolean(element && style && style.visibility !== "hidden" && style.display !== "none" && element.getClientRects().length),
+              enabled: Boolean(element && !disabled),
+              checked: Boolean(element && element.checked === true),
+            };
+          });`,
+          [selectors],
+          context,
+        );
+      const elements = candidates.flatMap(({ candidate, locator }, index) => {
+        const value = values[index];
+        if (!value) return [];
+        return [normalizeInteractiveElement(candidate, locator, {
+          count: typeof value.count === "number" ? value.count : 0,
+          visible: value.visible === true,
+          enabled: value.enabled === true,
+          checked: value.checked === true,
+        })];
+      });
+      const detailWarnings = ["Safari interactive element locators are CSS-only and derived from stable id/data-testid attributes."];
+      const omitted = raw.elements.length - candidates.length;
+      if (omitted > 0) detailWarnings.push(`${omitted} interactive candidates were omitted because Safari could not derive a bounded CSS locator.`);
+      if (raw.truncated) detailWarnings.push("Interactive element candidates were truncated to the bounded capture limit.");
+      return { elements, truncated: raw.truncated, warnings: detailWarnings };
+    } catch (error) {
+      warnings.push(`Interactive element map unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      return null;
+    }
   }
 
   async setBreakpoint(_input: { sourceUrl: string; line: number; column?: number }, _context: OperationContext = {}): Promise<DebuggerBreakpoint> {

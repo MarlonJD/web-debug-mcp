@@ -193,6 +193,7 @@ function snapshotFor(bodyText: string, options: {
   react?: BrowserSnapshot["react"];
   angular?: BrowserSnapshot["angular"];
   vue?: BrowserSnapshot["vue"];
+  interactiveElements?: BrowserSnapshot["interactiveElements"];
   screenshotPath?: string | null;
   warnings?: string[];
 } = {}): BrowserSnapshot {
@@ -211,6 +212,7 @@ function snapshotFor(bodyText: string, options: {
     next: null,
     vite: null,
     webmcp: null,
+    interactiveElements: options.interactiveElements ?? null,
     warnings: options.warnings ?? [],
     observations: options.observations ?? {
       url: { state: "pass", freshness: "fresh", provenance: "browser" },
@@ -348,6 +350,44 @@ describe("session manager adaptive contract", () => {
     await manager.close(session.id, "delete");
   });
 
+  it("projects the bounded interactive element map only when requested", async () => {
+    const interactiveElements = {
+      elements: [{
+        tag: "button",
+        role: "button",
+        name: "Submit payment",
+        text: "Submit payment",
+        locator: { kind: "role" as const, role: "button", name: "Submit payment" },
+        matchCount: 1,
+        uniqueAtCapture: true,
+        visible: true,
+        enabled: false,
+        checked: null,
+        bounds: { x: 12, y: 24, width: 140, height: 40 },
+      }],
+      truncated: false,
+      warnings: [],
+    };
+    const { manager, adapters } = managerFor([
+      snapshotFor("Interactive", { interactiveElements }),
+      snapshotFor("Interactive", { interactiveElements }),
+      snapshotFor("Interactive", { interactiveElements }),
+    ], { mode: "attach" });
+    const session = await start(manager);
+    try {
+      const summary = await manager.capture(session.id);
+      expect(summary.collection.interactiveElements).toBe("not-collected");
+      const capture = await manager.capture(session.id, { profile: "include", surfaces: ["interactiveElements"] });
+      expect(capture.collection.interactiveElements).toBe("fresh");
+      expect(capture.details).toEqual({ interactiveElements });
+      expect(capture.details?.interactiveElements?.elements[0]?.uniqueAtCapture).toBe(true);
+      expect(capture.details?.interactiveElements?.elements[0]?.enabled).toBe(false);
+      expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
+      expect(adapters[0]?.snapshotOptions.at(-1)?.surfaces).toEqual(["interactiveElements"]);
+      expect(JSON.stringify(capture)).not.toContain("input-value");
+    } finally { await manager.close(session.id, "delete"); }
+  });
+
   it("collects only requested enrichment and does not inherit cursor knowledge through summary", async () => {
     const vite = vi.spyOn(ViteAdapter.prototype, "snapshot").mockResolvedValue(null as never);
     const { manager, adapters } = managerFor(Array.from({ length: 6 }, () => snapshotFor("Same")), { mode: "attach" });
@@ -423,11 +463,11 @@ describe("session manager adaptive contract", () => {
     const session = await start(manager);
     const baseline = await manager.capture(session.id);
     const unchanged = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor });
-    expect(unchanged.changedSurfaces).toEqual(["accessibility", "webmcp"]);
+    expect(unchanged.changedSurfaces).toEqual(["accessibility", "interactiveElements", "webmcp"]);
     expect(unchanged.unchangedSurfaces).toContain("dom");
     expect(unchanged.unchangedSurfaces).not.toContain("replay");
     expect(unchanged.unchangedSurfaces).not.toContain("screenshot");
-    expect(unchanged.details).toEqual({ accessibility: null, webmcp: null });
+    expect(unchanged.details).toEqual({ accessibility: null, interactiveElements: null, webmcp: null });
 
     const changed = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom", "console"] });
     expect(changed.changedSurfaces).toEqual(["dom"]);

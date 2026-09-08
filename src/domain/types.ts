@@ -20,6 +20,8 @@ export const MAX_ATTEMPTS_PER_PHASE = 5;
 export const MAX_MATRIX_EXECUTION_UNITS_PER_PHASE = 20;
 export const MAX_AX_NODES = 128;
 export const MAX_LOCATOR_SUGGESTIONS = 32;
+export const MAX_INTERACTIVE_ELEMENTS = 64;
+export const MAX_INTERACTIVE_TEXT_CHARS = 300;
 export const MAX_AUTH_STATE_BYTES = 65_536;
 export const MAX_AUTH_COOKIES = 32;
 export const MAX_AUTH_ORIGINS = 8;
@@ -90,6 +92,33 @@ export interface LocatorSuggestion {
 export interface AccessibilityDiagnostics {
   nodes: AccessibilityNode[];
   suggestions: LocatorSuggestion[];
+  truncated: boolean;
+  warnings: string[];
+}
+
+export interface InteractiveElementBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface InteractiveElement {
+  tag: string;
+  role: string | null;
+  name: string;
+  text: string;
+  locator: BrowserLocator;
+  matchCount: number;
+  uniqueAtCapture: boolean;
+  visible: boolean;
+  enabled: boolean;
+  checked: boolean | null;
+  bounds: InteractiveElementBounds | null;
+}
+
+export interface InteractiveElements {
+  elements: InteractiveElement[];
   truncated: boolean;
   warnings: string[];
 }
@@ -664,6 +693,7 @@ export interface BrowserSnapshot {
   vite: ViteSnapshot | null;
   webmcp: WebMcpCaptureDetail | null;
   accessibility?: AccessibilityDiagnostics | null;
+  interactiveElements?: InteractiveElements | null;
   warnings: string[];
   /** Lightweight observation provenance used by adaptive verification. */
   observations?: BrowserObservations;
@@ -714,6 +744,7 @@ export const CAPTURE_SURFACES = [
   "next",
   "vite",
   "accessibility",
+  "interactiveElements",
   "replay",
   "screenshot",
   "webmcp",
@@ -779,6 +810,7 @@ export interface CaptureDetails {
   next?: NextSnapshot | null;
   vite?: ViteSnapshot | null;
   accessibility?: AccessibilityDiagnostics | null;
+  interactiveElements?: InteractiveElements | null;
   replay?: ReplayTimeline;
   screenshot?: { status: "captured" | "suppressed" | "unavailable" };
   webmcp?: WebMcpCaptureDetail | null;
