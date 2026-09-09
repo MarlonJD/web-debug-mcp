@@ -1,20 +1,18 @@
 {
   "schemaVersion": 2,
-  "scope": "0.10.0-final-local",
-  "observedAt": "2026-09-08T13:10:00+03:00",
-  "sourceVersion": "0.10.0",
+  "scope": "0.11.0-release-candidate-local",
+  "observedAt": "2026-09-09T14:05:14+03:00",
+  "sourceVersion": "0.11.0",
   "releaseBaseline": {
-    "version": "0.10.0",
-    "commit": "3fcf9c07cab29591a94a566724b52f9fdf8fd538",
-    "archiveShasum": "51bc949b7bb972771840c791ae239b2551970a1b",
-    "archiveIntegrity": "sha512-+0yAfnQmPbJ5vO8DxBWV6FlNM0XTAgkYWnihuHIIKgFMD96K1wgFKO3kEx+0bbMseoYzYOn72a3EiBcxZPc/hg=="
+    "version": "0.11.0",
+    "commit": "0b64580b68ace6d5868d4a5214fd283b253dc88d"
   },
   "runtime": {
     "node": "24.18.0",
     "node20": "20.20.2",
     "node22": "22.23.2",
     "mcpSdk": "1.30.0",
-    "chromium": "152.0.7977.77",
+    "chromium": "152.0.7977.83",
     "safari": "26.6.2",
     "react": "19.2.8",
     "vite": "7.3.6",
@@ -26,28 +24,28 @@
     "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "198/198 candidate 0.10.0 deterministic tests covering selective capture, workflow routing, Antigravity packaging, startup recovery, task binding, and prior browser/runtime/security contracts" },
-    { "command": "final exact archive handshake under Node 24.18.0", "status": "passed", "signal": "Exact 156-entry archive shasum 51bc949b7bb972771840c791ae239b2551970a1b; version 0.10.0; 13 tools/13 schemas; web_project_detect first; web_session_close last; all output schemas present." },
-    { "command": "final 0.10.0 archive handshake under Node 20.20.2", "status": "blocked", "signal": "Node 20.20.2 is not installed on this host; only Node v24.18.0 is available." },
-    { "command": "final 0.10.0 archive handshake under Node 22.23.2", "status": "blocked", "signal": "Node 22.23.2 is not installed on this host; only Node v24.18.0 is available." },
-    { "command": "npm run smoke:live", "status": "passed", "signal": "Chrome 152.0.7977.77 isolated launch, breakpoint/locals/screenshot, local-target policy, clean console, and side-effect rejection." },
-    { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 152.0.7977.77 page WebMCP direct action, independent read-back, missing-tool error, replay non-restorability, and screenshot suppression." },
+    { "command": "npm test", "status": "passed", "signal": "202/202 candidate 0.11.0 deterministic tests covering bounded interactive UI capture, selective capture, workflow routing, packaging, startup recovery, task binding, and prior browser/runtime/security contracts" },
+    { "command": "final exact archive handshake under Node 24.18.0", "status": "not-run", "signal": "The exact 0.11.0 archive is packed only after the final release commit; publication verification remains pending." },
+    { "command": "final 0.11.0 archive handshake under Node 20.20.2", "status": "blocked", "signal": "Node 20.20.2 is not installed on this host; only Node v24.18.0 is available." },
+    { "command": "final 0.11.0 archive handshake under Node 22.23.2", "status": "blocked", "signal": "Node 22.23.2 is not installed on this host; only Node v24.18.0 is available." },
+    { "command": "npm run smoke:live", "status": "passed", "signal": "Chrome 152.0.7977.83 isolated launch, breakpoint/locals/screenshot, local-target policy, clean console, side-effect rejection, and bounded interactive UI map with geometry/state/input-value omission." },
+    { "command": "npm run smoke:webmcp", "status": "passed", "signal": "Chrome 152.0.7977.83 page WebMCP direct action, independent read-back, missing-tool error, replay non-restorability, and screenshot suppression." },
     { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React selective capture/freshness, state/render cause/profiler/flamegraph, Vite transform/HMR, replay, breakpoint, and screenshot." },
     { "command": "npm run smoke:next", "status": "passed", "signal": "Next selective capture, route compilation, Server Action resolution/trace linkage, logs, DOM, console, and request insights." },
     { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR provenance." },
     { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 documented-global DOM-host component/state/change evidence with no Vite provenance claim." },
-    { "command": "npm run smoke:safari", "status": "blocked", "signal": "Safari smoke returned the literal environment blocker: This operation was aborted." },
-    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification." },
+    { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action/DOM/screenshot/BiDi evidence plus CSS-only interactive UI map with geometry/state/input-value omission and explicit debugger/profile/network boundaries." },
+    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification; final clean rerun passed after two transient popup timing misses." },
     { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "All six raw/MCP scenarios reproduced or verified with structured evidence; complex, async, and responsive fixes passed." },
-    { "command": "public npm 0.10.0 fresh-cache handshake", "status": "passed", "signal": "Fresh isolated npm cache resolved web-debug-mcp@0.10.0; version 0.10.0; 13 tools/13 schemas; web_project_detect first; web_session_close last; npm latest and next both 0.10.0." },
+    { "command": "public npm 0.11.0 fresh-cache handshake", "status": "not-run", "signal": "Pending npm publication and public fresh-cache verification; current registry latest/next remain 0.10.0." },
     { "command": "Safari 27 MCP feasibility on caller-provided other MacBook", "status": "failed", "signal": "Safari 27.0 Safari/1.0.0 MCP initialized; strict cutover matrix returned 36 passed, 10 failed, and 7 blocked. No runtime code was retained; only the handle-scoped external diagnostic subset remains candidate-only" },
-    { "command": "Codex plugin update", "status": "passed", "signal": "Marketplace web-debug installed/enabled web-debug@web-debug version 0.10.0+codex.20260908065431 with three skills; enabled direct MCP web_debug_mcp pins npx web-debug-mcp@0.10.0; bundled web-debug-mcp duplicate is disabled." }
+    { "command": "Codex plugin update", "status": "not-run", "signal": "Pending marketplace refresh and installation of the 0.11.0 Codex build; the installed plugin remains 0.10.0+codex.20260908065431." }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Node 20.20.2 and 22.23.2 exact final 0.10.0 archive handshakes are blocked because those runtimes are not installed on this host; Node 24.18.0 archive and public fresh-cache handshakes passed.",
-    "Safari 26.6.2 WebDriver smoke is blocked in this release run because the operation aborted; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
+    "Node 20.20.2 and 22.23.2 exact final 0.11.0 archive handshakes are blocked because those runtimes are not installed on this host; Node 24.18.0 archive and public fresh-cache handshakes remain pending.",
+    "Safari 26.6.2 WebDriver smoke passed locally with its documented debugger/profile/network limits; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
     "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
-    "Final 0.10.0 evidence does not refresh HMAC certification or establish provider/production authority; Safari MCP full cutover remains rejected and optional external diagnostics remain separate from product evidence."
+    "Final 0.11.0 evidence does not establish provider/production authority; Safari MCP full cutover remains rejected and optional external diagnostics remain separate from product evidence."
   ]
 }

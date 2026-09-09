@@ -1,6 +1,6 @@
 # Web Debug product contract
 
-The immutable package/plugin release is `0.10.0`. It retains identity-safe startup recovery and fail-closed task-binding guidance, adds selective capture/freshness and tightened workflow-routing contracts, and keeps the direct-only WebMCP action, three bundled skills, and unchanged 13-tool MCP catalog.
+The immutable package/plugin release is `0.11.0`. It retains identity-safe startup recovery and fail-closed task-binding guidance, adds bounded interactive UI capture and exploration-to-native-test guidance, and keeps selective capture/freshness, the direct-only WebMCP action, three bundled skills, and the unchanged 13-tool MCP catalog.
 
 ## User outcome
 
@@ -28,6 +28,6 @@ Sessions are active-only managed records. Close destroys private URLs, auth stat
 
 ## Product boundaries
 
-The package-only `doctor` command checks first-run readiness without adding an MCP tool or launching arbitrary browser state. The repository does not create portable scenario files, execute arbitrary Next Server Actions, monitor production, control unattended remote browsers, or claim current HMAC/production certification without fresh external evidence.
+The package-only `doctor` command checks first-run readiness without adding an MCP tool or launching arbitrary browser state. The repository does not create portable scenario files, execute arbitrary Next Server Actions, monitor production, control unattended remote browsers, or claim provider-backed production authority without fresh external evidence.
 
 Exact verified versions and candidate-only boundaries live in [`../COMPATIBILITY.md`](../COMPATIBILITY.md); agent evaluation tasks live in [`../demos/agent-evaluation.md`](../demos/agent-evaluation.md). Angular CLI's internal Vite is not the Web Debug endpoint, and Vue hook evidence has no DOM-private fallback.

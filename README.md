@@ -4,7 +4,9 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Release `0.10.0` adds selective capture and freshness states, tighter browser-routing guidance, stronger evaluation evidence, and Google Antigravity plugin compatibility. The MCP catalog remains 13 tools.
+Release `0.11.0` adds bounded agent-readable interactive UI capture, Marionette-inspired exploration guidance, and the explore-to-native-test handoff. The MCP catalog remains 13 tools.
+
+Release `0.10.0` introduced selective capture and freshness states, tighter browser-routing guidance, stronger evaluation evidence, and Google Antigravity plugin compatibility.
 
 Release `0.8.0` introduced identity-safe MCP startup recovery, bounded stale registry/sidecar reconciliation, schema-versioned doctor binding diagnostics, and a fail-closed Web Debug Gate 0 that never substitutes another browser runner when the requested MCP binding is unavailable.
 
@@ -19,14 +21,14 @@ The published npm package runs locally over stdio and does not require a hosted 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.10.0
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.11.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y web-debug-mcp@0.10.0
+-y web-debug-mcp@0.11.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -34,7 +36,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "web-debug-mcp@0.10.0"]
+args = ["-y", "web-debug-mcp@0.11.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 # Optional strict host policy: fail startup if this server cannot initialize.
@@ -115,7 +117,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.10.0` npm release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.11.0` npm release; Node.js 20+, npm, and network access are required.
 
 ### Boundary with Build Web Apps and native runners
 
@@ -150,14 +152,14 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata, all three skills, and bundled `web-debug-mcp@0.10.0` runtime.
+This command loads the repository's plugin metadata, all three skills, and bundled `web-debug-mcp@0.11.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.10.0
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.11.0
 claude mcp list
 ```
 
@@ -441,7 +443,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.10.0`. Disable the installed released plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.11.0`. Disable the installed released plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
 
 Then use the MCP client workflow:
 
@@ -457,7 +459,7 @@ Then use the MCP client workflow:
 For Vite, install the development-only plugin in `vite.config.ts`:
 
 ```bash
-npm install --save-dev web-debug-mcp@0.10.0
+npm install --save-dev web-debug-mcp@0.11.0
 ```
 
 ```ts
@@ -518,7 +520,7 @@ Safari 27 includes Apple’s official Safari MCP server. The reviewed Safari 27 
 
 ## Verification status
 
-Release `0.10.0` keeps the 13-tool browser/runtime surface and Safari transport decision while tightening evidence capture and workflow routing. Safari WebDriver/BiDi remains authoritative, and the optional external Safari MCP diagnostic subset remains separate. Exact archive, npm/GitHub, and installed Codex plugin evidence is recorded in the `0.10.0` release plan. The checked-in historical certification window remains stale; this release does not claim a current `CERT000`.
+Release `0.11.0` keeps the 13-tool browser/runtime surface and Safari transport decision while adding bounded interactive UI discovery and exploration-to-native-test guidance. Safari WebDriver/BiDi remains authoritative, and the optional external Safari MCP diagnostic subset remains separate. Exact archive, npm/GitHub, and installed Codex plugin evidence is recorded in the `0.11.0` release plan.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
 

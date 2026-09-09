@@ -23,8 +23,8 @@ describe("release identity", () => {
     expect(PACKAGE_VERSION).toBe(packageJson.version);
     expect(packageJson.webDebug.releaseStatus).toBe("final");
     const releasedPluginVersion = packageJson.webDebug.releasedPluginRuntimeVersion;
-    expect(PACKAGE_VERSION).toBe("0.10.0");
-    expect(packageJson.webDebug.releasedPackageVersion).toBe("0.10.0");
+    expect(PACKAGE_VERSION).toBe("0.11.0");
+    expect(packageJson.webDebug.releasedPackageVersion).toBe("0.11.0");
     expect(releasedPluginVersion).toBe(packageJson.webDebug.releasedPackageVersion);
     expect(releasedPluginVersion).toBe(PACKAGE_VERSION);
     expect(packageLock.version).toBe(PACKAGE_VERSION);
