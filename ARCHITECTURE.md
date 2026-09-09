@@ -56,16 +56,14 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `fixtures/angular/` | Angular 21 CLI development component/state fixture | Test ownership; update when Angular documented-global evidence changes |
 | `fixtures/next/` | Next.js App Router, client, and route-handler fixture | Test ownership; update when Next runtime evidence changes |
 | `fixtures/complex-vite/` | Multi-state React/Vite dashboard with deterministic async and responsive repair markers | Demo/test ownership; update when repair scenarios or expected layout invariants change |
-| `scripts/harness-check.mjs` | Project-native structural and command contract check | Platform Engineering; update when repository invariants change |
 | `scripts/live-react-vite-smoke.mjs` | Live React/Vite breakpoint and verification smoke | Platform Engineering; update when the fixture flow changes |
 | `scripts/live-next-smoke.mjs` | Live Next runtime MCP and browser smoke | Platform Engineering; update when the fixture flow changes |
 | `scripts/live-safari-smoke.mjs` | Live Safari WebDriver action and evidence smoke | Platform Engineering; update when Safari transport or fixture behavior changes |
 | `scripts/live-webmcp-smoke.mjs` | Live command-owned Chrome WebMCP direct-action safety smoke | Platform Engineering; update when the direct WebMCP contract changes |
 | `scripts/demo-compare.mjs` | Before/after baseline and MCP timing/evidence comparison across local fixtures | Platform Engineering; update when demo scenarios or metrics change |
-| `scripts/agent-eval.mjs` | Frozen repair/routing/authority contracts and artifact-bound experiment grading; no model calls | Platform Engineering; update when task graders change |
 | `scripts/lib/managed-process.mjs` | Bounded fixture readiness and awaited command-owned teardown | Platform Engineering; update with smoke-process lifecycle changes |
 | `scripts/serve-complex-vite.mjs` | Serve the isolated complex repair fixture through Vite | Demo/test ownership; update when the temporary fixture runtime changes |
-| `docs/` | Durable architecture, security, reliability, planning, and harness knowledge | Platform Engineering; update with boundary changes |
+| `docs/` | Durable architecture, security, reliability, planning, and evidence knowledge | Platform Engineering; update with boundary changes |
 
 ## Components and boundaries
 
@@ -124,17 +122,14 @@ The package entry point accepts no arguments for MCP transport, `doctor` options
 
 - Security and privacy rules live in [`docs/SECURITY.md`](docs/SECURITY.md).
 - Failure handling and cleanup rules live in [`docs/RELIABILITY.md`](docs/RELIABILITY.md).
-- Runtime setup and isolation live in [`docs/agent-harness/environment-contract.md`](docs/agent-harness/environment-contract.md).
-- Output labels and evidence expectations live in [`docs/agent-harness/output-contract.md`](docs/agent-harness/output-contract.md).
 - The public behavior contract is described in [`README.md`](README.md).
 
 ## Mechanically enforced invariants
 
 | Invariant | Enforcer | Recovery guidance |
 | --- | --- | --- |
-| MCP tools expose one facade and expected names | `scripts/harness-check.mjs` | Restore the registered tool names in `src/index.ts` or update the contract deliberately |
-| Source code does not write protocol diagnostics to stdout | `scripts/harness-check.mjs` | Use stderr for diagnostics; keep stdout reserved for MCP transport |
-| Required source, fixture, docs, and command surfaces exist | `scripts/harness-check.mjs` | Restore the missing path or update the project contract with evidence |
+| MCP tools expose one facade and expected names | MCP routing tests | Restore the registered tool names in `src/index.ts` or update the contract deliberately |
+| Source code does not write protocol diagnostics to stdout | MCP server tests | Use stderr for diagnostics; keep stdout reserved for MCP transport |
 | Browser targets are loopback-only by default | `ChromiumAdapter` tests and input policy | Pass explicit `allowRemote` only for an authorized future use case and update security evidence |
 | Top-level origin never silently rebases after redirects or actions | Page-scoped Chromium route, Safari window/final-URL quarantine, and adapter policy tests | Close the escaped session; do not broaden origin authority or block ordinary subresources |
 | Remote CDP attachment requires explicit opt-in and is marked non-isolated | `ChromiumAdapter` endpoint policy and `BrowserTarget.remote` | Keep remote endpoints disabled by default and add an approved target-specific test before changing the policy |
@@ -142,7 +137,7 @@ The package entry point accepts no arguments for MCP transport, `doctor` options
 | Sensitive values are redacted before evidence leaves the adapter | `redaction.test.ts`, React bridge serialization, and `composeEvidence` | Add a regression test for any newly observed sensitive shape; colliding screenshot handles become null without copying artifacts |
 | Angular/Vue runtime evidence is bounded and observational | Bridge tests, exact fixtures, live smokes, and evidence pruning | Keep getters/functions/private runtime storage unavailable; fail optional enrichment to a warning |
 | Session count, scenario/attempt retention, verification deadlines, and browser wait time are bounded | `SessionManager` and adapter constants | Use a smaller bounded operation or change the limit with a reliability review |
-| Every public tool has one output schema, effect annotation, and total result budget | MCP routing/response tests and `scripts/harness-check.mjs` | Correct the canonical table/envelope; do not add text-only fallback shapes |
+| Every public tool has one output schema, effect annotation, and total result budget | MCP routing/response tests | Correct the canonical table/envelope; do not add text-only fallback shapes |
 | Vite module graph and transform diff data is local, bounded, and read-only | `ViteAdapter`, `vite-plugin.ts`, transform cache, and React/Vite smoke | Keep the endpoint loopback-only and add bounds/tests for new module or diff fields |
 
 ## Architecture decisions

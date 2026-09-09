@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "scope": "0.11.0-release-candidate-local",
-  "observedAt": "2026-09-09T14:05:14+03:00",
+  "scope": "0.11.0-release-public",
+  "observedAt": "2026-09-09T14:25:59+03:00",
   "sourceVersion": "0.11.0",
   "releaseBaseline": {
     "version": "0.11.0",
-    "commit": "0b64580b68ace6d5868d4a5214fd283b253dc88d"
+    "commit": "601ff637cd8bd1e2fd0af25d526c25386d285e8c"
   },
   "runtime": {
     "node": "24.18.0",
@@ -25,7 +25,7 @@
   },
   "checks": [
     { "command": "npm test", "status": "passed", "signal": "202/202 candidate 0.11.0 deterministic tests covering bounded interactive UI capture, selective capture, workflow routing, packaging, startup recovery, task binding, and prior browser/runtime/security contracts" },
-    { "command": "final exact archive handshake under Node 24.18.0", "status": "not-run", "signal": "The exact 0.11.0 archive is packed only after the final release commit; publication verification remains pending." },
+    { "command": "final exact archive handshake under Node 24.18.0", "status": "passed", "signal": "Exact archive shasum 5f46746a6431cfde632eab055ae104de6b924f77, 160 files, runnable binary/dist, and 13-tool/13-output-schema stdio handshake passed from source commit 601ff637cd8bd1e2fd0af25d526c25386d285e8c." },
     { "command": "final 0.11.0 archive handshake under Node 20.20.2", "status": "blocked", "signal": "Node 20.20.2 is not installed on this host; only Node v24.18.0 is available." },
     { "command": "final 0.11.0 archive handshake under Node 22.23.2", "status": "blocked", "signal": "Node 22.23.2 is not installed on this host; only Node v24.18.0 is available." },
     { "command": "npm run smoke:live", "status": "passed", "signal": "Chrome 152.0.7977.83 isolated launch, breakpoint/locals/screenshot, local-target policy, clean console, side-effect rejection, and bounded interactive UI map with geometry/state/input-value omission." },
@@ -37,13 +37,13 @@
     { "command": "npm run smoke:safari", "status": "passed", "signal": "Safari 26.6.2 WebDriver action/DOM/screenshot/BiDi evidence plus CSS-only interactive UI map with geometry/state/input-value omission and explicit debugger/profile/network boundaries." },
     { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification; final clean rerun passed after two transient popup timing misses." },
     { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "All six raw/MCP scenarios reproduced or verified with structured evidence; complex, async, and responsive fixes passed." },
-    { "command": "public npm 0.11.0 fresh-cache handshake", "status": "not-run", "signal": "Pending npm publication and public fresh-cache verification; current registry latest/next remain 0.10.0." },
+    { "command": "public npm 0.11.0 fresh-cache handshake", "status": "passed", "signal": "Public registry install added 96 packages into a fresh prefix; installed package version 0.11.0 and stdio handshake returned 13 tools and 13 output schemas in canonical order. npm latest=0.11.0; next remains the separate legacy 0.10.0 preview channel and is not required for stable installs." },
     { "command": "Safari 27 MCP feasibility on caller-provided other MacBook", "status": "failed", "signal": "Safari 27.0 Safari/1.0.0 MCP initialized; strict cutover matrix returned 36 passed, 10 failed, and 7 blocked. No runtime code was retained; only the handle-scoped external diagnostic subset remains candidate-only" },
-    { "command": "Codex plugin update", "status": "not-run", "signal": "Pending marketplace refresh and installation of the 0.11.0 Codex build; the installed plugin remains 0.10.0+codex.20260908065431." }
+    { "command": "Codex plugin update", "status": "passed", "signal": "Marketplace refreshed and one enabled web-debug@web-debug plugin installed at 0.11.0+codex.20260909101709; the cached plugin contains manual-parity-qualification, web-debug-workflow, and webmcp-tool-authoring, and pins web-debug-mcp@0.11.0." }
   ],
   "limits": [
     "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Node 20.20.2 and 22.23.2 exact final 0.11.0 archive handshakes are blocked because those runtimes are not installed on this host; Node 24.18.0 archive and public fresh-cache handshakes remain pending.",
+    "Node 20.20.2 and 22.23.2 exact final 0.11.0 archive handshakes are blocked because those runtimes are not installed on this host; Node 24.18.0 archive and public fresh-cache handshakes passed.",
     "Safari 26.6.2 WebDriver smoke passed locally with its documented debugger/profile/network limits; caller-provided Safari 27.0 evidence rejected full MCP cutover, while the handle-scoped external diagnostic subset remains candidate-only on this host.",
     "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
     "Final 0.11.0 evidence does not establish provider/production authority; Safari MCP full cutover remains rejected and optional external diagnostics remain separate from product evidence."

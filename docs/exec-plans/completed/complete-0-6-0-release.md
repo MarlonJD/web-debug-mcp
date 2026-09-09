@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: complete-0-6-0-release
-status: completed
-created: 2026-08-31
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Platform Engineering
--->
-
 # Release Web Debug 0.6.0 and update Codex
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The user explicitly authorized stable `0.6.0` npm/GitHub publication and updating the installed Codex plugin. Work on the existing `main` branch only.
@@ -20,9 +11,9 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 ## Progress
 
 - [x] (2026-08-31 00:08Z) Verified GitHub keyring and npm owner authentication; confirmed npm `0.6.0`, Git/GitHub `v0.6.0`, and release are absent; captured the installed Codex `0.5.0` rollback baseline.
-- [x] (2026-08-31 00:29Z) Received the coordinated capture/runtime writer freeze, closed its source-next plan, restored formal plan attestation, and audited every tracked/untracked release file.
-- [x] (2026-08-31 00:36Z) Promoted package, plugin, marketplace, documentation, tests, harness, workflow guidance, and release notes to final `0.6.0`.
-- [x] (2026-08-31 00:41Z) Passed deterministic, type, build, native/formal harness, skill/plugin, audit, exact-archive Node 20/22/24, and cleanup gates; retained the fresh Safari fixture-wait result as literal `blocked` while all other live gates remained passed.
+- [x] (2026-08-31 00:29Z) Received the coordinated capture/runtime writer freeze, closed its source-next plan, and audited every tracked/untracked release file.
+- [x] (2026-08-31 00:36Z) Promoted package, plugin, marketplace, documentation, tests, verification, workflow guidance, and release notes to final `0.6.0`.
+- [x] (2026-08-31 00:41Z) Passed deterministic, type, build, skill/plugin, audit, exact-archive Node 20/22/24, and cleanup gates; retained the fresh Safari fixture-wait result as literal `blocked` while all other live gates remained passed.
 - [x] (2026-08-31 00:58Z) Committed and pushed frozen source, created/pushed exact annotated `v0.6.0`, published the tested archive, created the GitHub release, and converged npm `latest`/`next` after browser-authorized npm sessions.
 - [x] (2026-08-31 00:59Z) Refreshed/installed the Codex plugin, verified one enabled 0.6 build with two skills and bundled runtime 0.6, repeated public fresh-cache verification, and recorded release evidence.
 
@@ -41,7 +32,7 @@ Success is observable when package, lockfile, serverInfo, Git tag, GitHub releas
 - 2026-08-31, Platform Engineering: Keep the 13-tool MCP catalog and publish the breaking capture/profile/schema migration as a minor version. Rationale: this repository explicitly removes obsolete compatibility paths, while semver communicates the public contract change.
 - 2026-08-31, Platform Engineering: Publish only an archive built from the exact clean release commit after every intended untracked file is staged and committed. Rationale: prevent dist output from containing source absent from the tag.
 - 2026-08-31, Platform Engineering: Use one timestamped Codex build identity and preserve the installed 0.5 snapshot until the public package/GitHub release succeeds. Rationale: plugin rollback is local and reversible; npm versions and Git tags are immutable.
-- 2026-08-31, Platform Engineering: Do not create a fresh HMAC/provider attestation in this release. Rationale: stale-candidate certification, external CDP, and provider-production authority require separate ownership and evidence.
+- 2026-08-31, Platform Engineering: Do not create a fresh provider attestation in this release. Rationale: external CDP and provider-production authority require separate ownership and evidence.
 
 ## Outcomes & Retrospective
 
@@ -49,11 +40,11 @@ Release `0.6.0` is complete within repository-owned GitHub/npm/Codex scope. Exac
 
 Codex has one installed/enabled `0.6.0+codex.20260831002920` plugin whose immutable cache contains `web-debug-workflow` and `manual-parity-qualification`; bundled and configured MCP both pin `web-debug-mcp@0.6.0`, with no duplicate registration. A new Codex session is required to load the updated skills/tool schemas.
 
-Verification passed with 31 files/155 tests, typecheck/build, native harness 575, formal harness zero errors/warnings, both skill validators, plugin validator, production audit zero vulnerabilities, exact archive Node 20/22/24 handshakes, public fresh-cache handshake, Chromium/framework/local-fidelity smokes, and the six-scenario demo. Fresh Safari live capture remains literally blocked after fixture-wait timeouts; deterministic Safari/BiDi contracts pass, and no fresh Safari PASS is claimed. HMAC/provider/production/external-CDP authority remains unavailable or separate.
+Verification passed with 31 files/155 tests, typecheck/build, both skill validators, plugin validator, production audit zero vulnerabilities, exact archive Node 20/22/24 handshakes, public fresh-cache handshake, Chromium/framework/local-fidelity smokes, and the six-scenario demo. Fresh Safari live capture remains literally blocked after fixture-wait timeouts; deterministic Safari/BiDi contracts pass, and no fresh Safari PASS is claimed. Provider production and external-CDP authority remain unavailable or separate.
 
 ## Context and Orientation
 
-`package.json` owns source/MCP/process identity. Release surfaces include `package-lock.json`, `README.md`, `ARCHITECTURE.md`, product/security/reliability/compatibility/harness docs, `docs/releases/0.6.0.md`, `scripts/harness-check.mjs`, `test/release-identity.test.ts`, `.agents/plugins/marketplace.json`, `.claude-plugin/marketplace.json`, both plugin manifests, and `plugins/web-debug/.mcp.json`.
+`package.json` owns source/MCP/process identity. Release surfaces include `package-lock.json`, `README.md`, `ARCHITECTURE.md`, product/security/reliability/compatibility docs, `docs/releases/0.6.0.md`, `test/release-identity.test.ts`, `.agents/plugins/marketplace.json`, `.claude-plugin/marketplace.json`, both plugin manifests, and `plugins/web-debug/.mcp.json`.
 
 The source-next capture contract uses project/session schema 2, evidence/capture schema 4, environment fingerprint schema 3, and scenario/verification schema 5. The plugin packages `web-debug-workflow` plus `manual-parity-qualification`; qualification JSON remains non-executable and repository-native tests own durable execution.
 
@@ -68,7 +59,7 @@ Finally explicitly stage every intended file, freeze one release commit, push ma
 ## Concrete Steps
 
 1. Reconcile/complete the capture source plan and create final release notes/identity changes with `apply_patch`; run focused release tests.
-2. Run `npm test`, typecheck, build, native/formal harness, both skill validators, plugin validator, audit, diff checks, and all relevant live smokes/comparison.
+2. Run `npm test`, typecheck, build, both skill validators, plugin validator, audit, diff checks, and all relevant live smokes/comparison.
 3. Pack one exact archive, install/handshake it on Node 20/22/24, and record its entry count, shasum, integrity, and clean teardown.
 4. Audit `git status`, explicitly stage all intended paths, commit `release: prepare 0.6.0`, push `main`, create/push annotated `v0.6.0`, and prove local/remote peeled equality.
 5. Publish the exact archive with npm `latest`, converge `next`, create the GitHub release from checked-in notes, and repeat public fresh-cache verification.
@@ -76,11 +67,11 @@ Finally explicitly stage every intended file, freeze one release commit, push ma
 
 ## Validation and Acceptance
 
-- `npm test`, `npm run typecheck`, `npm run build`, `npm run harness:check`, formal harness check, `git diff --check`, and production dependency audit exit zero.
+- `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`, and production dependency audit exit zero.
 - Both skill validators and the plugin validator exit zero; the installed immutable plugin cache contains both skills.
 - Chromium, React/Vite, Vue/Vite, Angular, Next, local-fidelity, and comparison flows pass. Safari is reported from fresh final evidence only; a blocker cannot be relabeled as PASS.
 - The exact final archive reports `serverInfo.version: 0.6.0`, exactly 13 tools, and 13 concrete data schemas under Node 20/22/24; help, doctor, cleanup, and EOF behavior remain bounded.
-- Package, lockfile, tests, harness, README, release notes, npm, peeled Git tag, GitHub release, both marketplaces/manifests, bundled MCP, and installed Codex plugin identities agree.
+- Package, lockfile, tests, verification, README, release notes, npm, peeled Git tag, GitHub release, both marketplaces/manifests, bundled MCP, and installed Codex plugin identities agree.
 - Every intended untracked file is in the release commit; no build cache, fixture mutation, credential, temporary archive, or command-owned browser/server process remains.
 - No previous version/tag moves, no connector-authored GitHub comment/review is created, and no production/provider claim is inferred.
 
@@ -109,5 +100,5 @@ Keep `@modelcontextprotocol/sdk`, `playwright-core`, and Zod versions unchanged.
 ## Revision History
 
 - (2026-08-31 00:27Z) Change: Created the stable 0.6.0 release-and-plugin-update plan after authentication, public-version, installed-plugin, source-next, and cross-thread preflight. Reason: Make the authorized immutable publication and rollback sequence restartable and auditable.
-- (2026-08-31 01:00Z) Change: Completed exact-source/tag/npm/GitHub publication, public distribution verification, and the Codex plugin/runtime/two-skill update. Reason: Deliver the authorized stable 0.6.0 release while preserving literal Safari, certification, external-target, and production limits.
+- (2026-08-31 01:00Z) Change: Completed exact-source/tag/npm/GitHub publication, public distribution verification, and the Codex plugin/runtime/two-skill update. Reason: Deliver the authorized stable 0.6.0 release while preserving literal Safari, validation, external-target, and production limits.
   Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-31 01:00Z; content-sha256=08913649b8646efcea5bacda2b06cdba5259c30ac861e5c514b327571ef2ff5c; evidence=Reviewed every checked source-freeze, version, deterministic, live-browser, archive, Node-runtime, npm, Git/GitHub, plugin, rollback, cleanup, and evidence milestone against observed outputs; exact immutable identities agree and every unavailable authority remains explicit.

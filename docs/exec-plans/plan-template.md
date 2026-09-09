@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: plan-slug
-status: active
-created: 2026-01-01
-updated: 2026-01-01
-completed:
-owner: Platform Engineering
--->
-
 # Action-oriented plan title
 
 Maintain this plan according to [`../PLANS.md`](../PLANS.md). Replace the metadata and prose with repository facts before adding it to the active registry.

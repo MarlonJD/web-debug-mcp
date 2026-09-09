@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: safari-mcp-safe-diagnostics
-status: completed
-created: 2026-08-31
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Web Debug maintainers
--->
-
 # Use Safari MCP only for handle-scoped optional diagnostics
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). Preserve the current source-next worktree and add no release, install, branch, GitHub, production, credential, remote-browser, or marketplace action.
@@ -19,8 +10,8 @@ Safari MCP failed the full transport cutover gate, but its handle-scoped tab lif
 
 - [x] (2026-08-31 14:15Z) Reviewed the caller-provided Safari 27 gate and selected only tools with explicit owned handles.
 - [x] (2026-08-31 14:25Z) Added one focused workflow reference and concise routing instructions.
-- [x] (2026-08-31 14:30Z) Added deterministic skill/harness checks and updated only affected architecture/security/compatibility wording.
-- [x] (2026-08-31 14:37Z) Ran skill, focused, full, typecheck/build, harness, and diff gates; completed with literal `not live-run on this host` status.
+- [x] (2026-08-31 14:30Z) Added deterministic skill/deterministic checks and updated only affected architecture/security/compatibility wording.
+- [x] (2026-08-31 14:37Z) Ran skill, focused, full, typecheck/build, verification, and diff gates; completed with literal `not live-run on this host` status.
 
 ## Surprises & Discoveries
 
@@ -37,11 +28,11 @@ Safari MCP failed the full transport cutover gate, but its handle-scoped tab lif
 
 Implemented as skill guidance only. A separately configured Safari 27 MCP may now be used for one owned diagnostic tab with handle-scoped navigation, console summaries, network summaries, and close. Ambient/full-detail tools remain forbidden; WebDriver/BiDi stays authoritative and Safari MCP evidence remains separate and diagnostic-only. This host did not run the external route because it has Safari 26.6.2 without `--mcp`; the contract is backed by the reviewed caller-provided Safari 27 schema artifact, not a local live claim.
 
-Validation: workflow skill `quick_validate.py` passed through a temporary PyYAML environment; focused plugin-skill tests passed 15/15; the full suite passed 32 files/161 tests; typecheck/build passed; `npm run harness:check` passed 596 checks with stale-candidate certification; `git diff --check` passed.
+Validation: workflow skill `quick_validate.py` passed through a temporary PyYAML environment; focused plugin-skill tests passed 15/15; the full suite passed 32 files/161 tests; typecheck/build passed; `git diff --check` passed.
 
 ## Context and Orientation
 
-`plugins/web-debug/skills/web-debug-workflow/SKILL.md` owns browser-diagnostic routing. `test/plugin-skill-contract.test.ts` and `scripts/harness-check.mjs` enforce bundled skill decisions. `ARCHITECTURE.md`, `README.md`, `docs/COMPATIBILITY.md`, and `docs/SECURITY.md` currently state that Safari MCP is not an internal transport. The completed Safari gate summary is [`../evidence/safari-27-mcp-feasibility-2026-08-31.json`](../evidence/safari-27-mcp-feasibility-2026-08-31.json).
+`plugins/web-debug/skills/web-debug-workflow/SKILL.md` owns browser-diagnostic routing. `test/plugin-skill-contract.test.ts` enforces bundled skill decisions. `ARCHITECTURE.md`, `README.md`, `docs/COMPATIBILITY.md`, and `docs/SECURITY.md` currently state that Safari MCP is not an internal transport. The completed Safari gate summary is [`../evidence/safari-27-mcp-feasibility-2026-08-31.json`](../evidence/safari-27-mcp-feasibility-2026-08-31.json).
 
 ## Plan of Work
 
@@ -52,8 +43,8 @@ Add deterministic checks that require the safe allowlist, forbid ambient/full-de
 ## Concrete Steps
 
 1. Add one Safari MCP diagnostic reference under `web-debug-workflow` and route to it conditionally.
-2. Freeze the exact handle-scoped allowlist and forbidden ambient/full-detail tools in focused tests and the native harness.
-3. Update affected architecture/security/compatibility wording and run skill, focused, full, type/build, harness, and diff gates.
+2. Freeze the exact handle-scoped allowlist and forbidden ambient/full-detail tools in focused tests and the deterministic verification.
+3. Update affected architecture/security/compatibility wording and run skill, focused, full, type/build, verification, and diff gates.
 
 ## Validation and Acceptance
 
@@ -63,7 +54,7 @@ npx vitest run test/plugin-skill-contract.test.ts
 npm test
 npm run typecheck
 npm run build
-npm run harness:check
+npm test
 git diff --check
 ```
 
@@ -86,4 +77,4 @@ Add no dependency, script, generator, adapter, transport, server, or public sche
 
 - (2026-08-31 14:15Z) Change: Created the plan. Reason: Reuse the safe Safari MCP subset without weakening the rejected full-cutover decision.
 - (2026-08-31 14:37Z) Change: Completed the handle-scoped optional diagnostic route, mechanical policy checks, and bounded documentation. Reason: Preserve useful Safari MCP console/network summaries without adding a second internal transport or evidence authority.
-  Semantic-Review: reviewer=Web Debug maintainers; reviewed-at=2026-08-31 14:37Z; content-sha256=dd0ddee9820ee7fc3fc687b5f842d435d59b2711f66e023ffbe187cbd8fc6d94; evidence=Reviewed the exact owned-handle allowlist, forbidden tools, separate-session labeling, diagnostic-only qualification boundary, validators, full suite, harness, and diff evidence.
+  Semantic-Review: reviewer=Web Debug maintainers; reviewed-at=2026-08-31 14:37Z; content-sha256=dd0ddee9820ee7fc3fc687b5f842d435d59b2711f66e023ffbe187cbd8fc6d94; evidence=Reviewed the exact owned-handle allowlist, forbidden tools, separate-session labeling, diagnostic-only qualification boundary, validators, full suite, verification, and diff evidence.

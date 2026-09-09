@@ -396,7 +396,6 @@ npm install --no-audit --no-fund
 npm test
 npm run typecheck
 npm run build
-npm run harness:check
 ```
 
 Check first-run readiness without starting a browser:
@@ -482,7 +481,6 @@ Do not enable that plugin in a production server.
 - Chromium debugger depth and Safari WebDriver/BiDi coverage that differ by browser capability.
 - Temporary screenshot artifacts outside the project directory with explicit retain/delete close policy.
 - Safe replay that reissues a limited action set, not a magical snapshot restore.
-- A native harness status that distinguishes passing source checks from a historical, possibly stale certification window; neither proves production deployment or provider authentication.
 
 ## What not to expect
 
@@ -522,9 +520,9 @@ Safari 27 includes Apple’s official Safari MCP server. The reviewed Safari 27 
 
 Release `0.11.0` keeps the 13-tool browser/runtime surface and Safari transport decision while adding bounded interactive UI discovery and exploration-to-native-test guidance. Safari WebDriver/BiDi remains authoritative, and the optional external Safari MCP diagnostic subset remains separate. Exact archive, npm/GitHub, and installed Codex plugin evidence is recorded in the `0.11.0` release plan.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/RELIABILITY.md`](docs/RELIABILITY.md), and [`docs/agent-harness/certification.md`](docs/agent-harness/certification.md) for implementation boundaries and operational details.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for implementation boundaries and operational details.
 
-Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md). `npm run eval:catalog` emits eight repair, routing, and authorization task contracts with four comparison variants documented in [`docs/demos/agent-evaluation.md`](docs/demos/agent-evaluation.md); it never calls a model automatically.
+Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
 
 ## License
 

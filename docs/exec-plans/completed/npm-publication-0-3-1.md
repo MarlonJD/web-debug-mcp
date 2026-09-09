@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: npm-publication-0-3-1
-status: completed
-created: 2026-08-28
-updated: 2026-08-28
-completed: 2026-08-28
-owner: Platform Engineering
--->
-
 # Publish the first npm package as 0.3.1
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md).
@@ -20,7 +11,7 @@ Publish a runnable `web-debug-mcp` package to the public npm registry, then upda
 - [x] (2026-08-28 10:37Z) Authenticate to npm as `marlonjd` through the web login flow.
 - [x] (2026-08-28 10:37Z) Abort the initial publish before registry mutation after npm reported that it would remove the invalid `bin` entry.
 - [x] (2026-08-28 10:40Z) Correct package metadata, remove install-time scripts, bump package/plugin/runtime surfaces to `0.3.1`, and switch the bundled runtime from GitHub `v0.3.0` to immutable npm `web-debug-mcp@0.3.1`.
-- [x] (2026-08-28 10:40Z) Run 61 deterministic tests, typecheck, build, harness (`232 checks`), plugin validation, warning-free real pack/fresh-prefix install, 13-tool stdio handshake, and registry/tag/release preflight.
+- [x] (2026-08-28 10:40Z) Run 61 deterministic tests, typecheck, build, verification (`232 checks`), plugin validation, warning-free real pack/fresh-prefix install, 13-tool stdio handshake, and registry/tag/release preflight.
 - [x] (2026-08-28 10:50Z) Commit and push `e97bab0`, tag `v0.3.1`, publish npm with `latest=0.3.1`, publish the GitHub release, refresh/install Codex plugin `0.3.1+codex.20260828103736`, and verify all published identities.
 
 ## Surprises & Discoveries
@@ -53,7 +44,7 @@ Work on the existing `main` branch. Authenticate npm through web login; run the 
 
 ## Validation and Acceptance
 
-Acceptance requires `npm test`, typecheck, build, harness, plugin validation, warning-free `npm pack`, fresh-prefix `npx`/binary MCP handshake, public npm metadata for exactly `0.3.1`, release-source/tag/GitHub-release SHA agreement, Codex installed/enabled at the `0.3.1` plugin build, and a clean worktree. An evidence-only follow-up commit may advance `main`; never move `v0.3.0` or `v0.3.1`.
+Acceptance requires `npm test`, typecheck, build, verification, plugin validation, warning-free `npm pack`, fresh-prefix `npx`/binary MCP handshake, public npm metadata for exactly `0.3.1`, release-source/tag/GitHub-release SHA agreement, Codex installed/enabled at the `0.3.1` plugin build, and a clean worktree. An evidence-only follow-up commit may advance `main`; never move `v0.3.0` or `v0.3.1`.
 
 ## Idempotence and Recovery
 

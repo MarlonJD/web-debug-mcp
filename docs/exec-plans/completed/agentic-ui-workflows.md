@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: agentic-ui-workflows
-status: completed
-created: 2026-09-08
-updated: 2026-09-08
-completed: 2026-09-08
-owner: Platform Engineering
--->
-
 # Add agent-readable interactive UI capture and workflow recipes
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). Work on the existing checkout and branch; do not create or switch branches.
@@ -19,7 +10,7 @@ Give agents a compact, bounded view of currently actionable web UI elements whil
 
 - [x] (2026-09-08 22:40Z) Add and validate the bounded `interactiveElements` capture contract and Chromium/Safari adapters.
 - [x] (2026-09-08 22:40Z) Update the existing bundled workflow skills and related documentation without adding a fourth skill or Figma connector.
-- [x] (2026-09-08 22:44Z) Run focused tests, full tests, typecheck, build, harness, all relevant browser/framework smokes, and diff hygiene.
+- [x] (2026-09-08 22:44Z) Run focused tests, full tests, typecheck, build, verification, all relevant browser/framework smokes, and diff hygiene.
 
 ## Surprises & Discoveries
 
@@ -38,7 +29,7 @@ Implemented and locally verified for both Chromium and Safari. `web_issue_captur
 
 The explore-to-native-test handoff is documented in the existing workflow and manual-parity skills: agents may use the map for discovery and then commit typed deterministic selectors/assertions to the native test runner. WebMCP remains limited to approved product capabilities and is not used as a generic test hook. Figma support was not implemented; DEBT-008 remains the deferred future-feature record and still requires an approved source and comparison thresholds.
 
-Validation passed: `npm test` (35 files / 202 tests), `npm run typecheck`, `npm run build`, `npm run harness:check` (`629 checks; certification: stale-candidate`), `git diff --check`, `npm run smoke:live`, `npm run smoke:safari`, `npm run smoke:react-vite`, `npm run smoke:vue-vite`, `npm run smoke:angular`, `npm run smoke:next`, `npm run smoke:webmcp`, and `npm run smoke:local-fidelity`. No production, remote-browser, hosted-MCP, Figma, release, or plugin-publication claim is made.
+Validation passed: `npm test` (35 files / 202 tests), `npm run typecheck`, `npm run build`, `git diff --check`, `npm run smoke:live`, `npm run smoke:safari`, `npm run smoke:react-vite`, `npm run smoke:vue-vite`, `npm run smoke:angular`, `npm run smoke:next`, `npm run smoke:webmcp`, and `npm run smoke:local-fidelity`. No production, remote-browser, hosted-MCP, Figma, release, or plugin-publication claim is made.
 
 ## Context and Orientation
 
@@ -52,7 +43,7 @@ The interactive surface is a compact, visible-action map: bounded element kind/r
 2. Thread the surface through capture projection, collection states, digests, evidence bounds, schemas, and tests without changing the MCP tool catalog or making it default summary evidence.
 3. Add the interactive smoke recipe to `web-debug-workflow`, strengthen the native-test handoff language in `manual-parity-qualification`, and preserve the WebMCP product/test-hook boundary.
 4. Update the public contract/reliability/examples only where the supported surface or workflow changes. Keep the deferred Figma record intact.
-5. Run focused capture/routing/session tests, then `npm test`, `npm run typecheck`, `npm run build`, `npm run harness:check`, and `git diff --check`.
+5. Run focused capture/routing/session tests, then `npm test`, `npm run typecheck`, `npm run build`, `npm test`, and `git diff --check`.
 
 ## Concrete Steps
 
@@ -69,7 +60,7 @@ The interactive surface is a compact, visible-action map: bounded element kind/r
 - Hidden/non-actionable DOM content is excluded; disabled/checked state and geometry are truthful when available; truncation is explicit.
 - Chromium and Safari preserve their existing capability boundaries and do not claim computed AX semantics for Safari.
 - The MCP catalog remains exactly 13 tools and all existing contracts remain valid.
-- Skill/plugin validators, focused tests, full tests, typecheck, build, harness, and `git diff --check` pass, or a literal environment blocker is recorded.
+- Skill/plugin validators, focused tests, full tests, typecheck, build, verification, and `git diff --check` pass, or a literal environment blocker is recorded.
 
 ## Idempotence and Recovery
 

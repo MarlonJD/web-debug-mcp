@@ -1,6 +1,6 @@
 # Compatibility
 
-This matrix records the `0.11.0` release candidate on exact local development fixtures and package handshakes. Registry recovery, binding-policy behavior, selective capture, interactive UI discovery, and workflow routing are verified by the deterministic and distribution gates named in the active release ExecPlan; immutable npm/GitHub and installed-plugin evidence remains pending until publication completes. A version not listed as verified is not implicitly unsupported; it is candidate-only until its relevant deterministic and live checks pass. Exact observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not HMAC certification, provider authority, deployment, or production evidence.
+This matrix records the `0.11.0` release candidate on exact local development fixtures and package handshakes. Registry recovery, binding-policy behavior, selective capture, interactive UI discovery, and workflow routing are verified by the deterministic and distribution gates named in the active release ExecPlan; immutable npm/GitHub and installed-plugin evidence remains pending until publication completes. A version not listed as verified is not implicitly unsupported; it is candidate-only until its relevant deterministic and live checks pass. Exact observations are recorded in [`compatibility-evidence.json`](compatibility-evidence.json); they are not provider authority, deployment, or production evidence.
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |

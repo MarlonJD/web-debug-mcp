@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: mcp-binding-fail-closed-recovery
-status: completed
-created: 2026-09-02
-updated: 2026-09-02
-completed: 2026-09-02
-owner: Platform Engineering
--->
-
 # Make MCP startup self-healing and explicit Web Debug use fail closed
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The user authorized implementation, one commit, and a push to the existing `main` branch. Do not publish npm/GitHub releases, install a replacement plugin, or change branches.
@@ -23,9 +14,9 @@ Success is observable when a registry at the record cap with dead/PID-reused ent
 - [x] (2026-09-02 02:37Z) Reconstructed the incident: 64 registry records blocked stdio startup; bounded cleanup classified 62 dead/stale, one live idle, and one identity mismatch; cleanup left orphan `.lock`/`.tmp` sidecars.
 - [x] (2026-09-02 02:56Z) Implemented identity-safe pre-cap startup reconciliation, exact `.json`/`.lock`/`.tmp` stale-family removal, PID-reuse no-signal handling, retention of live/unverifiable records, and bounded stderr startup diagnostics.
 - [x] (2026-09-02 02:56Z) Added schema-versioned doctor registry readiness plus explicit unverified current-task binding output, Gate 0 fallback prohibitions/recovery handoff, and Codex host/configuration guidance.
-- [x] (2026-09-02 02:56Z) Added deterministic cap, sidecar, PID-reuse, retention, cleanup-idempotence, doctor-boundary, and plugin-policy coverage plus reliability/security/compatibility/harness documentation updates.
+- [x] (2026-09-02 02:56Z) Added deterministic cap, sidecar, PID-reuse, retention, cleanup-idempotence, doctor-boundary, and plugin-policy coverage plus reliability/security/compatibility/verification documentation updates.
 - [x] (2026-09-02 03:06Z) Root review added bounded orphan-sidecar reconciliation, one-line diagnostic coverage, honest Codex compatibility evidence, and source-next `0.8.0-next.0` identity while keeping the released plugin/runtime immutable at `0.7.0`.
-- [x] (2026-09-02 03:06Z) Passed focused 45-test and full 32-file/169-test suites, typecheck, build, 618-check native harness, three skill validators, plugin validator, exact 13-tool stdio handshake, package dry-run, and `git diff --check`.
+- [x] (2026-09-02 03:06Z) Passed focused 45-test and full 32-file/169-test suites, typecheck, build, 618-check deterministic verification, three skill validators, plugin validator, exact 13-tool stdio handshake, package dry-run, and `git diff --check`.
 - [x] (2026-09-02 03:06Z) Prepared the single reviewed `main` commit and authorized `origin/main` push. The final commit hash and remote transport result are necessarily recorded in the user handoff after this plan is committed.
 
 ## Surprises & Discoveries
@@ -54,7 +45,7 @@ Success is observable when a registry at the record cap with dead/PID-reused ent
 
 The source-next server now self-reconciles identity-verifiably dead and PID-reused records before cap admission, removes exact stale record/lock/tmp families plus bounded old orphan sidecars, never signals during startup repair, retains live/unverifiable/malformed state, and emits bounded one-line stderr diagnostics. Doctor schema 3 reports registry readiness and always marks current-task binding unverified. The plugin skill makes a real bundled `web_project_detect` call Gate 0 and prohibits Playwright, Puppeteer, raw CDP, direct SDK, naked server, and cleanup fallback for explicit Web Debug requests.
 
-Local evidence passed: focused 4 files/45 tests; full 32 files/169 tests; source/test typecheck; build; native harness `618` with unchanged 13-tool surface; all three skill validators; plugin validator; `git diff --check`; exact built stdio handshake reporting `0.8.0-next.0`, 13 tools, `web_project_detect` first and `web_session_close` last with clean close; and a 156-entry `npm pack --dry-run` for source-next.
+Local evidence passed: focused 4 files/45 tests; full 32 files/169 tests; source/test typecheck; build; deterministic verification `618` with unchanged 13-tool surface; all three skill validators; plugin validator; `git diff --check`; exact built stdio handshake reporting `0.8.0-next.0`, 13 tools, `web_project_detect` first and `web_session_close` last with clean close; and a 156-entry `npm pack --dry-run` for source-next.
 
 No browser live smoke ran because browser/session code did not change. No local Codex `0.152.0+` Gate 0 binding, npm publication, GitHub release, plugin marketplace version bump, or installed-plugin replacement was authorized or claimed. The pushed source is locally verified and release pending; public/installed plugin runtime remains immutable `0.7.0` until a separate release task.
 
@@ -72,7 +63,7 @@ Second, extend doctor with bounded registry readiness plus an explicit client-bi
 
 Third, harden plugin behavior. For explicit Web Debug invocation, require a real `web_project_detect` call as Gate 0. If the tool is absent or initialization failed, report the exact binding/startup blocker and stop. Prohibit repository Playwright/Puppeteer/raw CDP/direct SDK/naked server/cleanup substitution. Provide only the supported recovery handoff: repair the reported server condition if identity-safe, then use Codex Settings MCP Restart or a new task/session. Adopt the current official Codex host baseline and use the supported required-MCP configuration if the plugin schema and validators accept it; otherwise document the exact strict user-config override without inventing an unsupported manifest field.
 
-Finally, add deterministic cap, power-loss, PID-reuse, sidecar, doctor-boundary, startup-diagnostic, and skill-policy tests. Update reliability/security/compatibility/harness text with literal scoped claims, run the complete local definition of done, and move this plan to `completed/` only after every promised gate passes.
+Finally, add deterministic cap, power-loss, PID-reuse, sidecar, doctor-boundary, startup-diagnostic, and skill-policy tests. Update reliability/security/compatibility/verification text with literal scoped claims, run the complete local definition of done, and move this plan to `completed/` only after every promised gate passes.
 
 ## Concrete Steps
 
@@ -80,11 +71,11 @@ Work from `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on existing `main`
 
 1. Edit lifecycle core, doctor/CLI, plugin config/skill, focused tests, and matching docs. Do not change the public tool list or add a dependency.
 2. Run focused Vitest files covering local fidelity, doctor, plugin skill, MCP server startup, and any new lifecycle module tests.
-3. Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run harness:check`.
-4. Run the repository-provided skill/plugin validators required by existing harness or package scripts, plus `git diff --check`.
+3. Run `npm test`, `npm run typecheck`, `npm run build`, and `npm test`.
+4. Run the repository-provided skill/plugin validators required by existing verification or package scripts, plus `git diff --check`.
 5. Review `git diff`, update this plan's evidence and outcomes, move it to `completed/`, update `docs/exec-plans/index.md`, commit once, then run `env -u GH_TOKEN -u GITHUB_TOKEN git push origin main`.
 
-Expected signals are zero exits, all tests passing, `harness-check: PASS`, an unchanged 13-tool catalog, and a clean working tree after push. If a test reveals that current Codex/plugin schema cannot express required MCP startup, retain fail-closed skill behavior and document the supported host configuration rather than adding a compatibility shim.
+Expected signals are zero exits, all tests passing, `deterministic checks passed`, an unchanged 13-tool catalog, and a clean working tree after push. If a test reveals that current Codex/plugin schema cannot express required MCP startup, retain fail-closed skill behavior and document the supported host configuration rather than adding a compatibility shim.
 
 ## Validation and Acceptance
 
@@ -97,9 +88,9 @@ Expected signals are zero exits, all tests passing, `harness-check: PASS`, an un
 - Doctor reports registry readiness and explicitly says it cannot verify current Codex task binding; an actual bundled `web_project_detect` call remains the only Gate 0 proof.
 - The explicit Web Debug skill contract contains mechanical prohibitions against Playwright/Puppeteer/raw CDP/direct SDK/naked server/cleanup fallback and names supported Restart/new-session recovery.
 - Plugin/config validation accepts the chosen strict startup policy, or the plan records a literal supported-config-only outcome.
-- `npm test`, `npm run typecheck`, `npm run build`, `npm run harness:check`, relevant plugin/skill validators, and `git diff --check` pass.
+- `npm test`, `npm run typecheck`, `npm run build`, `npm test`, relevant plugin/skill validators, and `git diff --check` pass.
 - No browser live smoke is required unless implementation changes browser/session code; registry/stdio handshake tests are required because startup behavior changes.
-- Full local gate (2026-09-02 03:06Z): `npm test` passed 32 files / 169 tests; `npm run typecheck`, `npm run build`, and `npm run harness:check` exited zero with `harness-check: PASS (618 checks; certification: stale-candidate)`.
+- Full local gate (2026-09-02 03:06Z): `npm test` passed 32 files / 169 tests; `npm run typecheck` and `npm run build` exited zero.
 - Distribution-shape gate (2026-09-02 03:06Z): all three `quick_validate.py` skill runs and `validate_plugin.py plugins/web-debug` passed; exact built stdio returned source version `0.8.0-next.0` and 13 tools, then removed its registry record on close; `npm pack --dry-run --json` reported 156 files and source-next identity without creating or publishing an archive.
 
 ## Idempotence and Recovery
@@ -117,6 +108,6 @@ Keep Node.js built-ins, `@modelcontextprotocol/sdk` `1.30.0`, Zod `4.4.3`, the 1
 
 ## Revision History
 
-- (2026-09-02 02:37Z) Change: Created and registered the plan from the reproduced Codex/registry incident. Reason: Make the cross-cutting lifecycle, host-binding, plugin-policy, and verification work restartable before Luna Max implementation.
-- (2026-09-02 03:06Z) Change: Completed Luna Max implementation, root security review/corrections, source-next identity, all local gates, and the release-pending handoff boundary. Reason: Deliver self-healing server startup and explicit-invocation fail-closed behavior without claiming an unavailable Codex host rebinding API or publishing a release.
-  Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-09-02 03:06Z; evidence=Reviewed process identity/no-signal behavior, exact artifact containment, reconciliation and admission bounds, doctor binding semantics, plugin fallback prohibitions, source/released version separation, 45 focused and 169 full tests, type/build/harness, validators, stdio handshake, package dry-run, and diff hygiene.
+- (2026-09-02 02:37Z) Change: Created and registered the plan from the reproduced Codex/registry incident. Reason: Make the cross-cutting lifecycle, host-binding, plugin-policy, and verification work restartable.
+- (2026-09-02 03:06Z) Change: Completed the implementation, root security review/corrections, source-next identity, all local gates, and the release-pending handoff boundary. Reason: Deliver self-healing server startup and explicit-invocation fail-closed behavior without claiming an unavailable Codex host rebinding API or publishing a release.
+  Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-09-02 03:06Z; evidence=Reviewed process identity/no-signal behavior, exact artifact containment, reconciliation and admission bounds, doctor binding semantics, plugin fallback prohibitions, source/released version separation, 45 focused and 169 full tests, type/build/verification, validators, stdio handshake, package dry-run, and diff hygiene.

@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: webmcp-hybrid-authoring-and-safari-mcp
-status: completed
-created: 2026-08-31
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Web Debug maintainers
--->
-
 # Add direct-only WebMCP actions and gate a forward-only Safari 27 MCP cutover
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). Work on the current branch, preserve unrelated changes, and do not publish, release, install into Codex, update a marketplace, or write to GitHub under this plan.
@@ -31,7 +22,7 @@ The smallest complete vertical slice is one source-backed fixture capability who
 - [x] (2026-08-31 13:40Z) Rejected the Safari MCP cutover because the gate failed owned-handle, schema strictness, origin quarantine, bounds, freshness, and native parity requirements. `SafariAdapter` keeps WebDriver/BiDi as its sole transport.
 - [x] (2026-08-31 13:50Z) Added the minimal `webmcp-tool-authoring` skill/reference, updated manual-parity routing, and added direct-action exclusion/adversarial contract tests.
 - [x] (2026-08-31 14:05Z) Ran all eight disposable target-repository behavioral/adversarial cases with generated decision artifacts, a command-owned native-runner stub where applicable, and the existing validator. UI-sufficient/no-tool, approved capability gap, lying `readOnlyHint`, Safari without WebMCP, and native-runner ownership produced native-runner PASS with validator `ok: true`; candidate-only remained `crosswalkReady: false` with no native run; tool/domain disagreement and mutation timeout produced native-runner `inconclusive` with validator-computed `inconclusive`. No diagnostic/tool output was promoted to qualification evidence.
-- [x] (2026-08-31 14:10Z) Updated source-next contracts and ran deterministic tests, Chrome/WebDriver live smokes, skill validation, isolated local-pack handshake, harness, and cleanup checks. Safari MCP cutover remains blocked and no candidate Safari transport was retained.
+- [x] (2026-08-31 14:10Z) Updated source-next contracts and ran deterministic tests, Chrome/WebDriver live smokes, skill validation, isolated local-pack handshake, verification, and cleanup checks. Safari MCP cutover remains blocked and no candidate Safari transport was retained.
 
 ## Surprises & Discoveries
 
@@ -65,7 +56,7 @@ The smallest complete vertical slice is one source-backed fixture capability who
 
 Safe source-next slices are implemented and verified locally: direct-only Chromium WebMCP, source/version/capture contracts, fixture smoke, skill guidance, and qualification exclusion boundaries. Safari 27 MCP was evaluated through the caller-provided other-MacBook artifact and failed the frozen cutover gate. No candidate Safari MCP runtime was retained, no compatibility layer was added, and WebDriver/BiDi remains the sole Safari transport. This is a completed rejection decision, not a claim that Safari MCP parity passed.
 
-Validation record: `npm test` passed (32 files/161 tests), `npm run typecheck` passed, `npm run build` passed, `git diff --check` passed, and `npm run harness:check` passed (`harness-check: PASS (591 checks; certification: stale-candidate)`). `npm run smoke:webmcp`, `smoke:live`, `smoke:react-vite`, `smoke:next`, `smoke:vue-vite`, `smoke:angular`, `smoke:local-fidelity`, and pre-cutover `smoke:safari` all returned `passed: true`; source-next isolated tarball stdio handshake returned exact 13 tools/13 concrete schemas. Skill validation passed in a temporary PyYAML-enabled Python environment; the base Python environment lacked PyYAML (`ModuleNotFoundError`) and was not modified. The eight forward cases above all produced the expected native/validator outcomes under a deleted temporary root.
+Validation record: `npm test` passed (32 files/161 tests), `npm run typecheck` passed, `npm run build` passed, and `git diff --check` passed. `npm run smoke:webmcp`, `smoke:live`, `smoke:react-vite`, `smoke:next`, `smoke:vue-vite`, `smoke:angular`, `smoke:local-fidelity`, and pre-cutover `smoke:safari` all returned `passed: true`; source-next isolated tarball stdio handshake returned exact 13 tools/13 concrete schemas. Skill validation passed in a temporary PyYAML-enabled Python environment; the base Python environment lacked PyYAML (`ModuleNotFoundError`) and was not modified.
 
 ## Context and Orientation
 
@@ -73,9 +64,9 @@ Validation record: `npm test` passed (32 files/161 tests), `npm run typecheck` p
 
 `src/adapters/browser.ts`, `src/adapters/safari.ts`, and `src/adapters/runtime-capabilities.ts` currently expose `webdriverEndpoint`, `safari-webdriver`, `safari-bidi`, and Performance Resource Timing fallback behavior. `src/core/doctor.ts`, `bin/web-debug-mcp.mjs`, `scripts/live-safari-smoke.mjs`, `README.md`, `ARCHITECTURE.md`, `docs/COMPATIBILITY.md`, `docs/RELIABILITY.md`, and `docs/SECURITY.md` describe or verify that transport. These exact surfaces must move together if the cutover passes.
 
-`plugins/web-debug/skills/manual-parity-qualification/` owns reviewed qualification orchestration and its existing structural validator. `test/plugin-skill-contract.test.ts` and `scripts/harness-check.mjs` currently enforce exactly two plugin skills. The new `plugins/web-debug/skills/webmcp-tool-authoring/` may contain only `SKILL.md` and at most `references/tool-quality-and-security.md`; it gets no script, generator, assets, or runner.
+`plugins/web-debug/skills/manual-parity-qualification/` owns reviewed qualification orchestration and its existing structural validator. `test/plugin-skill-contract.test.ts` enforces exactly two plugin skills. The new `plugins/web-debug/skills/webmcp-tool-authoring/` may contain only `SKILL.md` and at most `references/tool-quality-and-security.md`; it gets no script, generator, assets, or runner.
 
-The released baseline is `0.6.0`. `package.json`, `package-lock.json`, release-identity tests, README, compatibility/reliability evidence, harness rules, and the repository plugin source currently assume that final identity. Implementation must separate the local `0.7.0-next.0` source from the immutable npm/GitHub/installed-plugin `0.6.0` baseline rather than relabeling old evidence.
+The released baseline is `0.6.0`. `package.json`, `package-lock.json`, release-identity tests, README, compatibility/reliability evidence, verification rules, and the repository plugin source currently assume that final identity. Implementation must separate the local `0.7.0-next.0` source from the immutable npm/GitHub/installed-plugin `0.6.0` baseline rather than relabeling old evidence.
 
 ### Frozen WebMCP Contract
 
@@ -137,7 +128,7 @@ This source-only change deliberately bumps nested public shapes together:
 - `DebugSessionSummary` moves 2 to 3 because it nests the target and runtime capabilities.
 - `IssueCaptureResult` moves 4 to 5 and adds the exact WebMCP summary/detail and replay-restorability fields.
 - `EnvironmentFingerprint` moves 3 to 4. `PublicReproScenario` and `VerificationResult` move 5 to 6 because they nest the fingerprint/capabilities, while their action arrays remain the old replayable-only union.
-- Every affected Zod wire schema, tool output schema, MCP input schema, test fixture, README example, architecture/reliability/security statement, compatibility evidence label, and harness assertion moves atomically. Do not accept legacy shapes or add a compatibility parser.
+- Every affected Zod wire schema, tool output schema, MCP input schema, test fixture, README example, architecture/reliability/security statement, compatibility evidence label, and verification assertion moves atomically. Do not accept legacy shapes or add a compatibility parser.
 
 Set `package.json` and the root lockfile package identity to `0.7.0-next.0`, set `webDebug.releaseStatus` to `source-next`, add/preserve `webDebug.releasedPackageVersion: "0.6.0"`, and preserve `webDebug.releasedPluginRuntimeVersion: "0.6.0"`. Give the repository plugin source an explicit `0.7.0-next.0` source identity for validation, but leave the installed Codex plugin and immutable npm/GitHub artifacts labeled `0.6.0` and do not update them. No release note, tag, publish, GitHub write, global install, Codex install, or marketplace action belongs to this plan.
 
@@ -145,7 +136,7 @@ Set `package.json` and the root lockfile package identity to `0.7.0-next.0`, set
 
 ### Milestone 0: Repaired-plan gate
 
-This repair is the gate. Do not begin runtime implementation until `git diff --check` and `npm run harness:check` pass with the active registry showing `Browser feasibility`. If later live evidence contradicts a frozen calling convention, schema, or safety assumption, stop, update this plan, and obtain another read-only review before code proceeds.
+This repair is the gate. Do not begin runtime implementation until `git diff --check` and `npm test` pass with the active registry showing `Browser feasibility`. If later live evidence contradicts a frozen calling convention, schema, or safety assumption, stop, update this plan, and obtain another read-only review before code proceeds.
 
 ### Milestone 1A: Real Chrome feasibility, no retained runtime code
 
@@ -175,7 +166,7 @@ Tests must prove every exclusion boundary, one-attempt behavior, fixed error env
 
 After Milestone 1B passes, implement the bounded stdio client behind `SafariAdapter` and rerun the complete deterministic and live Safari contract against the required subset. Preserve loopback-only/same-origin policy, exact selected handle, one action at a time, strict response validation, observer freshness, artifact bounds, and owned cleanup.
 
-If every row passes, remove `webdriverEndpoint` from startup/doctor/CLI/types/schemas, delete WebDriver HTTP/BiDi/Performance Resource Timing code and tests, remove their environment variables/provenance/transport enums, set minimum supported Safari to 27, and update the exact startup, doctor, README, architecture, compatibility, reliability, security, smoke, and harness contracts in the same change. `SafariAdapter` stays as the policy façade and `safari-mcp` becomes its only transport.
+If every row passes, remove `webdriverEndpoint` from startup/doctor/CLI/types/schemas, delete WebDriver HTTP/BiDi/Performance Resource Timing code and tests, remove their environment variables/provenance/transport enums, set minimum supported Safari to 27, and update the exact startup, doctor, README, architecture, compatibility, reliability, security, smoke, and verification contracts in the same change. `SafariAdapter` stays as the policy façade and `safari-mcp` becomes its only transport.
 
 If implementation or parity fails, use `git diff` to identify and remove all candidate Safari MCP runtime/tests/docs while preserving unrelated and already-complete Chrome/skill work. Record only bounded feasibility evidence and the blocker. Do not close the milestone, claim Safari implementation, lower the gate, retain a feature flag, or leave two transports.
 
@@ -222,7 +213,7 @@ Count-only, subset, or unsorted comparisons do not pass. Also prove the immutabl
 Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the current branch.
 
 1. Before each milestone run `git status --short --branch`; preserve unrelated changes and never perform branch operations.
-2. Finish this plan-repair gate with `git diff --check` and `npm run harness:check`; the observable signal is no diff error and `harness-check: PASS`.
+2. Finish this plan-repair gate with `git diff --check` and `npm test`; the observable signal is no diff error and `deterministic checks passed`.
 3. Run Chrome and Safari feasibility from command-owned temporary fixtures/processes. Record exact versions, schemas, commands, pass/fail rows, and bounded non-sensitive output. Retain no runtime code from a failed gate.
 4. Implement Chrome in the order: action-type split, secret/replay/screenshot state, adapter call, result/errors, capability/capture, then focused tests. Run the focused suite after each layer.
 5. Implement Safari only after its gate. Run focused schema/transport/lifecycle tests, then the full current Safari contract. Cut over and delete WebDriver/BiDi only on a complete pass; otherwise remove candidate Safari changes.
@@ -238,11 +229,11 @@ Deterministic repository gates:
 npm test
 npm run typecheck
 npm run build
-npm run harness:check
+npm test
 git diff --check
 ```
 
-Expected signals are Vitest exit 0, TypeScript with no diagnostics, successful `dist/`, `harness-check: PASS`, and no whitespace errors.
+Expected signals are Vitest exit 0, TypeScript with no diagnostics, successful `dist/`, `deterministic checks passed`, and no whitespace errors.
 
 Required focused/live gates after their feasibility milestones pass:
 

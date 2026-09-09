@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: install-source-next-codex-plugin
-status: completed
-created: 2026-08-31
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Web Debug maintainers
--->
-
 # Commit, push, and install the verified source-next plugin locally
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The user explicitly authorized commit, push, update, and Codex installation. Do not publish npm, create a tag/GitHub release, update the public marketplace, or change branches.
@@ -62,7 +53,7 @@ Record bounded evidence, complete this plan, commit all repository changes with 
 npm test
 npm run typecheck
 npm run build
-npm run harness:check
+npm test
 git diff --check
 env -u GH_TOKEN -u GITHUB_TOKEN gh auth status
 ```

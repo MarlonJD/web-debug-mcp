@@ -83,6 +83,6 @@ npm run demo:compare -- --scenario=complex-async-fix --runs=3
 npm run demo:compare -- --scenario=visual-layout-fix --runs=3
 ```
 
-The output reports median/p90 machine timings, evidence coverage, screenshots, buggy reproduction, root-cause evidence, and fixed-flow verification. `npm run eval:catalog` separately emits the three frozen agent prompts, while `npm run eval:grade -- <result.json>` scores a reviewed run record. Neither command claims a human diagnosis time or that the MCP is always faster for a trivial DOM change.
+The output reports median/p90 machine timings, evidence coverage, screenshots, buggy reproduction, root-cause evidence, and fixed-flow verification. These measurements are technical local evidence, not a claim about human diagnosis time or universal speed for trivial DOM changes.
 
-For the raw timing methodology and Sol/Luna QA notes, see [`docs/demos/comparison.md`](demos/comparison.md).
+For the raw timing methodology, see [`docs/demos/comparison.md`](demos/comparison.md).

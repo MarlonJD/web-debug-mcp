@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: release-0-8-0
-status: active
-created: 2026-09-02
-updated: 2026-09-02
-completed:
-owner: Platform Engineering
--->
-
 # Release Web Debug 0.8.0 and update Codex
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The user explicitly authorized stable npm and GitHub publication, plugin marketplace promotion, and replacement of the installed Codex Web Debug plugin/MCP. Work on existing `main`; do not create or switch branches.
@@ -19,9 +10,9 @@ Promote locally verified source-next `0.8.0-next.0` to stable `0.8.0`, publish o
 
 - [x] (2026-09-02 12:18Z) Confirmed clean synchronized `main` at `2a79f4f`, absent local/remote `v0.8.0` tag and GitHub release, absent npm `0.8.0`, npm `latest=next=0.7.0`, and one installed/enabled Codex plugin `0.7.0+codex.20260831150253` with MCP pin `0.7.0`.
 - [x] (2026-09-02 12:25Z) Restored npm owner authentication through the supported browser-authorized CLI flow; `npm whoami` returned `marlonjd` and package ownership matched.
-- [x] (2026-09-02 12:27Z) Promoted package/plugin/marketplace/docs/tests/harness identities to stable `0.8.0`, set Codex build `0.8.0+codex.20260902122251`, and added release notes.
-- [x] (2026-09-02 12:31Z) Passed 32 files/169 tests, source/test typecheck, build, audit zero, 620-check native harness, three skill validators, plugin validator, Chrome/WebMCP/local-fidelity/framework/Next/Safari smokes, and all six comparison scenarios. Exact-archive Node 20/22/24 verification follows the clean release commit.
-- [x] (2026-09-07 14:42Z) Refreshed the transitive `qs` dependency to `6.16.0`, then re-ran fresh-install tests, typecheck, harness, and production audit with zero vulnerabilities.
+- [x] (2026-09-02 12:27Z) Promoted package/plugin/marketplace/docs/tests identities to stable `0.8.0`, set Codex build `0.8.0+codex.20260902122251`, and added release notes.
+- [x] (2026-09-02 12:31Z) Passed 32 files/169 tests, source/test typecheck, build, audit zero, three skill validators, plugin validator, Chrome/WebMCP/local-fidelity/framework/Next/Safari smokes, and all six comparison scenarios. Exact-archive Node 20/22/24 verification follows the clean release commit.
+- [x] (2026-09-07 14:42Z) Refreshed the transitive `qs` dependency to `6.16.0`, then re-ran fresh-install tests, typecheck, and production audit with zero vulnerabilities.
 - [x] (2026-09-07 14:43Z) Committed and pushed the final source as `e54075d20a6666fed01ad7b524cbd40a83303df7`; packed the exact archive with shasum `eaf6aabd43ee89d7efff1229e27f3be312567e7f` and integrity `sha512-hx93WlroH/4GPfGZLYBxiknCUI+AppMmkit4xJyPNlpwyLxEM2MJ07Qi/0+HdF2UML4S9d/gy2Zq7IotrrRpyQ==`.
 - [x] (2026-09-07 14:49Z) Published `web-debug-mcp@0.8.0`, converged npm `latest` and `next` to `0.8.0`, pushed annotated tag `v0.8.0`, and created the GitHub release.
 - [x] (2026-09-07 14:50Z) Upgraded the configured `web-debug` marketplace to `e54075d`; the installed Codex plugin is `0.8.0+codex.20260902122251`, and the direct strict MCP configuration pins public `web-debug-mcp@0.8.0` with `required = true` while the duplicate plugin connection remains disabled.
@@ -46,7 +37,7 @@ Public package, npm tags, GitHub release, source marketplace snapshot, and insta
 
 ## Context and Orientation
 
-Release identity is distributed across `package.json`, `package-lock.json`, `src/core/version.ts`, release-identity tests, README and compatibility docs, `plugins/web-debug/.mcp.json`, both plugin manifests, both marketplace files, harness assertions, and release notes under `docs/releases/`. The working tree and public package/plugin baseline are now final `0.8.0`. The completed [`mcp-binding-fail-closed-recovery.md`](../completed/mcp-binding-fail-closed-recovery.md) contains the implementation evidence promoted by this release.
+Release identity is distributed across `package.json`, `package-lock.json`, `src/core/version.ts`, release-identity tests, README and compatibility docs, `plugins/web-debug/.mcp.json`, both plugin manifests, both marketplace files, and release notes under `docs/releases/`. The working tree and public package/plugin baseline are now final `0.8.0`. The completed [`mcp-binding-fail-closed-recovery.md`](../completed/mcp-binding-fail-closed-recovery.md) contains the implementation evidence promoted by this release.
 
 ## Plan of Work
 
@@ -57,15 +48,15 @@ After public npm/GitHub verification, upgrade the configured `web-debug` marketp
 ## Concrete Steps
 
 1. Restore npm authentication with the supported web login if required and verify package ownership.
-2. Update final 0.8.0 package, plugin, marketplace, documentation, tests, harness, and release-note identities.
-3. Run focused/full deterministic gates, typecheck/build, production audit, native harness, three skill validators, plugin validator, relevant browser/lifecycle smokes, and diff hygiene.
+2. Update final 0.8.0 package, plugin, marketplace, documentation, tests, and release-note identities.
+3. Run focused/full deterministic gates, typecheck/build, production audit, three skill validators, plugin validator, relevant browser/lifecycle smokes, and diff hygiene.
 4. Commit/push final source; pack once into an owned temporary directory; verify the exact archive under Node 20/22/24 and record immutable metadata.
 5. Publish the exact archive; converge npm tags; create/push annotated tag and GitHub release; verify public empty-cache installation.
 6. Upgrade the Codex marketplace/plugin, verify one installed released plugin/MCP and the Gate 0 tool catalog, then complete this plan and repository evidence in a final documentation commit if external outcomes must be recorded after publication.
 
 ## Validation and Acceptance
 
-- `npm test`, `npm run typecheck`, `npm run build`, `npm run harness:check`, `npm audit --omit=dev`, three skill validators, plugin validator, and `git diff --check` pass.
+- `npm test`, `npm run typecheck`, `npm run build`, `npm audit --omit=dev`, three skill validators, plugin validator, and `git diff --check` pass.
 - Relevant lifecycle/stdio and available live browser/framework smokes pass, or an exact environment blocker is recorded without converting it into a pass.
 - The exact clean-commit archive initializes as `0.8.0`, lists the canonical 13 tools with concrete output schemas, and closes cleanly under Node 20, 22, and 24.
 - npm `latest` and `next`, package/lock/runtime, peeled tag, GitHub release, plugin manifests/marketplaces, bundled MCP pin, and installed Codex plugin agree on `0.8.0` or one timestamped `0.8.0+codex.*` build.

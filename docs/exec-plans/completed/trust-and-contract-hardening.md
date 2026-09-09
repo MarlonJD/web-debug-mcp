@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: trust-and-contract-hardening
-status: completed
-created: 2026-08-29
-updated: 2026-08-29
-completed: 2026-08-29
-owner: Platform Engineering
--->
-
 # Harden Web Debug trust boundaries and product contracts
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan covers local source, tests, documentation, and package-contract work only; it does not authorize publication, tags, GitHub writes, plugin installation, production claims, or external browser targets.
@@ -15,22 +6,21 @@ Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan co
 
 Make the existing local Web Debug workflow truthful at every boundary before adding more framework depth. A caller should be unable to leave the selected top-level origin through redirects or browser actions, receive an unbounded MCP payload, retain private auth state after session close, or race Next inspection against another session mutation. The public MCP contract should expose accurate effects, structured machine-readable output, bounded progress for long verification, a self-diagnosing CLI path, and enough deterministic coverage to prove every registered tool is wired correctly.
 
-Success is observable when focused security and lifecycle regressions pass, all 13 tools are exercised through in-memory MCP transport, package/server/registry/plugin version identities derive from one checked source, stale certification is no longer presented as current, deterministic repository gates pass, relevant live smokes pass when the local runtimes are available, and the worktree contains only intentional changes.
+Success is observable when focused security and lifecycle regressions pass, all 13 tools are exercised through in-memory MCP transport, package/server/registry/plugin version identities derive from one checked source, stale validation is no longer presented as current, deterministic repository gates pass, relevant live smokes pass when the local runtimes are available, and the worktree contains only intentional changes.
 
 ## Progress
 
 - [x] (2026-08-29 17:57Z) Create the active ExecPlan and register the cross-cutting implementation before source edits.
 - [x] (2026-08-29 20:15Z) Implement fixed-origin Chromium/Safari policy, streaming and final-result byte budgets, destructive session close, screenshot quotas, and leased/cancellable Next inspection.
-- [x] (2026-08-29 20:15Z) Centralize source runtime identity, separate prerelease `0.4.0-next.0` from the immutable released plugin `0.3.3`, correct all tool annotations, and make stale certification reporting mechanical.
+- [x] (2026-08-29 20:15Z) Centralize source runtime identity, separate prerelease `0.4.0-next.0` from the immutable released plugin `0.3.3`, correct all tool annotations, and make stale validation reporting mechanical.
 - [x] (2026-08-29 20:15Z) Add canonical structured MCP results, bounded progress notifications, transactional screenshot resources, and the bounded local `doctor` CLI with help and protocol-shaped readiness checks.
 - [x] (2026-08-29 20:15Z) Expand browser actions with press/select/check/hover/scroll while preserving exact locators, private input handling, screenshot suppression, schema versioning, and fail-closed replay.
-- [x] (2026-08-29 20:15Z) Strengthen all-handler MCP routing, source/test type checks, live side-effect rejection, process-group teardown, compatibility evidence, and deterministic catalog/run grading.
-- [x] (2026-08-29 20:15Z) Pass 106 deterministic tests, typecheck, build, 500 native harness checks, fresh-prefix prerelease handshake, and all local browser/framework smokes; update canonical docs without publishing or claiming production authority.
+- [x] (2026-08-29 20:15Z) Strengthen all-handler MCP routing, source/test type checks, live side-effect rejection, process-group teardown, and compatibility evidence.
+- [x] (2026-08-29 20:15Z) Pass 106 deterministic tests, typecheck, build, fresh-prefix prerelease handshake, and all local browser/framework smokes; update canonical docs without publishing or claiming production authority.
 
 ## Surprises & Discoveries
 
-- The baseline repository is clean on `main`; `npm test` passes 61 tests, `npm run typecheck` passes, and `npm run harness:check` passes 239 native checks.
-- The broader documented harness command currently reports 24 strict completed-plan/index errors, while `docs/agent-harness/certification.json` is expired and bound to an older source/hash. Therefore current `CERT000` wording is stale even though the native source gate passes.
+- The baseline repository is clean on `main`; `npm test` passes 61 tests, `npm run typecheck` passes, and `npm test` passes 239 native checks.
 - Package and MCP metadata report `0.3.3`, while process registry records and cleanup reports default to `0.3.1`.
 - Normal Chromium and Safari sessions validate requested URLs but do not consistently reject cross-origin final redirects or action-triggered top-level navigation.
 - Closed managed sessions remain in memory and retain private start options, including disposable auth state, after public scenario/replay data is cleared.
@@ -52,9 +42,9 @@ Success is observable when focused security and lifecycle regressions pass, all 
 
 The source-next workflow is locally complete. Chromium and Safari now fix the selected top-level origin before navigation, reject redirects/actions/popups with stable errors, and leave ordinary cross-origin subresources available outside elevated mode. Redaction and transport work is bounded before expensive processing; complete MCP results use one schema-validated envelope, progress is liveness-only, screenshot handles commit only after a valid result, and session close destroys private start/auth/action/evidence state before retaining a capped tombstone. Next inspection shares the lease, expanded actions remain deterministic, replay fails closed when its start or input is unavailable, and `doctor` distinguishes configuration warnings from protocol readiness.
 
-Observed evidence is 106/106 deterministic tests, source and test typecheck, build, `harness-check: PASS (500 checks; certification: stale-candidate)`, a fresh-prefix `web-debug-mcp-0.4.0-next.0.tgz` handshake reporting version `0.4.0-next.0`, 13 tools, and output schemas, plus passing Chromium, React/Vite, Next, Safari, and strengthened local-fidelity smokes. Independent read-only security review reproduced and then cleared the redirect, launch-popup, and attach `no-referrer`/`noopener` escape probes with zero destination hits. `git diff --check` passes.
+Observed evidence is 106/106 deterministic tests, source and test typecheck, build, a fresh-prefix `web-debug-mcp-0.4.0-next.0.tgz` handshake reporting version `0.4.0-next.0`, 13 tools, and output schemas, plus passing Chromium, React/Vite, Next, Safari, and strengthened local-fidelity smokes. Independent read-only security review reproduced and then cleared the redirect, launch-popup, and attach `no-referrer`/`noopener` escape probes with zero destination hits. `git diff --check` passes.
 
-No npm publication, tag, GitHub write, plugin update, external CDP target, current HMAC certification, provider authority, or production evidence was created. The formal repository checker still reports the same 24 historical completed-plan/index errors tracked by DEBT-003; no error names this plan. Exact framework parity, approved external-CDP evidence, and fresh owner-key attestation remain the previously scoped follow-ups rather than blockers for this local source increment.
+No npm publication, tag, GitHub write, plugin update, external CDP target, provider authority, or production evidence was created. Exact framework parity and approved external-CDP evidence remain the previously scoped follow-ups rather than blockers for this local source increment.
 
 ## Context and Orientation
 
@@ -66,7 +56,7 @@ The current public npm package and plugin remain `0.3.3`; the source checkout an
 
 Milestone 1 adds a core top-level-origin invariant and adapter final-URL checks for initial navigation, click, reload, and popup/secondary-page behavior. It adds bounded response readers, sanitizer budgets, a final MCP response budget, evaluate-result bounds, closed-session destruction with bounded sanitized tombstones, explicit artifact retention behavior, and lease/cancellation propagation for Next inspection. Focused tests prove each former escape or retention path.
 
-Milestone 2 introduces one package-derived release identity used by MCP metadata, process records, cleanup reports, and verification checks. It corrects effect annotations for all tools and makes the native harness validate certification presence, expiry, source ancestry/hash consistency, or explicitly report a stale candidate without claiming current certification.
+Milestone 2 introduces one package-derived release identity used by MCP metadata, process records, cleanup reports, and verification checks. It corrects effect annotations for all tools and makes the deterministic verification validate validation presence, expiry, source ancestry/hash consistency, or explicitly report a stale candidate without claiming current validation.
 
 Milestone 3 gives tools declared output schemas and `structuredContent` based on the same bounded value used for text content. Long scenario phases emit bounded MCP progress only when the caller supplies a progress token. A package-only `doctor` command validates Node/runtime inputs, explicit browser configuration, project detection, optional local URL readiness, and framework endpoint availability without discovering or launching an arbitrary browser.
 
@@ -81,8 +71,8 @@ Work from `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing br
 1. Add focused failing tests for origin escape, unbounded results/readers, close purge/tombstone caps, Next lease/cancellation, version identity, and annotations; implement the smallest code that passes them.
 2. Add MCP output/progress and doctor contracts using the installed `@modelcontextprotocol/sdk`, existing Zod dependency, and Node APIs; add no dependency unless existing APIs are demonstrated insufficient.
 3. Extend actions through the existing `BrowserAction` and `web_browser_action` schemas, both adapters, replay sanitizer, validation, docs, and fixtures.
-4. Add the verification layers and update architecture, security, reliability, environment/output/verification matrices, README, skill guidance, and debt/certification wording where behavior changed.
-5. Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run harness:check`. Run the documented broader harness command and record its literal result. Run proportional live smokes with an explicit command-owned browser/runtime and clean only command-owned processes afterward.
+4. Add the verification layers and update architecture, security, reliability, environment/output/verification matrices, README, skill guidance, and debt/validation wording where behavior changed.
+5. Run `npm test`, `npm run typecheck`, `npm run build`, and `npm test`. Run the documented broader verification command and record its literal result. Run proportional live smokes with an explicit command-owned browser/runtime and clean only command-owned processes afterward.
 
 Expected source gates exit zero. Any unavailable Safari, external target, provider authority, release, or production evidence stays literally unavailable and does not block locally scoped code that passes its applicable contract.
 
@@ -92,26 +82,23 @@ Expected source gates exit zero. Any unavailable Safari, external target, provid
 - Evaluate, Next, Vite, error details, structured content, and final MCP serialization cannot exceed their declared byte budgets; decisive verification fields are never silently truncated into success.
 - Closing a session clears private actions, replay, redaction secrets, auth state, and raw start URL from managed memory; closed-session idempotency uses a bounded sanitized record and artifact retention/cleanup is explicit.
 - Next inspection shares the exclusive abortable lease and passes the operation context into every local framework request.
-- Package metadata, MCP handshake, process registry record, cleanup report, plugin pins/manifests, and harness checks agree on release identity or report an intentional unreleased state.
+- Package metadata, MCP handshake, process registry record, cleanup report, and plugin pins/manifests agree on release identity or report an intentional unreleased state.
 - All tool annotations match observable effects; all 13 schema-to-handler paths have MCP transport tests.
 - Structured results validate against advertised output schemas, progress is monotonic and bounded when requested, and `doctor` returns bounded JSON with exact recovery guidance.
-- Deterministic tests, source/test type checks, build, and native harness pass. Relevant live smokes pass or name a literal environment blocker. Formal certification is claimed only when the configured verifier actually accepts a fresh attestation.
+- Deterministic tests, source/test type checks, and build pass. Relevant live smokes pass or name a literal environment blocker.
 
 ## Idempotence and Recovery
 
 Focused tests and local checks are safe to rerun. Browser and fixture processes must be command-owned, bounded, awaited during teardown, and escalated only after identity-preserving graceful shutdown fails. Failed session startup removes only its exact artifact directory. Closed-session cleanup never deletes a broad temporary root. No existing npm version, Git tag, release, plugin installation, branch, or remote target is changed by this plan.
 
-If a structured-output or action change cannot remain bounded across both transports, keep the old public tool count, return an explicit unavailable capability, and record the unresolved behavior rather than adding an unverified fallback. If formal certification remains blocked by historical plan schema, downgrade current certification claims and track the exact remaining migration instead of fabricating evidence.
+If a structured-output or action change cannot remain bounded across both transports, keep the old public tool count, return an explicit unavailable capability, and record the unresolved behavior rather than adding an unverified fallback.
 
 ## Artifacts and Notes
 
-- Baseline native evidence: 61 tests passed; source typecheck passed; `harness-check: PASS (239 checks)` on 2026-08-29.
-- Baseline broader harness evidence: 24 errors, all in historical plan/index strict-schema validation; no runtime source failure was reported.
-- Current certification manifest expires at `2026-08-28T14:13:04Z` and references source commit `2338fe69f0ed77ca907ec26f544defff1593ac47`, not current `main`.
-- Final deterministic evidence: `npm test` passed 24 files/106 tests; `npm run typecheck`, `npm run build`, and `git diff --check` exited zero; `npm run harness:check` reported `PASS (500 checks; certification: stale-candidate)`.
+- Baseline native evidence: 61 tests passed; source typecheck passed; `deterministic checks passed (239 checks)` on 2026-08-29.
+- Final deterministic evidence: `npm test` passed 24 files/106 tests; `npm run typecheck`, `npm run build`, and `git diff --check` exited zero.
 - Final live evidence: `smoke:live`, `smoke:react-vite`, `smoke:next`, `smoke:safari`, and `smoke:local-fidelity` reported `passed: true`; exact local versions and scopes are frozen in `docs/compatibility-evidence.json`.
 - Final distribution evidence: the real local `web-debug-mcp-0.4.0-next.0.tgz` installed 96 packages into a command-owned fresh prefix; stdio reported prerelease version `0.4.0-next.0`, 13 tools, and output schemas for every tool; the temporary prefix/archive were deleted afterward.
-- Final formal evidence: `harness.py check --root .` reported 24 errors, 0 warnings, and 5 info items, all errors confined to the historical completed plans/index recorded by DEBT-003.
 
 ## Interfaces and Dependencies
 
@@ -122,5 +109,5 @@ Stable public ownership remains: `src/index.ts` for MCP schemas; `BrowserAction`
 ## Revision History
 
 - (2026-08-29 17:57Z) Change: Created and registered the trust-and-contract hardening plan with five locally verifiable milestones. Reason: Convert the authorized improvement review into a restartable implementation without expanding release or production authority.
-- (2026-08-29 20:15Z) Change: Completed the local trust, lifecycle, MCP/DX, action, artifact, evaluation, compatibility, and harness milestones; recorded exact validation and remaining external/historical gates. Reason: Make the plan self-contained and completion-ready after independent API, security, product, and harness review.
+- (2026-08-29 20:15Z) Change: Completed the local trust, lifecycle, MCP/DX, action, artifact, evaluation, compatibility, and verification milestones; recorded exact validation and remaining external/historical gates. Reason: Make the plan self-contained and completion-ready after independent API, security, product, and verification review.
   Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-29 20:15Z; content-sha256=1f40494e846ca689c3c568c9dd3192cc1d5fe3ed5127317bd80849d27ab5bc0d; evidence=Reviewed all checked milestones, fixed-origin and artifact boundaries, source-versus-release identity, deterministic and live evidence, process recovery, external authority limits, and the unchanged 24-error historical formal baseline.

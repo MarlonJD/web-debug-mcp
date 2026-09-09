@@ -67,7 +67,7 @@ Repair scenarios use an isolated temporary copy of `fixtures/complex-vite`, so t
 
 The MCP repair details also print the adaptive outcome/level, `escalations`, baseline and post-fix decisive rates, environment fingerprint, sanitized contract hash, untrusted build-reference values, canonical `evidence` availability, and deterministic truncation flags. A missing optional browser/framework signal stays a warning; it is never promoted to `verified`.
 
-Repair runs fail with a non-zero exit status if any of those required outcomes is false. This keeps a semantic verification failure visible to CI and to model QA instead of treating a generated report as success.
+Repair runs fail with a non-zero exit status if any of those required outcomes is false. This keeps a semantic verification failure visible to CI instead of treating a generated report as success.
 
 The async scenario uses deterministic delays (`220 ms` for request 1 and `35 ms` for request 2), and waits for the explicit `All quote requests settled` marker, so `Quote v1 applied` is the buggy result and `Quote v2 applied` is the fixed latest-request-wins result. It declares async/timing risk, exercising the standard repeated-level baseline and post-fix state machine. The filter scenario expects `Showing 1 incident` after entering `Refund`; the buggy empty `useMemo` dependency list leaves all five rows visible. MCP repair views include the canonical adaptive level, baseline/post-fix attempt counts and rates, sanitized contract hash, untrusted build-reference state, and evidence flags.
 
@@ -105,9 +105,3 @@ The default output is Markdown for a quick comparison. Add `--json` for automati
 ```
 
 Human diagnosis time still needs a separate usability study with a fixed task script and several participants. This command provides the reproducible technical baseline needed before making that claim.
-
-## Model comparison
-
-The repository does not call language models itself. `npm run eval:catalog` emits the frozen repair prompts, graders, and required run fields; `npm run eval:grade -- <result.json>` scores a bounded reviewed run record. To compare agent behavior, run each prompt against isolated fixture copies and record the model name, reasoning setting, wall time, tool calls, token counts, patch result, root-cause result, and `web_fix_verify` result separately from the browser timings. Do not mix those results with the technical baseline above.
-
-In the final one-run QA sweep for this repository, both arms passed the deterministic gates and all three repair contracts. Sol `xhigh` completed the valid command sweep in about 30.77 seconds; Luna `max` completed it in about 30.82 seconds after one transient port-collision retry. Their repair measurements were close and not directionally consistent: Sol was lower on the filter diagnosis and visual fix verification, while Luna was lower on the async diagnosis and visual diagnosis. This is an engineering QA comparison, not a statistically powered model benchmark; correctness, semantic repair status, and source-snapshot integrity matter more than these single-run milliseconds.
