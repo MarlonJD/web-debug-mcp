@@ -528,7 +528,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-Release `0.12.0` retains the 13-tool facade, direct-only WebMCP and bounded interactive discovery. Safari uses the official native MCP transport with real console/error/reset evidence. Exact release and installation evidence is recorded in the [0.12.0 release plan](docs/exec-plans/active/release-0-12-0.md).
+Release `0.12.0` retains the 13-tool facade, direct-only WebMCP and bounded interactive discovery. Safari uses the official native MCP transport with real console/error/reset evidence. Exact release and installation evidence is recorded in the [0.12.0 release plan](docs/exec-plans/completed/release-0-12-0.md).
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for implementation boundaries and operational details.
 

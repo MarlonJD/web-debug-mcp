@@ -1,10 +1,10 @@
 # Compatibility
 
-This matrix records the exact 0.12.0 release fixtures. Final integrated checks and publication/install status are recorded in [compatibility-evidence.json](compatibility-evidence.json) and the [release plan](exec-plans/active/release-0-12-0.md). Historical 0.12.0 observations remain in Git and its release plan; they are not current verification. Local checks do not establish provider or production authority.
+This matrix records the exact 0.12.0 release fixtures. Final integrated checks and publication/install status are recorded in [compatibility-evidence.json](compatibility-evidence.json) and the [release plan](exec-plans/completed/release-0-12-0.md). Historical 0.12.0 observations remain in Git and its release plan; they are not current verification. Local checks do not establish provider or production authority.
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |
-| Node.js | `>=20` from `package.json` | `24.19.0` final deterministic/build/live checks; isolated `20.20.2` and `22.23.3` runtimes prepared for exact archive checks | Per-runtime archive/public verification is recorded in the release evidence; browser matrices run on Node 24 |
+| Node.js | `>=20` from `package.json` | `24.19.0` final deterministic/build/live checks; exact archive MCP handshakes passed under `20.20.2`, `22.23.3` and `24.19.0` | Per-runtime archive/public verification is recorded in the release evidence; browser matrices run on Node 24 |
 | MCP SDK | Package lock | `@modelcontextprotocol/sdk 1.32.1` with output schemas, structured content, progress, resources, cancellation, and in-memory transport | Other MCP client implementations require their own handshake |
 | Chromium | Explicit executable or CDP endpoint | Google Chrome `153.0.8010.36` local launch; exact live result is recorded by the Chromium smokes | Approved external CDP remains authority-gated |
 | Chrome WebMCP | Explicit `--enable-features=WebMCP` local-development opt-in | Google Chrome `153.0.8010.36` headless command-owned session; `document.modelContext`, registration/discovery, exact JSON-string execution, opaque result, replay/screenshot safety, and independent fixture oracle pass | Origin-trial/native provenance, cross-origin exposure, and remote browsers remain candidate-only |
