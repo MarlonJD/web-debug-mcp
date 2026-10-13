@@ -31,3 +31,11 @@ Sessions are active-only managed records. Close destroys private URLs, auth stat
 The package-only `doctor` command checks first-run readiness without adding an MCP tool or launching arbitrary browser state. The repository does not create portable scenario files, execute arbitrary Next Server Actions, monitor production, control unattended remote browsers, or claim current HMAC/production certification without fresh external evidence.
 
 Exact verified versions and candidate-only boundaries live in [`../COMPATIBILITY.md`](../COMPATIBILITY.md); agent evaluation tasks live in [`../demos/agent-evaluation.md`](../demos/agent-evaluation.md). Angular CLI's internal Vite is not the Web Debug endpoint, and Vue hook evidence has no DOM-private fallback.
+
+## Unreleased diagnostic extensions
+
+The local source keeps the 13-tool facade and adds version-1 diagnostic objects: exact original-source breakpoints, explicit action `diagnostics`, optional `sources`/`execution` capture surfaces, and bounded explanatory `differences`. New runtime capability fields distinguish Chromium source/coverage support from Safari unavailability. Public source coordinates are one-based; coverage offsets are UTF-16 and end-exclusive. Existing capture/verification fields retain their semantics, and acceptance checks remain the sole verification authority. The complete behavior and unavailable cases are defined in [execution-source-correlation](../design-docs/execution-source-correlation.md). These changes are release pending.
+
+## Native Safari console contract (unreleased)
+
+Safari 27+ uses the official local MCP driver internally; the facade remains 13 tools. Runtime transport and console provenance are `safari-mcp`, target mode is `mcp`, and retry isolation mode is `mcp-target`. WebDriver endpoint options and the experimental BiDi route are removed. Required console checks stay unavailable until a real owned-tab record is observed, become failing on application errors, and use drained buffers after reset. Native-source coordinates stay one-based. These changes are verified locally and release pending.

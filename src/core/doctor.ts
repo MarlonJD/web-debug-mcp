@@ -21,7 +21,6 @@ export interface DoctorOptions {
   browser: "chromium" | "safari";
   executablePath?: string;
   cdpEndpoint?: string;
-  webdriverEndpoint?: string;
 }
 
 export interface DoctorCheck {
@@ -43,7 +42,7 @@ export interface DoctorReport {
 
 export function parseDoctorArgs(args: string[], cwd = process.cwd()): DoctorOptions {
   const options: DoctorOptions = { projectRoot: cwd, browser: "chromium" };
-  const valueOptions = new Set(["--project-root", "--url", "--browser", "--executable-path", "--cdp-endpoint", "--webdriver-endpoint"]);
+  const valueOptions = new Set(["--project-root", "--url", "--browser", "--executable-path", "--cdp-endpoint"]);
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index]!;
     if (!valueOptions.has(flag)) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", `Unknown doctor argument: ${boundText(flag, 100)}`);
@@ -59,11 +58,9 @@ export function parseDoctorArgs(args: string[], cwd = process.cwd()): DoctorOpti
     }
     if (flag === "--executable-path") options.executablePath = value;
     if (flag === "--cdp-endpoint") options.cdpEndpoint = value;
-    if (flag === "--webdriver-endpoint") options.webdriverEndpoint = value;
   }
   if (options.executablePath && options.cdpEndpoint) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", "Provide executable-path or cdp-endpoint, not both.");
-  if (options.browser === "safari" && (options.executablePath || options.cdpEndpoint)) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", "Safari doctor checks use webdriver-endpoint, not Chromium launch options.");
-  if (options.browser === "chromium" && options.webdriverEndpoint) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", "Chromium doctor checks do not use webdriver-endpoint.");
+  if (options.browser === "safari" && (options.executablePath || options.cdpEndpoint)) throw new WebDebugError("DOCTOR_ARGUMENT_INVALID", "Safari doctor checks use the local native MCP driver, not Chromium launch options.");
   return options;
 }
 
@@ -72,9 +69,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   const nodeMajor = Number(process.versions.node.split(".")[0]);
   checks.push(nodeMajor < 20
     ? { id: "node", status: "fail", message: `Node ${process.versions.node} is unsupported.`, recovery: "Install Node.js 20 or newer." }
-    : options.browser === "safari" && typeof globalThis.WebSocket !== "function"
-      ? { id: "node", status: "warn", message: `Node ${process.versions.node} satisfies the base runtime contract, but WebSocket is unavailable for Safari BiDi.`, recovery: "Use Node 21+ or enable the Node 20 WebSocket runtime flag; WebDriver can continue with explicit BiDi limitations." }
-      : { id: "node", status: "pass", message: `Node ${process.versions.node} satisfies the Node 20+ runtime contract.` });
+    : { id: "node", status: "pass", message: `Node ${process.versions.node} satisfies the Node 20+ runtime contract.` });
 
   let project: ProjectDescriptor | null = null;
   try {
@@ -87,7 +82,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorReport> {
   }
 
   if (options.browser === "chromium") checks.push(await checkChromium(options));
-  else checks.push(await checkSafari(options));
+  else checks.push(await checkSafari());
 
   let targetOrigin: string | null = null;
   let targetReady = false;
@@ -201,28 +196,11 @@ async function checkChromium(options: DoctorOptions): Promise<DoctorCheck> {
   return { id: "browser", status: "fail", message: "No Chromium executable or CDP endpoint was configured.", recovery: "Pass --executable-path, --cdp-endpoint, or set WEB_DEBUG_CHROME_EXECUTABLE_PATH." };
 }
 
-async function checkSafari(options: DoctorOptions): Promise<DoctorCheck> {
-  const endpoint = options.webdriverEndpoint ?? process.env.WEB_DEBUG_SAFARI_WEBDRIVER_ENDPOINT;
-  if (endpoint) {
-    try {
-      const configured = new URL(endpoint);
-      if (!isLoopback(configured.hostname)) throw new WebDebugError("DOCTOR_REMOTE_BLOCKED", "Doctor does not contact remote WebDriver endpoints.");
-      const { response, text } = await boundedFetchAndRead(new URL("/status", configured), {}, "Safari WebDriver status response");
-      if (!response.ok) throw new Error(`Safari WebDriver returned HTTP ${response.status}.`);
-      const payload = parseJsonObject(text, "Safari WebDriver status response");
-      const value = payload.value;
-      if (!value || typeof value !== "object" || Array.isArray(value) || (value as Record<string, unknown>).ready !== true) {
-        throw new Error("Safari WebDriver status did not report value.ready=true.");
-      }
-      return { id: "browser", status: "pass", message: "The explicit Safari WebDriver endpoint is reachable." };
-    } catch (error) {
-      return { id: "browser", status: "fail", message: boundedError(error), recovery: "Start the configured Safari WebDriver endpoint and enable Safari remote automation." };
-    }
-  }
-  const safaridriver = await findExecutable("safaridriver");
+async function checkSafari(): Promise<DoctorCheck> {
+  const safaridriver = await findExecutable(process.env.WEB_DEBUG_SAFARIDRIVER_PATH ?? "safaridriver");
   return safaridriver
-    ? { id: "browser", status: "warn", message: "safaridriver is installed; live readiness was not checked.", recovery: "Enable Safari Settings → Developer → Allow remote automation before starting a session." }
-    : { id: "browser", status: "fail", message: "safaridriver was not found on PATH.", recovery: "Use macOS Safari with safaridriver or pass --webdriver-endpoint." };
+    ? { id: "browser", status: "warn", message: "safaridriver is installed; native MCP tool availability and console delivery were not tested.", recovery: "Use Safari 27 or newer and enable remote automation and external agents. If startup stalls, preserve and quit normal Safari with user approval, then release other client-owned automation sessions." }
+    : { id: "browser", status: "fail", message: "safaridriver was not found on PATH.", recovery: "Use Safari 27 or newer with the native safaridriver MCP server." };
 }
 
 async function boundedFetchAndRead(input: string | URL, init: RequestInit, label: string): Promise<{ response: Response; text: string }> {

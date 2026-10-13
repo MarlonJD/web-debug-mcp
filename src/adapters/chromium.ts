@@ -1,5 +1,6 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 
 import { chromium } from "playwright-core";
 import type {
@@ -35,6 +36,8 @@ import type {
   AccessibilityNode,
   LocatorSuggestion,
   PlaywrightStorageState,
+  BreakpointInput,
+  ExecutionDiagnostics,
 } from "../domain/types.js";
 import {
   MAX_AX_NODES,
@@ -60,6 +63,9 @@ import type {
   SnapshotOptions,
 } from "./browser.js";
 import { chromiumRuntimeCapabilities } from "./runtime-capabilities.js";
+import { ChromiumSources, cdpCommand } from "./chromium-sources.js";
+import { observeExecution } from "./chromium-execution.js";
+import { boundedContext } from "../core/operation-context.js";
 
 interface RemoteObject {
   type?: string;
@@ -146,6 +152,9 @@ export class ChromiumAdapter implements BrowserAdapter {
   private mainFrameNavigationHandler: ((frame: Frame) => void) | null = null;
   private readonly bridgeScriptIdentifiers: string[] = [];
   private mainFrameId: string | null = null;
+  private sources: ChromiumSources | null = null;
+  private lastExecution: ExecutionDiagnostics | null = null;
+  private diagnosticCleanupFailed = false;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
@@ -243,6 +252,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.mainFrameId = null;
     }
     await this.installProtocolGuards(this.page, this.context, requestedOrigin);
+    this.sources = new ChromiumSources(this.cdp, requestedOrigin, this.mainFrameId!);
     const bridgeScripts = [
       ...(this.frameworks.has("react") ? [REACT_DEBUG_BRIDGE_SCRIPT] : []),
       ...(this.frameworks.has("angular") ? [ANGULAR_DEBUG_BRIDGE_SCRIPT] : []),
@@ -259,7 +269,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     });
     this.cdp.on("Debugger.scriptParsed", (event) => {
       const parsed = event as ScriptParsedEvent;
-      if (parsed.scriptId && parsed.url) this.scriptUrls.set(parsed.scriptId, parsed.url);
+      if (parsed.scriptId && parsed.url) {
+        this.scriptUrls.set(parsed.scriptId, boundText(parsed.url, 2048));
+        while (this.scriptUrls.size > 200) this.scriptUrls.delete(this.scriptUrls.keys().next().value!);
+      }
     });
     this.cdp.on("Debugger.resumed", () => {
       this.pausedEvent = null;
@@ -316,6 +329,15 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   async close(_context: OperationContext = {}): Promise<void> {
+    this.sources?.dispose();
+    this.sources = null;
+    this.lastExecution = null;
+    this.scriptUrls.clear();
+    if (this.diagnosticCleanupFailed && this.cdp) {
+      for (const method of ["Profiler.stopPreciseCoverage", "Profiler.disable", "Network.disable"]) {
+        await cdpCommand(this.cdp, method, {}, {}, 500).catch(() => undefined);
+      }
+    }
     if (this.page && this.frameworks.has("vue") && !this.pausedEvent) {
       await this.page.evaluate(() => {
         (window as Window & { __WEB_DEBUG_VUE__?: { dispose?: () => void } }).__WEB_DEBUG_VUE__?.dispose?.();
@@ -364,6 +386,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   async resetObservers(_context: OperationContext = {}): Promise<void> {
+    this.lastExecution = null;
     this.consoleEntries.length = 0;
     this.networkEntries.clear();
     this.requestCounter = 0;
@@ -378,6 +401,30 @@ export class ChromiumAdapter implements BrowserAdapter {
   runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser); }
 
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+    if (this.diagnosticCleanupFailed) throw new WebDebugError("DIAGNOSTIC_CLEANUP_FAILED", "Close the session after unconfirmed instrumentation cleanup.");
+    this.lastExecution = null;
+    if (context.diagnostics) {
+      if (!this.cdp || !this.sources || !this.mainFrameId || !this.baseOrigin) throw new WebDebugError("DIAGNOSTICS_UNAVAILABLE", "Chromium source diagnostics are unavailable.");
+      const operation = boundedContext(context, performance.now() + 15_000);
+      try {
+        const readCommits = async () => this.frameworks.has("react") && this.page && !this.pausedEvent
+          ? (await withTimeout(trackPending(this.reactAdapter.snapshot(this.page).catch(() => null), operation), 500))?.commitCount ?? null : null;
+        const commitsBefore = await readCommits();
+        const result = await observeExecution(this.cdp, this.sources, this.mainFrameId, this.baseOrigin,
+          () => this.performAction(action, operation), context.diagnostics, operation);
+        const commitsAfter = await readCommits();
+        if (result.diagnostics && commitsBefore !== null && commitsAfter !== null) result.diagnostics.react = { commitsBefore, commitsAfter };
+        this.lastExecution = result.diagnostics ?? null;
+        return result;
+      } catch (error) {
+        if (error instanceof WebDebugError && error.code === "DIAGNOSTIC_CLEANUP_FAILED") this.diagnosticCleanupFailed = true;
+        throw error;
+      }
+    }
+    return this.performAction(action, context);
+  }
+
+  private async performAction(action: BrowserAction, context: OperationContext): Promise<ActionResult> {
     assertContext(context);
     const page = this.requirePage();
     if (this.pausedEvent) {
@@ -538,6 +585,15 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     const consoleBound = boundItems(this.consoleEntries, 100);
+    if (!options.checksOnly && this.sources) {
+      const sourceContext = boundedContext(context, performance.now() + 1000);
+      for (const entry of consoleBound.items.slice(-8)) {
+        if (entry.url && entry.line !== undefined && entry.column !== undefined) {
+          const source = await this.sources.locationByUrl(entry.url, entry.line - 1, entry.column - 1, sourceContext);
+          if (source) entry.source = source;
+        }
+      }
+    }
     const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
@@ -546,6 +602,8 @@ export class ChromiumAdapter implements BrowserAdapter {
       ? await this.collectAccessibility(context, warnings)
       : null;
     const snapshot: BrowserSnapshot = {
+      sources: !options.checksOnly && options.sourceMaps && this.sources ? await this.sources.inventory(boundedContext(context, performance.now() + 2000)) : null,
+      execution: options.checksOnly ? null : this.lastExecution,
       url: safeUrl(page.url()),
       title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
       viewport: page.viewportSize(),
@@ -746,7 +804,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
   }
 
-  async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
+  async setBreakpoint(input: BreakpointInput, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
     assertContext(context);
     this.assertSelectedTopLevelState();
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
@@ -754,6 +812,18 @@ export class ChromiumAdapter implements BrowserAdapter {
       throw new WebDebugError("BREAKPOINT_LINE_INVALID", "Breakpoint line must be a positive integer.");
     }
 
+    if (input.coordinateSpace === "original") {
+      if (!this.sources) throw new WebDebugError("SOURCE_LOCATION_UNAVAILABLE", "Source mapping is unavailable.");
+      const mapped = await this.sources.breakpoint(input, boundedContext(context, performance.now() + 5000));
+      const response = await cdpCommand(this.cdp, "Debugger.setBreakpoint", { location: { scriptId: mapped.scriptId, lineNumber: mapped.lineNumber, columnNumber: mapped.columnNumber } }, context);
+      const breakpoint: DebuggerBreakpoint = {
+        id: response.breakpointId, sourceUrl: safeUrl(input.sourceUrl), line: input.line, column: input.column ?? null,
+        coordinateSpace: "original", status: "resolved", scriptId: mapped.scriptId,
+        resolved: { url: safeUrl(mapped.url), line: (response.actualLocation?.lineNumber ?? mapped.lineNumber) + 1, column: (response.actualLocation?.columnNumber ?? mapped.columnNumber) + 1 },
+      };
+      this.breakpoints.push(breakpoint);
+      return breakpoint;
+    }
     const params = {
       url: input.sourceUrl,
       lineNumber: input.line - 1,
@@ -830,6 +900,9 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   private async debuggerSnapshot(context: OperationContext): Promise<DebuggerSnapshot> {
+    for (const breakpoint of this.breakpoints) {
+      if (breakpoint.coordinateSpace === "original") breakpoint.status = breakpoint.scriptId && this.sources?.identity(breakpoint.scriptId) ? "resolved" : "stale";
+    }
     const pausedEvent = this.pausedEvent;
     if (!pausedEvent) {
       return { paused: false, reason: null, callFrames: [], breakpoints: [...this.breakpoints] };
@@ -838,7 +911,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     const rawFrames = (pausedEvent.callFrames ?? []).slice(0, 8);
     const callFrames: DebuggerCallFrame[] = [];
     for (const frame of rawFrames) {
+      const source = this.sources && frame.location?.scriptId
+        ? await this.sources.location(frame.location.scriptId, frame.location.lineNumber ?? 0, frame.location.columnNumber ?? 0, boundedContext(context, performance.now() + 500)) : null;
       callFrames.push({
+        ...(source ? { source } : {}),
         functionName: boundText(frame.functionName ?? "<anonymous>", 200),
         url: safeUrl(frame.url || this.scriptUrls.get(frame.location?.scriptId ?? "") || ""),
         line: (frame.location?.lineNumber ?? 0) + 1,
@@ -936,8 +1012,8 @@ export class ChromiumAdapter implements BrowserAdapter {
       level: mapConsoleLevel(message.type()),
       text: boundText(message.text(), 2_000),
       url: location.url ? safeUrl(location.url) : undefined,
-      line: location.lineNumber > 0 ? location.lineNumber : undefined,
-      column: location.columnNumber > 0 ? location.columnNumber : undefined,
+      line: location.lineNumber >= 0 ? location.lineNumber + 1 : undefined,
+      column: location.columnNumber >= 0 ? location.columnNumber + 1 : undefined,
     });
   }
 

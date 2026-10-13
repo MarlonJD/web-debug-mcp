@@ -16,6 +16,8 @@ import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES } from "../domain/types.js"
 import { WebDebugError } from "./errors.js";
 import { boundText } from "./redaction.js";
 import { actionSecrets, cloneJson, replaceSecrets } from "./private-values.js";
+import { summarizeBehavior, compareBehavior } from "./behavior-difference.js";
+import type { BehaviorSummary } from "../domain/types.js";
 
 const MAX_CAPTURE_CURSORS = 8;
 const MAX_SUMMARY_CAPTURE_BYTES = 16 * 1024;
@@ -25,6 +27,7 @@ export interface CaptureCursorState {
   cursor: string;
   generation: number;
   digests: Record<CaptureSurface, string>;
+  behavior: BehaviorSummary;
 }
 
 export interface CaptureArtifactHandle {
@@ -132,6 +135,7 @@ export function projectIssueCapture(input: {
     common.changedSurfaces = changed;
     common.unchangedSurfaces = unchanged;
     common.details = pickSurfaces(surfaces, changed);
+    common.differences = compareBehavior(previous.behavior, summarizeBehavior(evidence.browser), selected);
   }
 
   const returned = view.profile === "summary"
@@ -142,7 +146,7 @@ export function projectIssueCapture(input: {
   common.truncation.omittedSurfaces = CAPTURE_SURFACES.filter((surface) => !returned.includes(surface));
   if (view.profile === "summary") fitSummaryBudget(common);
   assertCaptureBudget(common);
-  cursors.push({ cursor, generation, digests });
+  cursors.push({ cursor, generation, digests, behavior: summarizeBehavior(evidence.browser) });
   while (cursors.length > MAX_CAPTURE_CURSORS) cursors.shift();
 
   const result = common as InternalIssueCaptureResult;
@@ -169,6 +173,8 @@ function selectedSurfaces(view: CaptureView): CaptureSurface[] {
 
 function captureSurfaces(evidence: EvidenceBundle, screenshotStatus: NonNullable<CaptureDetails["screenshot"]>["status"]): Required<CaptureDetails> {
   return {
+    sources: evidence.browser.sources ?? null,
+    execution: evidence.browser.execution ?? null,
     dom: evidence.browser.dom,
     console: evidence.browser.console,
     network: evidence.browser.network,
@@ -287,6 +293,8 @@ function compactRuntimeCapabilities(runtime: BrowserRuntimeCapabilities | null):
     compact.viewportMatrix,
     compact.tlsBypass,
     compact.authSeeding,
+    compact.sourceMapping,
+    compact.executionCoverage,
   ]) delete capability.reason;
   return compact;
 }
@@ -351,6 +359,8 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     optionalTruncated = true;
     bounded.browser.warnings = [...bounded.browser.warnings, "Evidence optional detail was pruned to the 96 KiB bound."];
     bounded.browser.react = null;
+    bounded.browser.sources = null;
+    bounded.browser.execution = null;
     bounded.browser.angular = null;
     bounded.browser.vue = null;
     bounded.browser.vite = null;
@@ -402,6 +412,8 @@ export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: BrowserA
 
 export function pruneEvidence(evidence: EvidenceBundle): EvidenceBundle {
   const pruned = cloneJson(evidence);
+  pruned.browser.sources = null;
+  pruned.browser.execution = null;
   pruned.browser.react = null;
   pruned.browser.angular = null;
   pruned.browser.vue = null;

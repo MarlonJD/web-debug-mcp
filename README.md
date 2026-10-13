@@ -68,7 +68,7 @@ manual parity → reviewed baseline → native Playwright/API tests
 crosswalk/run validation → Web Debug only if browser diagnosis is needed
 ~~~
 
-The stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP/WebDriver endpoints, optional loopback URL, Safari BiDi WebSocket availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
+The stdio binary also exposes two package-only commands. `web-debug-mcp doctor` checks the exact project, explicit browser configuration, protocol-shaped CDP endpoints, optional loopback URL, local Safari driver availability, and detected Vite/Next readiness without launching an arbitrary browser. An executable-path result validates configuration only and remains a warning until a real session launches. `web-debug-mcp cleanup [--all-idle]` emits a bounded JSON report and signals only idle, owner-only registry records whose process identity is revalidated; it never scans or signals unregistered browser/debug processes.
 
 ### Install from the Codex CLI
 
@@ -197,6 +197,16 @@ The public tools cover:
 
 Every tool advertises and enforces its own concrete MCP `data` schema inside one canonical `{ ok, data, error, artifacts, warnings }` structured envelope. Stable top-level and capture-profile fields are concrete; bounded deep runtime/upstream payloads such as evaluation values, debugger locals, framework trees, and Next metadata remain JSON leaves. Text content is only a bounded preview. Requests rejected by the MCP SDK before handler dispatch use the SDK protocol-validation error shape and have no tool `structuredContent`. Screenshot pixels are inlined only when small enough for the result budget; every accepted screenshot also receives a non-enumerable, identity-revalidated `web-debug://artifact/...` resource link. Screenshot retention is capped at 4 MiB per file and four files/16 MiB per session; quota pruning can expire an older resource before its one-hour maximum TTL. Long baseline and post-fix operations emit monotonic MCP progress when the client requests it.
 
+### Unreleased source and execution diagnostics
+
+The local source checkout adds original-source breakpoints, bounded source inventories, opt-in execution coverage and request initiators, and explanatory capture/verification differences. These additions are not part of the published 0.6.0 package.
+
+Use `web_issue_capture` with `view: { profile: "include", surfaces: ["sources"] }` to discover exact source URLs and script IDs. Pass `coordinateSpace: "original"` to `web_breakpoint_set` to map one-based original coordinates into the selected script. Missing or ambiguous maps remain explicit; replacement scripts require a new breakpoint.
+
+For a short diagnostic window, add `diagnostics: { coverage: true, settleMs: 250 }` to `web_browser_action`. The result includes observed ranges, source locations, request initiators, and available React commit counts. Coverage changes JIT/timing and remains off by default; fix verification runs without it. Associations with the action are temporal, not proof of causality. Safari rejects this diagnostic option before acting.
+
+Capture deltas and `web_fix_verify` include bounded `differences` that explain errors, requests, React changes, and available execution changes. The existing verification checks remain authoritative. See [the diagnostic contract](docs/design-docs/execution-source-correlation.md) for coordinates, scope, limits, privacy, and cleanup, and run `npm run smoke:source-correlation` for the minified TSX workflow.
+
 ### Capture profiles
 
 `web_issue_capture` defaults to `{ "view": { "profile": "summary" } }`. Summary returns a compact DOM excerpt, counts, latest failures, runtime presence, replay bounds, warnings, and a reusable opaque cursor without producing screenshot pixels. Use an explicit profile when more detail is necessary:
@@ -236,12 +246,12 @@ The difference is both the target and the integration model:
 - Computed Chromium accessibility diagnostics with live-validated `uniqueAtCapture` suggestions; Safari stays CSS-only and reports these advanced capabilities as unavailable.
 - Auth-seeded sessions suppress screenshots because screenshot pixels cannot be truthfully redacted.
 - Sessions or scenarios containing private fill/select values also suppress screenshots; structured values are redacted, but pixels are never claimed scrubbed.
-- Safari actions, DOM, screenshots, and explicit JavaScript evaluation through W3C WebDriver.
-- WebDriver BiDi console and network subscriptions where the installed Safari exposes them.
-- A disclosed, bounded Performance Resource Timing fallback for Safari versions that do not emit network events.
+- Safari 27+ actions, DOM, screenshots, and explicit JavaScript evaluation through the official local `safaridriver --mcp` transport.
+- Real Safari Inspector console records with `safari-mcp` provenance; an empty unverified buffer cannot satisfy console checks.
+- A disclosed, bounded Performance Resource Timing fallback for native Safari Inspector sessions that return no network records.
 - JavaScript breakpoints, pause reasons, call frames, scope values, and guarded evaluation in Chromium.
 - Same-origin navigation and bounded console/network metadata with redaction.
-- Top-level redirects, clicks, reloads, and secondary pages stay on the selected origin. Chromium combines selected-target CDP interception with a context-wide frame-less-document fallback and revalidates every final state; in attach mode that fallback disables HTTP cache for sibling pages until close. Safari WebDriver verifies and quarantines escaped state immediately after navigation because its compatibility transport has no reliable pre-request interception.
+- Top-level redirects, clicks, reloads, and secondary pages stay on the selected origin. Chromium combines selected-target CDP interception with a context-wide frame-less-document fallback and revalidates every final state; in attach mode that fallback disables HTTP cache for sibling pages until close. Safari MCP verifies and quarantines escaped state immediately after navigation because the native transport has no reliable pre-request interception.
 
 ### React profiler and render-cause evidence
 
@@ -442,7 +452,7 @@ Do not enable that plugin in a production server.
 - Structured evidence with bounded arrays and text, redaction markers, and capability warnings.
 - MCP-native structured results, bounded text previews, progress notifications, and opaque screenshot resources.
 - Nullable framework fields when a development runtime does not expose a signal.
-- Chromium debugger depth and Safari WebDriver/BiDi coverage that differ by browser capability.
+- Chromium debugger depth and native Safari MCP coverage that differ by browser capability.
 - Temporary screenshot artifacts outside the project directory with explicit retain/delete close policy.
 - Safe replay that reissues a limited action set, not a magical snapshot restore.
 - A native harness status that distinguishes passing source checks from a historical, possibly stale certification window; neither proves production deployment or provider authentication.
@@ -463,7 +473,7 @@ This project is not:
 - a secret, cookie, browser-storage, or raw-response-body collector;
 - proof that a local smoke passed in production.
 
-Remote CDP or WebDriver attachment requires explicit opt-in and an approved target. It is marked non-isolated. No external remote target or provider-backed production attestation is included in the current repository evidence.
+Remote CDP attachment requires explicit opt-in and an approved target. It is marked non-isolated. No external remote target or provider-backed production attestation is included in the current repository evidence.
 
 ## Safety defaults
 
@@ -473,12 +483,12 @@ Remote CDP or WebDriver attachment requires explicit opt-in and an approved targ
 - Console text, URLs, debugger locals, evaluated values, framework data, and replay frames are bounded and redacted.
 - Raw response bodies, cookies, authorization values, and browser storage are not collected by the core adapter.
 - Evaluation rejects side effects unless `allowSideEffects: true` is explicitly supplied.
-- Framework HTTP bodies, WebDriver responses, evaluated values, error details, structured data, and complete MCP results have byte budgets; overflow fails with a stable error instead of partial success.
+- Framework HTTP bodies, native Safari MCP frames, evaluated values, error details, structured data, and complete MCP results have byte budgets; overflow fails with a stable error instead of partial success.
 - The Vite plugin is development-only and local by design.
 
 ## Safari 27 note
 
-Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MCP server. Use that browser-native server when its DOM, network, console, and screenshot tools are the desired surface. This repository intentionally does not add a second public Safari MCP catalog; its WebDriver adapter remains the compatibility and single-facade path for older Safari versions and shared evidence orchestration.
+Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MCP server. Use that browser-native server when its DOM, network, console, and screenshot tools are the desired surface. Web Debug now uses that official server internally behind its existing 13-tool facade. Safari 27 or newer is required. The old experimental BiDi client and `webdriverEndpoint`/`--webdriver-endpoint` options have been removed; `WEB_DEBUG_SAFARIDRIVER_PATH` can select an installed driver. No external WebDriver listener is used. These local changes are release pending.
 
 ## Verification status
 
@@ -493,3 +503,5 @@ Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/C
 `web-debug-mcp` is licensed under the GNU General Public License, version 3 or any later version. See [`LICENSE`](LICENSE).
 
 SPDX-License-Identifier: `GPL-3.0-or-later`
+
+The Safari smoke requires a real application console error with its source line, a failing `noConsoleErrors` check, reset without stale errors, and a new native console record. It also checks that screenshots are captured before private input and suppressed afterward. Network evidence still discloses Performance Resource Timing when Inspector returns no requests.

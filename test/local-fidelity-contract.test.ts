@@ -139,7 +139,7 @@ describe("0.3.x local fidelity contracts", () => {
   });
 
   it("keeps Safari strict and reports semantic capabilities unavailable", async () => {
-    const safari = new SafariAdapter("http://127.0.0.1:4444");
+    const safari = new SafariAdapter();
     await expect(safari.start({ url: "https://127.0.0.1:4173/", tls: "allow-insecure-loopback" })).rejects.toMatchObject({ code: "SAFARI_TLS_UNAVAILABLE" });
     await expect(safari.probe({ kind: "role", role: "button" }, ["count"])).rejects.toMatchObject({ code: "LOCATOR_STRATEGY_UNAVAILABLE" });
   });

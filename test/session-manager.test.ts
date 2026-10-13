@@ -28,7 +28,7 @@ type SnapshotScript = BrowserSnapshot | Error | ((options: SnapshotOptions, adap
 interface AdapterConfig {
   browser?: "chromium" | "safari";
   isolated?: boolean;
-  mode?: "launch" | "attach" | "webdriver";
+  mode?: "launch" | "attach" | "mcp";
   targetId?: string;
   failStart?: boolean | ((instanceNumber: number) => boolean);
   failAction?: Error;
@@ -114,7 +114,7 @@ class ScriptedBrowserAdapter implements BrowserAdapter {
   browserVersion(): string | null { return "scripted-1"; }
   runtimeCapabilities() {
     return this.target.browser === "safari"
-      ? safariRuntimeCapabilities(false)
+      ? safariRuntimeCapabilities(false, false)
       : chromiumRuntimeCapabilities(this.target.mode === "attach");
   }
 
@@ -329,6 +329,7 @@ describe("session manager adaptive contract", () => {
     expect(unchanged.unchangedSurfaces).not.toContain("replay");
     expect(unchanged.unchangedSurfaces).not.toContain("screenshot");
     expect(unchanged.details).toEqual({});
+    expect(unchanged.differences).toMatchObject({ diagnosticOnly: true, state: "compared" });
 
     const changed = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom", "console"] });
     expect(changed.changedSurfaces).toEqual(["dom"]);
@@ -368,11 +369,11 @@ describe("session manager adaptive contract", () => {
     expect(vueSession.runtimeCapabilities).toMatchObject({ transport: "chromium-cdp-attach", javascriptDebugger: { state: "supported" }, viewportMatrix: { state: "unsupported" } });
     await vue.manager.close(vueSession.id);
 
-    const safari = managerFor([snapshotFor("Fixed")], { browser: "safari", mode: "webdriver", targetId: "safari-1" });
+    const safari = managerFor([snapshotFor("Fixed")], { browser: "safari", mode: "mcp", targetId: "safari-1" });
     const safariSession = await start(safari.manager, { projectRoot: "fixtures/angular", browser: "safari" });
     expect(safariSession.warnings.join(" ")).toContain("generic browser evidence only");
     expect(safariSession.projectCapabilities.angular).toBe(true);
-    expect(safariSession.runtimeCapabilities).toMatchObject({ transport: "safari-webdriver", javascriptDebugger: { state: "unsupported" }, accessibility: { state: "unsupported" }, network: { state: "degraded" } });
+    expect(safariSession.runtimeCapabilities).toMatchObject({ transport: "safari-mcp", javascriptDebugger: { state: "unsupported" }, accessibility: { state: "unsupported" }, network: { state: "degraded" } });
     await safari.manager.close(safariSession.id);
   });
 
@@ -391,6 +392,23 @@ describe("session manager adaptive contract", () => {
     });
     expect(scenario.viewports).toHaveLength(2);
     await launched.manager.close(launchedSession.id);
+  });
+
+  it("rejects Safari diagnostics before executing the action", async () => {
+    const { manager, adapters } = managerFor([snapshotFor("Ready")], { browser: "safari", mode: "mcp" });
+    const session = await start(manager, { browser: "safari" });
+    await expect(manager.act(session.id, { kind: "reload" }, { diagnostics: { coverage: true } })).rejects.toMatchObject({ code: "DIAGNOSTICS_UNAVAILABLE" });
+    expect(adapters[0]!.actions).toHaveLength(0);
+    await manager.close(session.id, "delete");
+  });
+
+  it("quarantines a session after uncertain diagnostic cleanup", async () => {
+    const { manager } = managerFor([snapshotFor("Ready")], { failAction: new WebDebugError("DIAGNOSTIC_CLEANUP_FAILED", "Cleanup unconfirmed") });
+    const session = await start(manager);
+    await expect(manager.act(session.id, { kind: "reload" }, { diagnostics: { coverage: true } })).rejects.toMatchObject({ code: "DIAGNOSTIC_CLEANUP_FAILED" });
+    expect(manager.status(session.id).status).toBe("failed");
+    await expect(manager.act(session.id, { kind: "reload" })).rejects.toMatchObject({ code: "SESSION_UNUSABLE" });
+    await manager.close(session.id, "delete");
   });
 
   it("does not label a generic weak-root session as vanilla in provenance", async () => {
@@ -700,19 +718,19 @@ describe("session manager adaptive contract", () => {
       snapshotFor("Bug", { observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser" },
         dom: { state: "pass", freshness: "fresh", provenance: "browser" },
-        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "BiDi unavailable" },
+        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Native console unavailable" },
       } }),
       snapshotFor("Bug", { observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser" },
         dom: { state: "pass", freshness: "fresh", provenance: "browser" },
-        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "BiDi unavailable" },
+        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Native console unavailable" },
       } }),
       snapshotFor("Fixed", { observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser" },
         dom: { state: "pass", freshness: "fresh", provenance: "browser" },
-        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "BiDi unavailable" },
+        console: { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Native console unavailable" },
       } }),
-    ], { browser: "safari", mode: "webdriver", targetId: "safari-session" });
+    ], { browser: "safari", mode: "mcp", targetId: "safari-session" });
     const safariSession = await start(safari.manager, { browser: "safari" });
     const safariScenario = await record(safari.manager, safariSession.id, { acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed", match: "contains" }, { kind: "noConsoleErrors" }] });
     const safariResult = await safari.manager.verifyScenario({ sessionId: safariSession.id, scenarioId: safariScenario.id });

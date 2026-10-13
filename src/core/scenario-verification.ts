@@ -137,7 +137,7 @@ export function postFixRate(attempts: AttemptSummary[]): RateSummary {
 }
 
 export function resetFacts(target: BrowserTarget | null, first: boolean, forcedMode?: AttemptSummary["reset"]["mode"]): AttemptSummary["reset"] {
-  const mode = forcedMode ?? (target?.browser === "safari" ? "webdriver-target" : target?.isolated ? "fresh-launch" : target ? "attached-target" : "none");
+  const mode = forcedMode ?? (target?.browser === "safari" ? "mcp-target" : target?.isolated ? "fresh-launch" : target ? "attached-target" : "none");
   const isolated = target?.isolated ?? false;
   return { mode, isolated, browserProfile: isolated ? "fresh" : first ? "unavailable" : "retained", storage: isolated ? "fresh" : "unavailable", cache: isolated ? "fresh" : "unavailable", serviceWorkers: isolated ? "fresh" : "unavailable", serverState: "not-reset" };
 }
@@ -157,6 +157,7 @@ export function scrubVerificationResult(result: VerificationResult, actions: Bro
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return result;
   const sanitized = cloneJson(result);
+  if (sanitized.differences) sanitized.differences = replaceSecrets(sanitized.differences, secrets) as typeof sanitized.differences;
   sanitized.scenario = scrubPublicScenario(sanitized.scenario, actions);
   sanitized.baseline.attempts = sanitized.baseline.attempts.map((attempt) => scrubAttemptSummary(attempt, secrets));
   sanitized.postFix.attempts = sanitized.postFix.attempts.map((attempt) => scrubAttemptSummary(attempt, secrets));

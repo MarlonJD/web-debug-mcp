@@ -225,14 +225,13 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     "web_session_start",
     {
       title: "Start web debug session",
-      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, WebDriver, or executable settings. Chromium can opt into one guarded HTTPS loopback origin and a project-contained disposable auth fixture; attached Chromium can supply targetId to pin the exact page. Safari remains strict and CSS-only.",
+      description: "Start or attach to an explicitly selected local Chromium or Safari page using an explicit URL and CDP, native Safari MCP, or executable settings. Chromium can opt into one guarded HTTPS loopback origin and a project-contained disposable auth fixture; attached Chromium can supply targetId to pin the exact page. Safari remains strict and CSS-only.",
       inputSchema: z.object({
         projectRoot: z.string().min(1).max(4_096).default(DEFAULT_PROJECT_ROOT),
         url: z.string().max(2_048).url(),
         targetId: z.string().min(1).max(200).optional(),
         browser: z.enum(["chromium", "safari"]).default("chromium"),
         cdpEndpoint: z.string().max(2_048).url().optional(),
-        webdriverEndpoint: z.string().max(2_048).url().optional(),
         executablePath: z.string().min(1).max(4_096).optional(),
         headless: z.boolean().default(true),
         allowRemote: z.boolean().default(false),
@@ -262,12 +261,12 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     "web_browser_action",
     {
       title: "Perform bounded browser action",
-      description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema }),
+      description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits. Optional Chromium diagnostics collect request initiators and explicitly selected precise coverage; coverage changes JIT/timing and is excluded from fix verification.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema, diagnostics: z.object({ coverage: z.boolean().default(false), settleMs: z.number().int().min(0).max(5000).default(250) }).strict().optional() }),
       outputSchema: toolOutputSchemas.web_browser_action,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_browser_action,
     },
-    async ({ sessionId, action }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as BrowserAction, requestContext(extra.signal))),
+    async ({ sessionId, action, diagnostics }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as BrowserAction, { ...requestContext(extra.signal), ...(diagnostics ? { diagnostics } : {}) })),
   );
 
   server.registerTool(
@@ -313,17 +312,19 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     "web_breakpoint_set",
     {
       title: "Set JavaScript breakpoint",
-      description: "Set a breakpoint by source URL and one-based line number through the local Chromium debugger.",
+      description: "Set a breakpoint using one-based source coordinates. Select coordinateSpace=original and an exact source URL/scriptId from the sources capture to translate a source map; ambiguous or unavailable mappings fail explicitly.",
       inputSchema: z.object({
         sessionId: z.string().uuid(),
         sourceUrl: z.string().min(1).max(2_000),
         line: z.number().int().min(1),
         column: z.number().int().min(1).optional(),
+        coordinateSpace: z.enum(["generated", "original"]).default("generated"),
+        scriptId: z.string().min(1).max(100).optional(),
       }),
       outputSchema: toolOutputSchemas.web_breakpoint_set,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_breakpoint_set,
     },
-    async ({ sessionId, sourceUrl, line, column }, extra) => respondFor("web_breakpoint_set", () => manager.setBreakpoint(sessionId, { sourceUrl, line, column }, requestContext(extra.signal))),
+    async ({ sessionId, sourceUrl, line, column, coordinateSpace, scriptId }, extra) => respondFor("web_breakpoint_set", () => manager.setBreakpoint(sessionId, { sourceUrl, line, column, coordinateSpace, scriptId }, requestContext(extra.signal))),
   );
 
   server.registerTool(

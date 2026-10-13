@@ -1,8 +1,6 @@
 import { WebDebugError } from "./errors.js";
 
 export const MAX_FRAMEWORK_RESPONSE_BYTES = 256 * 1024;
-export const MAX_WEBDRIVER_RESPONSE_BYTES = 256 * 1024;
-export const MAX_SCREENSHOT_RESPONSE_BYTES = 8 * 1024 * 1024;
 
 export async function readResponseTextBounded(
   response: Response,

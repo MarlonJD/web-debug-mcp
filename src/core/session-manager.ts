@@ -40,6 +40,7 @@ import type {
   IssueCaptureResult,
   ViewportContract,
   PlaywrightStorageState,
+  BreakpointInput,
 } from "../domain/types.js";
 import {
   MAX_DECISIVE_OBSERVATIONS,
@@ -54,6 +55,8 @@ import { composeEvidence } from "./evidence.js";
 import { boundText, redactValue, safeUrl } from "./redaction.js";
 import { loadAuthStorageState } from "./auth-state.js";
 import { observationDigest } from "./aggregation.js";
+import { compareBehavior, summarizeBehavior } from "./behavior-difference.js";
+import { redactExecutionDiagnostics } from "./diagnostic-redaction.js";
 import { enforceSessionArtifactPolicy } from "./artifact-store.js";
 import {
   assertCaptureCursorAvailable,
@@ -69,6 +72,7 @@ import {
   actionSecret,
   actionSecrets,
   isSensitiveInputAction,
+  replaceSecrets,
 } from "./private-values.js";
 import {
   cloneActions,
@@ -141,7 +145,6 @@ export interface StartSessionInput {
   targetId?: string;
   browser?: "chromium" | "safari";
   cdpEndpoint?: string;
-  webdriverEndpoint?: string;
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
@@ -206,8 +209,8 @@ export class SessionManager {
   private readonly cleanupTimeoutMs: number;
 
   constructor(
-    private readonly adapterFactory: BrowserAdapterFactory = ({ browser, webdriverEndpoint }) =>
-      browser === "safari" ? new SafariAdapter(webdriverEndpoint) : new ChromiumAdapter(),
+    private readonly adapterFactory: BrowserAdapterFactory = ({ browser }) =>
+      browser === "safari" ? new SafariAdapter() : new ChromiumAdapter(),
     options: SessionManagerOptions = {},
   ) {
     this.now = options.now ?? (() => performance.now());
@@ -224,12 +227,11 @@ export class SessionManager {
     const descriptor = detectProject(input.projectRoot);
     const id = randomUUID();
     const browser = input.browser ?? "chromium";
-    if (browser === "chromium" && input.webdriverEndpoint) throw new WebDebugError("WEBDRIVER_BROWSER_MISMATCH", "webdriverEndpoint requires browser=safari.");
     const tls = input.tls ?? "strict";
     let authState: PlaywrightStorageState | undefined;
     let authSecrets: string[] = [];
     if (input.authFixture) {
-      if (browser === "safari") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari WebDriver does not support disposable auth-state seeding.");
+      if (browser === "safari") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari MCP does not support disposable auth-state seeding.");
       if (browser !== "chromium" || input.cdpEndpoint || input.allowRemote || !isLoopback(new URL(input.url).hostname)) {
         throw new WebDebugError("AUTH_FIXTURE_UNAVAILABLE", "Disposable auth seeding requires an isolated Chromium launch at a loopback origin.");
       }
@@ -238,13 +240,13 @@ export class SessionManager {
       authSecrets = loaded.secrets;
     }
     if (tls === "allow-insecure-loopback") {
-      if (browser === "safari") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari WebDriver does not support the guarded loopback TLS bypass.");
+      if (browser === "safari") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari MCP does not support the guarded loopback TLS bypass.");
       if (browser !== "chromium" || input.cdpEndpoint || input.allowRemote || !isLoopback(new URL(input.url).hostname) || new URL(input.url).protocol !== "https:") {
         throw new WebDebugError("TLS_BYPASS_UNAVAILABLE", "Loopback TLS bypass requires an isolated Chromium launch at an HTTPS loopback origin.");
       }
     }
     const artifactDir = await mkdtemp(join(tmpdir(), "web-debug-mcp-"));
-    const adapter = this.adapterFactory({ allowRemote: input.allowRemote, browser, webdriverEndpoint: input.webdriverEndpoint, targetId: input.targetId });
+    const adapter = this.adapterFactory({ allowRemote: input.allowRemote, browser, targetId: input.targetId });
     const summary: DebugSessionSummary = {
       schemaVersion: 2,
       id,
@@ -275,7 +277,6 @@ export class SessionManager {
       startOptions: {
         url: input.url,
         targetId: input.targetId,
-        webdriverEndpoint: input.webdriverEndpoint,
         cdpEndpoint: input.cdpEndpoint,
         executablePath: input.executablePath,
         headless: input.headless,
@@ -297,7 +298,7 @@ export class SessionManager {
     for (const secret of authSecrets) if (secret) managed.redactionSecrets.add(secret);
     if (authState) managed.summary.warnings.push("Disposable auth storage was seeded; screenshot pixels are not claimed redacted.");
     if (browser === "safari" && (descriptor.projectCapabilities.angular || descriptor.projectCapabilities.vue)) {
-      managed.summary.warnings.push("Safari WebDriver provides generic browser evidence only; Angular and Vue runtime enrichment is available in Chromium development sessions.");
+      managed.summary.warnings.push("Safari MCP provides generic browser evidence only; Angular and Vue runtime enrichment is available in Chromium development sessions.");
     }
     this.sessions.set(id, managed);
     try {
@@ -330,8 +331,10 @@ export class SessionManager {
 
   async act(sessionId: string, action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     const session = this.requireSession(sessionId);
+    const diagnostics = context.diagnostics;
+    if (diagnostics && session.summary.target?.browser !== "chromium") throw new WebDebugError("DIAGNOSTICS_UNAVAILABLE", "Execution diagnostics require Chromium CDP.");
     try {
-      return await this.withLease(session, context, (operation) => this.actInternal(session, action, operation, true));
+      return await this.withLease(session, context, (operation) => this.actInternal(session, action, { ...operation, ...(diagnostics ? { diagnostics } : {}) }, true));
     } catch (error) {
       const secret = actionSecret(action);
       throw sanitizeError(error, secret ? [secret] : sessionSecrets(session));
@@ -345,7 +348,8 @@ export class SessionManager {
       assertCaptureCursorAvailable(normalized, session.captureCursors, session.captureGeneration);
       const captureScreenshot = captureRequestsScreenshot(normalized);
       return await this.withLease(session, context, async (operation) => {
-        const evidence = await this.captureInternal(session, captureScreenshot, operation, true);
+        const sourceMaps = normalized.profile === "full" || ("surfaces" in normalized && normalized.surfaces?.includes("sources") === true);
+        const evidence = await this.captureInternal(session, captureScreenshot, operation, true, sourceMaps);
         return projectIssueCapture({
           evidence,
           view: normalized,
@@ -385,7 +389,7 @@ export class SessionManager {
     });
   }
 
-  async setBreakpoint(sessionId: string, input: { sourceUrl: string; line: number; column?: number }, context: OperationContext = {}) {
+  async setBreakpoint(sessionId: string, input: BreakpointInput, context: OperationContext = {}) {
     const session = this.requireSession(sessionId);
     return this.withLease(session, context, (operation) => this.callAdapter(() => session.adapter.setBreakpoint(input, operation), operation));
   }
@@ -544,7 +548,6 @@ export class SessionManager {
     session.startOptions.authState = undefined;
     session.startOptions.url = "";
     session.startOptions.cdpEndpoint = undefined;
-    session.startOptions.webdriverEndpoint = undefined;
     session.startOptions.executablePath = undefined;
     session.startOptions.targetId = undefined;
     session.selectedTargetId = null;
@@ -861,7 +864,7 @@ export class SessionManager {
     let passed: boolean | undefined;
     for (const viewport of viewports) {
       if (remaining(context) <= 0) break;
-      const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: session.summary.target?.browser ?? "chromium", webdriverEndpoint: session.startOptions.webdriverEndpoint });
+      const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: session.summary.target?.browser ?? "chromium" });
       let checks: CheckObservation[] = [];
       let match: boolean | undefined;
       let passed: boolean | undefined;
@@ -1011,7 +1014,7 @@ export class SessionManager {
     const launchOwned = Boolean(target?.isolated && (target.mode ?? "launch") === "launch");
     const needsFreshAttempt = phase === "post-fix" || ordinal > 1;
     if (needsFreshAttempt && launchOwned) {
-      const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: target?.browser ?? "chromium", webdriverEndpoint: session.startOptions.webdriverEndpoint });
+      const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: target?.browser ?? "chromium" });
       try {
         const nextTarget = await this.callAdapter(() => candidate.start({ ...session.startOptions }, { ...context, attemptId }), context);
         const previous = session.adapter;
@@ -1067,10 +1070,10 @@ export class SessionManager {
     }
   }
 
-  private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean): Promise<EvidenceBundle> {
+  private async captureInternal(session: ManagedSession, captureScreenshot: boolean, context: OperationContext, includeReplay: boolean, sourceMaps = false): Promise<EvidenceBundle> {
     const suppressInputScreenshot = sessionSecrets(session).length > 0;
     const suppressScreenshot = session.authFixture === "seeded-disposable" || suppressInputScreenshot;
-    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot }, context), context);
+    const browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: suppressScreenshot ? false : captureScreenshot, checksOnly: false, accessibility: true, suppressScreenshot, sourceMaps }, context), context);
     await this.applySessionArtifactPolicy(session, browser, suppressScreenshot);
     if (captureScreenshot && suppressInputScreenshot && session.authFixture !== "seeded-disposable") browser.warnings.push("Screenshot suppressed because the session contains private fill/select input values; pixels are not claimed redacted.");
     let next = null;
@@ -1122,7 +1125,10 @@ export class SessionManager {
   private async actInternal(session: ManagedSession, action: BrowserAction, context: OperationContext, recordReplay: boolean): Promise<ActionResult> {
     validateAction(action);
     const secret = actionSecret(action);
-    if (secret) session.redactionSecrets.add(secret);
+    if (secret) {
+      session.redactionSecrets.add(secret);
+      for (const cursor of session.captureCursors) cursor.behavior = replaceSecrets(cursor.behavior, sessionSecrets(session)) as typeof cursor.behavior;
+    }
     if (action.kind === "navigate") {
       assertAllowedTargetUrl(action.url, session.summary.target?.remote ?? false);
       assertScenarioOrigin(session, action.url);
@@ -1132,7 +1138,9 @@ export class SessionManager {
     session.summary.url = safeUrl(result.url);
     if (session.summary.target) session.summary.target = { ...session.summary.target, url: safeUrl(result.url), title: boundText(result.title, 300) };
     if (recordReplay) await this.recordReplayFrame(session, "action", action, undefined, context).catch((error) => { session.summary.warnings = mergeWarnings(session.summary.warnings, [`Replay frame unavailable: ${boundText(errorMessage(error), 500)}`]); });
-    return result;
+    const { diagnostics, ...actionResult } = result;
+    const safe = { ...redactValue(actionResult) as ActionResult, ...(diagnostics ? { diagnostics: redactExecutionDiagnostics(diagnostics) } : {}) };
+    return replaceSecrets(safe, sessionSecrets(session)) as ActionResult;
   }
 
   private async restoreReplayFrame(session: ManagedSession, targetFrame: ReplayFrame, context: OperationContext): Promise<void> {
@@ -1194,10 +1202,10 @@ export class SessionManager {
     session.lease = { controller, promise };
     try { return await promise; }
     catch (error) {
-      if (error instanceof WebDebugError && error.code === "NAVIGATION_ORIGIN_BLOCKED") {
+      if (error instanceof WebDebugError && ["NAVIGATION_ORIGIN_BLOCKED", "DIAGNOSTIC_CLEANUP_FAILED"].includes(error.code)) {
         session.unusable = true;
         session.summary.status = "failed";
-        session.summary.warnings = mergeWarnings(session.summary.warnings, ["The selected browser left its top-level origin boundary; the session is unusable."]);
+        session.summary.warnings = mergeWarnings(session.summary.warnings, [error.code === "DIAGNOSTIC_CLEANUP_FAILED" ? "Diagnostic instrumentation cleanup is unconfirmed; the session is unusable and must be closed." : "The selected browser left its top-level origin boundary; the session is unusable."]);
       }
       throw error;
     }
@@ -1261,7 +1269,7 @@ export class SessionManager {
       path: parsed?.pathname ?? safeUrl(url),
       browser: target?.browser ?? null,
       browserVersion: session.adapter.browserVersion?.() ?? null,
-      adapterMode: target?.mode ?? (target?.browser === "safari" ? "webdriver" : target?.isolated ? "launch" : "attach"),
+      adapterMode: target?.mode ?? (target?.browser === "safari" ? "mcp" : target?.isolated ? "launch" : "attach"),
       targetId: target?.isolated ? null : session.adapter.targetIdentity?.() ?? target?.targetId ?? session.selectedTargetId,
       remote: target?.remote ?? false,
       isolated: target?.isolated ?? false,
@@ -1320,6 +1328,7 @@ export class SessionManager {
       budget: { baseline: scenario.baseline.budget, postFix: { level: postFix.level, ...profileFor(postFix.level) } },
       cleanup: { budgetMs: CLEANUP_TIMEOUT_MS, status: "deferred-to-session-close" },
       evidence,
+      differences: compareBehavior(evidence.baseline ? summarizeBehavior(evidence.baseline.browser) : null, evidence.postFix ? summarizeBehavior(evidence.postFix.browser) : null),
       environmentFingerprint: fingerprint,
       contractHash: scenario.contractHash,
       buildReference: { baseline: scenario.buildReference, postFix: buildReference },

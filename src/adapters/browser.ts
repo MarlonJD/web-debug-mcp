@@ -20,7 +20,6 @@ export interface BrowserStartOptions {
   url: string;
   targetId?: string;
   cdpEndpoint?: string;
-  webdriverEndpoint?: string;
   executablePath?: string;
   headless?: boolean;
   allowRemote?: boolean;
@@ -36,6 +35,7 @@ export interface BrowserStartOptions {
 }
 
 export interface SnapshotOptions {
+  sourceMaps?: boolean;
   artifactDir: string;
   captureScreenshot: boolean;
   /** Checks-only snapshots never request screenshots or optional framework enrichment. */
@@ -73,6 +73,8 @@ export interface BrowserAdapter {
     sourceUrl: string;
     line: number;
     column?: number;
+    coordinateSpace?: "generated" | "original";
+    scriptId?: string;
   }, context?: OperationContext): Promise<DebuggerBreakpoint>;
   control(action: "resume" | "stepOver" | "stepInto" | "stepOut", context?: OperationContext): Promise<DebuggerSnapshot>;
   evaluate(expression: string, allowSideEffects: boolean, context?: OperationContext): Promise<EvaluationResult>;
@@ -81,6 +83,5 @@ export interface BrowserAdapter {
 export type BrowserAdapterFactory = (options: {
   allowRemote?: boolean;
   browser?: BrowserEngine;
-  webdriverEndpoint?: string;
   targetId?: string;
 }) => BrowserAdapter;

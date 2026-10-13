@@ -34,13 +34,14 @@ let breakpointSession;
 let originalApp = null;
 let appMutated = false;
 let hmrEvidence = null;
+let hmrSources = null;
 
 try {
   await waitForHttpReady(url, vite, { label: "React/Vite fixture", timeoutMs: 15_000 });
 
   verificationSession = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
   const defaultSummary = await manager.capture(verificationSession.id);
-  await manager.act(verificationSession.id, { kind: "click", locator: { kind: "css", value: "button" } });
+  const diagnosedAction = await manager.act(verificationSession.id, { kind: "click", locator: { kind: "css", value: "button" } }, { diagnostics: { coverage: true, settleMs: 100 } });
   const verificationCapture = await manager.capture(verificationSession.id, { profile: "full" });
   const verificationEvidence = verificationCapture.details;
   if (!verificationEvidence) throw new Error("React/Vite evidence capture returned no evidence.");
@@ -72,6 +73,7 @@ try {
     await writeFile(appPath, originalApp.replace("Checkout fixture", "Checkout fixture HMR"));
     appMutated = true;
     await waitForViteTransformDiff(url);
+    hmrSources = (await manager.capture(breakpointSession.id, { profile: "include", surfaces: ["sources"] })).details.sources;
     hmrEvidence = (await manager.capture(breakpointSession.id, { profile: "include", surfaces: ["vite"] })).details.vite;
   } finally {
     if (appMutated && originalApp !== null) {
@@ -84,6 +86,10 @@ try {
     compactDefaultSummary: defaultSummary.profile === "summary" && defaultSummary.details === undefined && Buffer.byteLength(JSON.stringify(defaultSummary)) < 16 * 1024,
     projectRuntimeSeparated: verificationSession.projectCapabilities.react === true && verificationSession.runtimeCapabilities?.javascriptDebugger.state === "supported",
     flowCaptured: verificationCapture.redaction.applied === true,
+    actionCoverage: diagnosedAction.diagnostics?.coverage.state === "collected" && diagnosedAction.diagnostics?.cleanup === "complete",
+    actionReactCommits: diagnosedAction.diagnostics?.react?.commitsAfter > diagnosedAction.diagnostics?.react?.commitsBefore,
+    executionSource: diagnosedAction.diagnostics?.coverage.scripts.some((script) => script.functions.some((fn) => fn.ranges.some((range) => range.count > 0 && range.source?.original?.url.includes("/src/App.jsx")))),
+    hmrSourceIdentity: hmrSources?.scripts.some((script) => script.url.includes("/src/App.jsx") && script.hash && !verificationEvidence.sources?.scripts.some((before) => before.hash === script.hash)),
     reactDetected: Boolean(verifiedComponent),
     submittedText: verificationEvidence.dom.bodyText.includes("Payment submitted: 249.90"),
     submittedState: componentContainsValue(afterComponent, true),

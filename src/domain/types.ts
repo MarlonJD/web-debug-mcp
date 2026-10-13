@@ -1,3 +1,6 @@
+import type { SourceReference, SourceInventory, ExecutionDiagnostics, DiagnosticOptions, BehaviorDifference, SourceLocation } from "./diagnostics.js";
+export type * from "./diagnostics.js";
+
 export type Framework = "vanilla" | "react" | "angular" | "vue" | "vite" | "next";
 
 export type BrowserEngine = "chromium" | "safari";
@@ -45,7 +48,7 @@ export interface LocatorProbeResult {
   locator: BrowserLocator;
   properties: LocatorProperty[];
   observedAt: string;
-  provenance: "browser" | "webdriver";
+  provenance: "browser" | "safari-mcp";
   count?: number;
   visible?: boolean;
   enabled?: boolean;
@@ -144,8 +147,7 @@ export type RuntimeCapabilityState = "supported" | "degraded" | "unsupported";
 export type RuntimeCapabilityProvenance =
   | "playwright"
   | "chromium-cdp"
-  | "safari-webdriver"
-  | "safari-bidi"
+  | "safari-mcp"
   | "performance-resource-timing"
   | "session-policy";
 
@@ -158,7 +160,7 @@ export interface RuntimeCapability {
 export interface BrowserRuntimeCapabilities {
   schemaVersion: 1;
   browser: BrowserEngine;
-  transport: "chromium-launch" | "chromium-cdp-attach" | "safari-webdriver";
+  transport: "chromium-launch" | "chromium-cdp-attach" | "safari-mcp";
   actions: RuntimeCapability;
   locators: {
     css: RuntimeCapability;
@@ -175,6 +177,8 @@ export interface BrowserRuntimeCapabilities {
   viewportMatrix: RuntimeCapability;
   tlsBypass: RuntimeCapability;
   authSeeding: RuntimeCapability;
+  sourceMapping: RuntimeCapability;
+  executionCoverage: RuntimeCapability;
 }
 
 export interface BrowserTarget {
@@ -186,8 +190,8 @@ export interface BrowserTarget {
   isolated: boolean;
   /** The exact browser/page target selected for this session when the transport exposes one. */
   targetId?: string;
-  /** Launch, attached CDP, or visible WebDriver transport mode. */
-  mode?: "launch" | "attach" | "webdriver";
+  /** Launch, attached CDP, or visible native MCP transport mode. */
+  mode?: "launch" | "attach" | "mcp";
   isolation?: {
     browserProcess: boolean;
     context: boolean;
@@ -245,6 +249,7 @@ export type BrowserAction =
   | { kind: "reload" };
 
 export interface OperationContext {
+  diagnostics?: DiagnosticOptions;
   signal?: AbortSignal;
   /** Absolute monotonic deadline in milliseconds (performance.now()). */
   deadline?: number;
@@ -271,6 +276,7 @@ export interface ActionResult {
   kind: BrowserAction["kind"];
   url: string;
   title: string;
+  diagnostics?: ExecutionDiagnostics;
 }
 
 export interface ConsoleEntry {
@@ -279,6 +285,7 @@ export interface ConsoleEntry {
   url?: string;
   line?: number;
   column?: number;
+  source?: SourceReference;
 }
 
 export interface NetworkEntry {
@@ -311,6 +318,7 @@ export interface DebuggerCallFrame {
   column: number;
   scopeNames: string[];
   locals: Record<string, unknown>;
+  source?: SourceReference;
 }
 
 export interface DebuggerBreakpoint {
@@ -318,6 +326,10 @@ export interface DebuggerBreakpoint {
   sourceUrl: string;
   line: number;
   column: number | null;
+  coordinateSpace?: "generated" | "original";
+  status?: "resolved" | "stale";
+  resolved?: SourceLocation;
+  scriptId?: string;
 }
 
 export interface DebuggerSnapshot {
@@ -579,6 +591,8 @@ export interface ViteSnapshot {
 }
 
 export interface BrowserSnapshot {
+  sources?: SourceInventory | null;
+  execution?: ExecutionDiagnostics | null;
   url: string;
   title: string;
   viewport: ViewportSize | null;
@@ -604,7 +618,7 @@ export type ObservationFreshness = "fresh" | "stale" | "unknown";
 export interface SurfaceObservation {
   state: ObservationState;
   freshness: ObservationFreshness;
-  provenance: "browser" | "cached" | "webdriver-bidi" | "performance-resource-timing" | "unknown";
+  provenance: "browser" | "cached" | "safari-mcp" | "performance-resource-timing" | "unknown";
   observed?: string;
   warning?: string;
 }
@@ -632,6 +646,8 @@ export interface EvidenceBundle {
 }
 
 export const CAPTURE_SURFACES = [
+  "sources",
+  "execution",
   "dom",
   "console",
   "network",
@@ -687,6 +703,8 @@ export interface CaptureSummary {
 }
 
 export interface CaptureDetails {
+  sources?: SourceInventory | null;
+  execution?: ExecutionDiagnostics | null;
   dom?: DomSnapshot;
   console?: ConsoleEntry[];
   network?: NetworkEntry[];
@@ -702,6 +720,7 @@ export interface CaptureDetails {
 }
 
 export interface IssueCaptureResult {
+  differences?: BehaviorDifference;
   schemaVersion: 4;
   profile: "summary" | "full" | "include" | "delta";
   capturedAt: string;
@@ -856,7 +875,7 @@ export interface EnvironmentFingerprint {
   path: string;
   browser: BrowserEngine | null;
   browserVersion: string | null;
-  adapterMode: "launch" | "attach" | "webdriver" | null;
+  adapterMode: "launch" | "attach" | "mcp" | null;
   targetId: string | null;
   remote: boolean;
   isolated: boolean;
@@ -968,7 +987,7 @@ export interface AttemptSummary {
   retryable: boolean;
   conflict?: boolean;
   reset: {
-    mode: "fresh-launch" | "attached-target" | "webdriver-target" | "none";
+    mode: "fresh-launch" | "attached-target" | "mcp-target" | "none";
     isolated: boolean;
     browserProfile: "fresh" | "retained" | "unavailable";
     storage: "fresh" | "retained" | "unavailable";
@@ -995,6 +1014,7 @@ export interface RateSummary {
 }
 
 export interface VerificationResult {
+  differences?: BehaviorDifference;
   schemaVersion: 5;
   outcome: VerificationOutcome;
   level: VerificationLevel;

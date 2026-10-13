@@ -41,21 +41,22 @@ describe("doctor CLI contract", () => {
     expect(report.checks).toContainEqual(expect.objectContaining({ id: "project", status: "warn", message: expect.stringContaining("no framework adapter") }));
   });
 
-  it("documents the CLI and warns when Safari BiDi lacks a WebSocket runtime", async () => {
+  it("documents local Safari MCP without requiring the WebSocket runtime", async () => {
     const { stdout } = await execFileAsync(process.execPath, ["bin/web-debug-mcp.mjs", "doctor", "--help"], { cwd: process.cwd() });
     expect(stdout).toContain("web-debug-mcp doctor [options]");
-    expect(stdout).toContain("--webdriver-endpoint");
-
+    expect(stdout).not.toContain("--webdriver-endpoint");
+    expect(() => parseDoctorArgs(["--webdriver-endpoint", "http://127.0.0.1:4444"])).toThrowError(/Unknown doctor argument/);
     vi.stubGlobal("WebSocket", undefined);
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ value: { ready: true } }), { status: 200 })));
+    vi.stubEnv("WEB_DEBUG_SAFARIDRIVER_PATH", process.execPath);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     try {
-      const report = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "safari", webdriverEndpoint: "http://127.0.0.1:4444" });
+      const report = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "safari" });
       expect(report.ok).toBe(true);
-      expect(report.checks).toContainEqual(expect.objectContaining({ id: "node", status: "warn", message: expect.stringContaining("WebSocket is unavailable") }));
-      expect(report.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "pass" }));
-    } finally {
-      vi.unstubAllGlobals();
-    }
+      expect(report.checks).toContainEqual(expect.objectContaining({ id: "node", status: "pass" }));
+      expect(report.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "warn", message: expect.stringContaining("console delivery were not tested") }));
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); vi.unstubAllEnvs(); }
   });
 
   it("does not contact a remote browser endpoint", async () => {
@@ -81,8 +82,6 @@ describe("doctor CLI contract", () => {
       const cdp = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "chromium", cdpEndpoint: "http://127.0.0.1:9222" });
       expect(cdp.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "fail", message: expect.stringContaining("valid JSON") }));
 
-      const webdriver = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "safari", webdriverEndpoint: "http://127.0.0.1:4444" });
-      expect(webdriver.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "fail", message: expect.stringContaining("valid JSON") }));
     } finally {
       vi.unstubAllGlobals();
     }
@@ -94,8 +93,6 @@ describe("doctor CLI contract", () => {
     try {
       const cdp = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "chromium", cdpEndpoint: "http://127.0.0.1:9222" });
       expect(cdp.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "pass" }));
-      const webdriver = await runDoctor({ projectRoot: "fixtures/vanilla", browser: "safari", webdriverEndpoint: "http://127.0.0.1:4444" });
-      expect(webdriver.checks).toContainEqual(expect.objectContaining({ id: "browser", status: "pass" }));
     } finally {
       vi.unstubAllGlobals();
     }

@@ -9,7 +9,7 @@ Every tool advertises and enforces a concrete tool-specific output data schema a
 - confirmed project capabilities separately from negotiated live runtime capabilities;
 - session ID, target URL, and isolation state without the private artifact directory;
 - bounded DOM summary and page text;
-- bounded console and network metadata, with Safari network provenance disclosed as BiDi or Performance Resource Timing;
+- bounded console and network metadata, with Safari network provenance disclosed as native Safari MCP or Performance Resource Timing;
 - screenshot status when explicitly requested plus an opaque `web-debug://artifact/...` resource; local screenshot paths never enter capture data and small pixels may also be inline;
 - debugger pause reason, call frames, scopes, and redacted locals;
 - authoritative evidence `schemaVersion: 4` and nullable React, Angular, and Vue page-runtime snapshots; Angular/Vue are Chromium development-only, checks-only captures return null, and paused captures label cached runtime evidence stale;
@@ -40,3 +40,11 @@ This project does not use `production-ready` for the first commit. Local test/bu
 ## Error response
 
 Expected failures are returned as `isError: true` and `structuredContent.ok: false` with a stable `error.code` and bounded message. Error details are sanitized and omitted if they would exceed the result budget. Callers should use the code to recover rather than retrying blindly.
+
+## Unreleased diagnostics
+
+Version-1 `sources`, `execution`, and `differences` structures extend the existing capture and verification envelopes. Source locations preserve generated coordinates and optional mapped originals. `mapping: unavailable`, coverage `unavailable`/`not-requested`, incompleteness, and temporal association labels are literal evidence states. Coverage ranges never become a verification verdict; absent coverage stays unknown. Original source breakpoints expose their script identity and resolved/stale status. Diagnostic response schemas are concrete and redaction preserves their shape.
+
+Safari uses native `safaridriver --mcp` behind the same 13 public tools. Runtime transport and console provenance are `safari-mcp`; target mode is `mcp`. Startup/commands distinguish `SAFARI_MCP_UNAVAILABLE`, `SAFARI_SESSION_IN_USE`, `SAFARI_MCP_TIMEOUT`, and caller `REQUEST_CANCELLED`. Console observations stay unavailable until a real owned-tab Inspector record is observed and become unavailable again after a failed read or disconnection. Smoke output retains the failing phase and error code and requires real application errors, observer reset, and the screenshot privacy boundary.
+
+Malformed, foreign-tab, disconnected, or truncated native console observations cannot satisfy `noConsoleErrors`; a reset drains native buffers before clearing the retained local evidence.

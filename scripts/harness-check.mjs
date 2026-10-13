@@ -272,7 +272,7 @@ check(reactBridgeSource.includes("flamegraph"), "React bridge must expose the bo
 check(angularBridgeSource.includes("window.__WEB_DEBUG_ANGULAR__") && angularBridgeSource.includes("isFrameworkInternal"), "Angular bridge must expose bounded documented-global evidence without framework internals");
 check(vueBridgeSource.includes("window.__WEB_DEBUG_VUE__") && vueBridgeSource.includes("component:updated") && !vueBridgeSource.includes("__vueParentComponent"), "Vue bridge must use the bounded hook contract without a DOM-private fallback");
 check(chromiumSource.includes("bridgeScriptIdentifiers") && chromiumSource.includes("frameworks.has(\"angular\")") && chromiumSource.includes("frameworks.has(\"vue\")"), "Chromium must select and clean up Angular/Vue target-scoped bridges");
-check(safariSource.includes("session.subscribe"), "Safari adapter must subscribe to WebDriver BiDi events");
+check(safariSource.includes('"browser_console_messages"') && safariSource.includes("consoleDeliveryObserved") && safariSource.includes('provenance: "safari-mcp"'), "Safari must use native console evidence with observed delivery and truthful provenance");
 check(safariSource.includes("profile isolation"), "Safari adapter must disclose visible-profile isolation limits");
 check(sessionSource.includes("REPLAY_RESTORE_UNAVAILABLE"), "Replay restore must fail closed for unsafe frames");
 check(sessionSource.includes("failureChecks.length > 0 && failureChecks.every"), "Post-fix verification must require the complete polarity-aware failure signature to be absent");
@@ -287,7 +287,7 @@ check(read("bin/web-debug-mcp.mjs").includes('args[0] === "doctor"'), "Package b
 check(read("scripts/live-smoke.mjs").includes("stopOwnedProcess") && read("scripts/live-next-smoke.mjs").includes("waitForHttpReady"), "Live smokes must use bounded readiness and awaited teardown helpers");
 check(read("docs/COMPATIBILITY.md").includes("Verified locally") && read("docs/demos/agent-evaluation.md").includes("npm run eval:catalog") && read("docs/demos/agent-evaluation.md").includes("npm run eval:grade"), "Compatibility and agent task-evaluation contracts must remain discoverable");
 check(chromiumSource.includes("async probe") && chromiumSource.includes("ignoreHTTPSErrors") && chromiumSource.includes("routeWebSocket"), "Chromium adapter must expose live probes and guarded elevated context controls");
-check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.includes("acceptInsecureCerts: false"), "Safari adapter must retain CSS-only semantic limits and strict TLS")
+check(safariSource.includes("LOCATOR_STRATEGY_UNAVAILABLE") && safariSource.includes('options.tls === "allow-insecure-loopback"') && safariSource.includes("SAFARI_TLS_UNAVAILABLE"), "Safari adapter must retain CSS-only semantic limits and reject TLS bypass")
 check(sessionSource.includes("MAX_DECISIVE_OBSERVATIONS") && sessionSource.includes("runMatrixAttempt"), "Session manager must enforce aggregate observations and ephemeral matrix candidates");
 check(read("src/core/auth-state.ts").includes("fstat") || read("src/core/auth-state.ts").includes("handle.stat"), "Auth fixture validation must re-stat one open descriptor");
 check(read("src/core/process-registry.ts").includes("REGISTRY_RECORD_CAP") && read("src/core/process-registry.ts").includes("identityMatches"), "Process cleanup must be registry and identity backed");

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CAPTURE_SURFACES } from "./types.js";
+import { behaviorDifferenceSchema, sourceLocationSchema, sourceReferenceSchema, sourceInventorySchema, executionDiagnosticsSchema } from "./diagnostic-schemas.js";
 
 const warningSchema = z.string().max(500);
 const frameworkSchema = z.enum(["vanilla", "react", "angular", "vue", "vite", "next"]);
@@ -8,8 +9,7 @@ const capabilityStateSchema = z.enum(["supported", "degraded", "unsupported"]);
 const capabilityProvenanceSchema = z.enum([
   "playwright",
   "chromium-cdp",
-  "safari-webdriver",
-  "safari-bidi",
+  "safari-mcp",
   "performance-resource-timing",
   "session-policy",
 ]);
@@ -33,7 +33,7 @@ export const projectCapabilitiesSchema: z.ZodType = z.object({
 export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
   schemaVersion: z.literal(1),
   browser: z.enum(["chromium", "safari"]),
-  transport: z.enum(["chromium-launch", "chromium-cdp-attach", "safari-webdriver"]),
+  transport: z.enum(["chromium-launch", "chromium-cdp-attach", "safari-mcp"]),
   actions: runtimeCapabilitySchema,
   locators: z.object({ css: runtimeCapabilitySchema, semantic: runtimeCapabilitySchema }).strict(),
   dom: runtimeCapabilitySchema,
@@ -47,6 +47,8 @@ export const browserRuntimeCapabilitiesSchema: z.ZodType = z.object({
   viewportMatrix: runtimeCapabilitySchema,
   tlsBypass: runtimeCapabilitySchema,
   authSeeding: runtimeCapabilitySchema,
+  sourceMapping: runtimeCapabilitySchema,
+  executionCoverage: runtimeCapabilitySchema,
 }).strict();
 
 const browserTargetSchema = z.object({
@@ -57,7 +59,7 @@ const browserTargetSchema = z.object({
   viewport: viewportSchema.nullable(),
   isolated: z.boolean(),
   targetId: z.string().max(200).optional(),
-  mode: z.enum(["launch", "attach", "webdriver"]).optional(),
+  mode: z.enum(["launch", "attach", "mcp"]).optional(),
   isolation: z.object({
     browserProcess: z.boolean(),
     context: z.boolean(),
@@ -145,12 +147,14 @@ const actionSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const actionResultSchema: z.ZodType = z.object({
+  diagnostics: executionDiagnosticsSchema.optional(),
   kind: z.enum(["navigate", "click", "fill", "press", "select", "check", "hover", "scroll", "wait", "reload"]),
   url: z.string().max(2_560),
   title: z.string().max(300),
 }).strict();
 
 const consoleEntrySchema = z.object({
+  source: sourceReferenceSchema.optional(),
   level: z.enum(["log", "info", "debug", "warning", "error", "pageerror"]),
   text: z.string().max(2_000),
   url: z.string().max(2_560).optional(),
@@ -173,12 +177,17 @@ const domSchema = z.object({
 }).strict();
 
 export const debuggerBreakpointSchema: z.ZodType = z.object({
+  coordinateSpace: z.enum(["generated", "original"]).optional(),
+  status: z.enum(["resolved", "stale"]).optional(),
+  resolved: sourceLocationSchema.optional(),
+  scriptId: z.string().max(100).optional(),
   id: z.string().max(500),
   sourceUrl: z.string().max(2_560),
   line: z.number().int(),
   column: z.number().int().nullable(),
 }).strict();
 const debuggerCallFrameSchema = z.object({
+  source: sourceReferenceSchema.optional(),
   functionName: z.string().max(500),
   url: z.string().max(2_560),
   line: z.number().int(),
@@ -223,6 +232,8 @@ const replayTimelineSchema = z.object({
 
 const captureSurfaceSchema = z.enum(CAPTURE_SURFACES);
 const captureDetailsSchema = z.object({
+  sources: sourceInventorySchema.nullable().optional(),
+  execution: executionDiagnosticsSchema.nullable().optional(),
   dom: domSchema.optional(),
   console: z.array(consoleEntrySchema).max(100).optional(),
   network: z.array(networkEntrySchema).max(100).optional(),
@@ -242,7 +253,7 @@ const captureTargetSchema = z.object({
   remote: z.boolean(),
   viewport: viewportSchema.nullable(),
   isolated: z.boolean(),
-  mode: z.enum(["launch", "attach", "webdriver"]).optional(),
+  mode: z.enum(["launch", "attach", "mcp"]).optional(),
 }).strict();
 
 const captureCommonSchema = z.object({
@@ -298,6 +309,7 @@ export const issueCaptureResultSchema: z.ZodType = z.discriminatedUnion("profile
   captureCommonSchema.extend({
     profile: z.literal("delta"),
     fromCursor: z.string().max(200),
+    differences: behaviorDifferenceSchema.optional(),
     changedSurfaces: z.array(captureSurfaceSchema).max(CAPTURE_SURFACES.length),
     unchangedSurfaces: z.array(captureSurfaceSchema).max(CAPTURE_SURFACES.length),
     details: captureDetailsSchema,
@@ -338,14 +350,14 @@ const environmentFingerprintSchema = z.object({
   path: z.string().max(2_560),
   browser: z.enum(["chromium", "safari"]).nullable(),
   browserVersion: z.string().max(200).nullable(),
-  adapterMode: z.enum(["launch", "attach", "webdriver"]).nullable(),
+  adapterMode: z.enum(["launch", "attach", "mcp"]).nullable(),
   targetId: z.string().max(200).nullable(),
   remote: z.boolean(),
   isolated: z.boolean(),
   viewport: viewportSchema.nullable(),
   tls: z.enum(["strict", "allow-insecure-loopback"]),
   authFixture: z.enum(["seeded-disposable", "none"]),
-  runtimeTransport: z.enum(["chromium-launch", "chromium-cdp-attach", "safari-webdriver"]).nullable(),
+  runtimeTransport: z.enum(["chromium-launch", "chromium-cdp-attach", "safari-mcp"]).nullable(),
   runtimeCapabilityStates: z.record(z.string(), capabilityStateSchema),
   nodeVersion: z.string().max(100),
   platform: z.string().max(100),
@@ -391,6 +403,7 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
 }).strict();
 
 export const verificationResultSchema: z.ZodType = z.object({
+  differences: behaviorDifferenceSchema.optional(),
   schemaVersion: z.literal(5),
   outcome: z.enum(["verified", "failed", "inconclusive"]),
   level: z.enum(["quick", "standard", "strict"]),

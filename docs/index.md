@@ -18,3 +18,5 @@
 | Work registry | [`exec-plans/index.md`](exec-plans/index.md) | A plan starts, completes, or is superseded |
 | Agent harness | [`agent-harness/index.md`](agent-harness/index.md) | Agent capabilities or verification paths change |
 | Design rationale | [`design-docs/index.md`](design-docs/index.md) | A cross-cutting design decision changes |
+
+Unreleased implementation: [execution and original-source correlation](design-docs/execution-source-correlation.md).

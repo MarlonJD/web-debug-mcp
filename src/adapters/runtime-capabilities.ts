@@ -34,37 +34,41 @@ export function chromiumRuntimeCapabilities(attached: boolean): BrowserRuntimeCa
     viewportMatrix: launchOnly,
     tlsBypass: launchOnly,
     authSeeding: launchOnly,
+    sourceMapping: capability("degraded", ["chromium-cdp"], "Only bounded maps for selected main-frame default-world scripts are resolved; missing or ambiguous mappings remain unavailable."),
+    executionCoverage: cdp,
   };
 }
 
-export function safariRuntimeCapabilities(hasBidi: boolean): BrowserRuntimeCapabilities {
-  const webdriver = capability("supported", ["safari-webdriver"]);
-  const unavailable = (reason: string) => capability("unsupported", ["safari-webdriver"], reason);
+export function safariRuntimeCapabilities(consoleAvailable: boolean, consoleDeliveryObserved: boolean): BrowserRuntimeCapabilities {
+  const native = capability("supported", ["safari-mcp"]);
+  const unavailable = (reason: string) => capability("unsupported", ["safari-mcp"], reason);
   return {
     schemaVersion: 1,
     browser: "safari",
-    transport: "safari-webdriver",
-    actions: webdriver,
+    transport: "safari-mcp",
+    actions: native,
     locators: {
-      css: webdriver,
-      semantic: unavailable("Safari WebDriver supports exact CSS locators only."),
+      css: native,
+      semantic: unavailable("Safari MCP supports exact CSS locators only."),
     },
-    dom: webdriver,
-    console: hasBidi
-      ? capability("supported", ["safari-bidi"])
-      : unavailable("Safari WebDriver BiDi console collection is unavailable."),
+    dom: native,
+    console: consoleAvailable
+      ? capability(consoleDeliveryObserved ? "supported" : "degraded", ["safari-mcp"], consoleDeliveryObserved ? undefined : "Safari Inspector console delivery has not been observed; an empty native buffer alone does not establish console availability.")
+      : unavailable("Safari MCP Inspector console collection is unavailable."),
     network: capability(
       "degraded",
-      hasBidi ? ["safari-bidi", "performance-resource-timing"] : ["performance-resource-timing"],
-      "Safari network evidence may fall back to bounded Performance Resource Timing metadata when BiDi emits no events.",
+      ["safari-mcp", "performance-resource-timing"],
+      "Safari network evidence may fall back to bounded Performance Resource Timing metadata when Inspector returns no requests.",
     ),
-    screenshots: webdriver,
-    javascriptDebugger: unavailable("Safari WebDriver does not expose Chromium CDP debugger domains."),
-    evaluation: capability("degraded", ["safari-webdriver", "session-policy"], "Safari evaluation requires explicit side-effect authorization."),
-    accessibility: unavailable("Computed accessibility diagnostics are unavailable in Safari WebDriver."),
+    screenshots: native,
+    javascriptDebugger: unavailable("Safari MCP does not expose Chromium CDP debugger domains."),
+    evaluation: capability("degraded", ["safari-mcp", "session-policy"], "Safari evaluation requires explicit side-effect authorization."),
+    accessibility: unavailable("Computed accessibility diagnostics are unavailable in Safari MCP."),
     pageRuntimeEnrichment: unavailable("Framework runtime bridges are available only in Chromium development sessions."),
-    viewportMatrix: unavailable("Safari WebDriver uses a visible non-isolated profile and cannot provide fresh viewport candidates."),
-    tlsBypass: unavailable("Guarded loopback TLS bypass is unavailable in Safari WebDriver."),
-    authSeeding: unavailable("Disposable auth-state seeding is unavailable in Safari WebDriver."),
+    viewportMatrix: unavailable("Safari MCP uses a visible non-isolated profile and cannot provide fresh viewport candidates."),
+    tlsBypass: unavailable("Guarded loopback TLS bypass is unavailable in Safari MCP."),
+    authSeeding: unavailable("Disposable auth-state seeding is unavailable in Safari MCP."),
+    sourceMapping: unavailable("Source-map resolution requires Chromium CDP."),
+    executionCoverage: unavailable("Precise execution coverage requires Chromium CDP."),
   };
 }

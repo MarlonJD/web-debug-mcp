@@ -19,7 +19,7 @@ export function isLoopback(hostname: string): boolean {
 
 export function normalizeTarget(target: BrowserTarget, browser: "chromium" | "safari", options: BrowserStartOptions): BrowserTarget {
   if (target.url.length > 2_048) throw new WebDebugError("URL_LIMIT_EXCEEDED", "The final browser target URL exceeded 2,048 characters.");
-  const mode = target.mode ?? (browser === "safari" ? "webdriver" : options.cdpEndpoint ? "attach" : "launch");
+  const mode = target.mode ?? (browser === "safari" ? "mcp" : options.cdpEndpoint ? "attach" : "launch");
   const isolated = target.isolated && mode === "launch";
   return { ...target, browser: target.browser ?? browser, url: safeUrl(target.url), title: boundText(target.title, 300), mode, isolated, isolation: target.isolation ?? { browserProcess: isolated, context: isolated, profile: isolated, storage: isolated, cache: isolated, serviceWorkers: isolated, navigation: isolated, serverState: false } };
 }
@@ -66,6 +66,8 @@ export function runtimeCapabilityStates(runtime: DebugSessionSummary["runtimeCap
     viewportMatrix: runtime.viewportMatrix.state,
     tlsBypass: runtime.tlsBypass.state,
     authSeeding: runtime.authSeeding.state,
+    sourceMapping: runtime.sourceMapping.state,
+    executionCoverage: runtime.executionCoverage.state,
   };
 }
 

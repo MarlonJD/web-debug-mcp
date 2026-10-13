@@ -13,7 +13,7 @@ const help = `Usage:
 
 Doctor options:
   --project-root <path> --url <loopback-url> --browser <chromium|safari>
-  --executable-path <path> | --cdp-endpoint <url> | --webdriver-endpoint <url>
+  --executable-path <path> | --cdp-endpoint <url>  Chromium only
 `;
 
 if (args[0] === "--help" || args[0] === "help" || args[0] === "doctor" && args[1] === "--help") {

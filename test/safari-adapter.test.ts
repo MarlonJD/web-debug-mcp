@@ -1,329 +1,181 @@
 import { describe, expect, it, vi } from "vitest";
-
 import { SafariAdapter } from "../src/adapters/safari.js";
+import type { SafariClient, SafariTool } from "../src/adapters/safari-client.js";
+import { evaluateCheck } from "../src/core/scenario-verification.js";
 
-describe("Safari WebDriver adapter", () => {
-  it("maps a bounded W3C WebDriver session into browser evidence", async () => {
-    let currentUrl = "http://127.0.0.1:4176/";
-    let bodyText = "Checkout fixture Ready";
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.endsWith("/session") && method === "POST") return jsonResponse({ value: { sessionId: "safari-1", capabilities: { browserVersion: "26.5.2" } } });
-      if (url.endsWith("/window") && method === "GET") return jsonResponse({ value: "window-main" });
-      if (url.endsWith("/window/handles")) return jsonResponse({ value: ["window-main"] });
-      if (url.endsWith("/url") && method === "POST") {
-        currentUrl = String(JSON.parse(String(init?.body ?? "{}")).url ?? currentUrl);
-        return jsonResponse({ value: null });
+const url = "http://127.0.0.1:4176/";
+const options = { artifactDir: "/tmp/web-debug-safari-test", captureScreenshot: false };
+class FakeSafari implements SafariClient {
+  connected = false;
+  handles: string[] = [];
+  url = url;
+  console: unknown[] = [];
+  network: unknown[] = [];
+  consoleFailure = false;
+  escape = false;
+  pointAvailable = true;
+  successful = 1;
+  focusMatches = true;
+  focusedNodes = 1;
+  calls: Array<{ name: SafariTool; args: Record<string, unknown> }> = [];
+  async connect() { this.connected = true; }
+  isConnected() { return this.connected; }
+  async close() { this.connected = false; }
+  async call<T>(name: SafariTool, args: Record<string, unknown> = {}): Promise<T> {
+    this.calls.push({ name, args });
+    let value: unknown;
+    switch (name) {
+      case "list_tabs": value = this.handles.map(handle => ({ handle, url: this.url })); break;
+      case "create_tab": this.handles = ["page-owned"]; value = { handle: "page-owned" }; break;
+      case "close_tab": this.handles = this.handles.filter(handle => handle !== args.handle); value = "closed"; break;
+      case "switch_tab": value = "switched"; break;
+      case "navigate_to_url": this.url = this.escape ? "https://example.com/escape" : String(args.url); value = {}; break;
+      case "page_info": value = { url: this.url, title: "Fixture" }; break;
+      case "get_page_content": value = { content: JSON.stringify({ children: Array.from({ length: this.focusedNodes }, (_, i) => ({ uid: String(70 + i), focused: true })) }) }; break;
+      case "browser_console_messages":
+        if (this.consoleFailure) throw new Error("Inspector unavailable");
+        value = [...this.console]; this.console = []; break;
+      case "list_network_requests": value = { requests: [...this.network] }; this.network = []; break;
+      case "page_interactions": value = { successful: this.successful }; break;
+      case "evaluate_javascript": {
+        const expression = String(args.expression);
+        if (expression.includes("navigator.userAgent")) value = "Version/27.0 Safari/625.1";
+        else if (expression.includes("bodyText")) value = { bodyText: "Payment submitted", elements: [] };
+        else if (expression.includes("innerWidth, height")) value = { width: 1280, height: 800 };
+        else if (expression.includes("getEntriesByType")) value = [];
+        else if (expression.includes("elementFromPoint")) value = this.pointAvailable ? { x: 100, y: 100 } : null;
+        else if (expression.includes("document.activeElement")) value = this.focusMatches;
+        else if (expression.includes("count: elements.length")) value = { count: 1, visible: true, enabled: true, checked: false, text: "Payment submitted" };
+        else if (expression.includes("ok: true")) value = { ok: true, value: 2 };
+        else value = true;
+        break;
       }
-      if (url.endsWith("/url") && method === "GET") return jsonResponse({ value: currentUrl });
-      if (url.endsWith("/title")) return jsonResponse({ value: "Web Debug Fixture" });
-      if (url.endsWith("/execute/sync")) return jsonResponse({ value: { bodyText, elements: [] } });
-      if (url.endsWith("/window/rect")) return jsonResponse({ value: { width: 1280, height: 800 } });
-      if (url.endsWith("/element")) return jsonResponse({ value: { "element-6066-11e4-a52e-4f735466cecf": "element-1" } });
-      if (url.endsWith("/element/element-1/click")) { bodyText = "Checkout fixture Payment submitted: 249.90"; return jsonResponse({ value: null }); }
-      if (method === "DELETE") return jsonResponse({ value: null });
-      throw new Error(`Unexpected WebDriver request: ${method} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      const adapter = new SafariAdapter("http://127.0.0.1:4444");
-      const target = await adapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      await adapter.act({ kind: "click", locator: { kind: "css", value: "#submit" } });
-      const snapshot = await adapter.snapshot({ artifactDir: "/tmp/web-debug-safari-test", captureScreenshot: false });
-
-      expect(target.browser).toBe("safari");
-      expect(target.isolated).toBe(false);
-      expect(target.viewport).toEqual({ width: 1280, height: 800 });
-      expect(adapter.browserVersion()).toBe("26.5.2");
-      expect(adapter.runtimeCapabilities()).toMatchObject({ transport: "safari-webdriver", console: { state: "unsupported" }, network: { state: "degraded" }, javascriptDebugger: { state: "unsupported" } });
-      expect(snapshot.dom.bodyText).toContain("Payment submitted");
-      expect(snapshot.console).toEqual([]);
-      expect(snapshot.warnings[0]).toContain("Safari WebDriver does not expose Chromium CDP");
-      await adapter.close();
-      expect(fetchMock).toHaveBeenCalled();
-      expect(fetchMock.mock.calls.every(([, init]) => init?.redirect === "manual")).toBe(true);
-    } finally {
-      vi.unstubAllGlobals();
+      default: value = {};
     }
+    return value as T;
+  }
+}
+async function started() {
+  const client = new FakeSafari();
+  const adapter = new SafariAdapter(() => client);
+  const target = await adapter.start({ url, headless: false });
+  return { client, adapter, target };
+}
+function entry(text: string, level = "info", handle = "page-owned") {
+  return { text, level, browsingContextHandle: handle, stackTrace: { callFrames: [{ url: `${url}app.js?token=private`, lineNumber: 8, columnNumber: 18 }] } };
+}
+
+describe("Safari native MCP adapter", () => {
+  it("owns one tab and primes native observers before navigation", async () => {
+    const { adapter, client, target } = await started();
+    expect(target).toMatchObject({ browser: "safari", mode: "mcp", isolated: false, targetId: "page-owned", viewport: { width: 1280, height: 800 } });
+    expect(adapter.browserVersion()).toBe("27.0");
+    const names = client.calls.map(call => call.name);
+    expect(names.indexOf("browser_console_messages")).toBeLessThan(names.indexOf("navigate_to_url"));
+    expect(names.indexOf("list_network_requests")).toBeLessThan(names.indexOf("navigate_to_url"));
+    expect(adapter.runtimeCapabilities()).toMatchObject({ transport: "safari-mcp", console: { state: "degraded" }, javascriptDebugger: { state: "unsupported" } });
+    await adapter.close();
+    expect(client.handles).toEqual([]);
+    expect(client.connected).toBe(false);
   });
 
-  it("quarantines initial redirects, action escapes, and secondary Safari windows", async () => {
-    let currentUrl = "http://127.0.0.1:4176/";
-    let handles = ["window-main"];
-    let escapeOnNavigate = true;
-    let escapeOnClick = false;
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.endsWith("/session") && method === "POST") return jsonResponse({ value: { sessionId: `safari-${fetchMock.mock.calls.length}` } });
-      if (url.endsWith("/window") && method === "GET") return jsonResponse({ value: "window-main" });
-      if (url.endsWith("/window/handles")) return jsonResponse({ value: handles });
-      if (url.endsWith("/window") && method === "POST") return jsonResponse({ value: null });
-      if (url.endsWith("/url") && method === "POST") {
-        const requested = String(JSON.parse(String(init?.body ?? "{}")).url ?? currentUrl);
-        currentUrl = escapeOnNavigate ? "https://example.com/escaped" : requested;
-        return jsonResponse({ value: null });
-      }
-      if (url.endsWith("/url") && method === "GET") return jsonResponse({ value: currentUrl });
-      if (url.endsWith("/title")) return jsonResponse({ value: "Fixture" });
-      if (url.endsWith("/execute/sync")) return jsonResponse({ value: { bodyText: "Ready", elements: [] } });
-      if (url.endsWith("/window/rect")) return jsonResponse({ value: { width: 800, height: 600 } });
-      if (url.endsWith("/element")) return jsonResponse({ value: { "element-6066-11e4-a52e-4f735466cecf": "element-1" } });
-      if (url.endsWith("/element/element-1/click")) {
-        if (escapeOnClick) currentUrl = "https://example.com/escaped";
-        return jsonResponse({ value: null });
-      }
-      if (method === "DELETE") return jsonResponse({ value: null });
-      throw new Error(`Unexpected WebDriver request: ${method} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      await expect(new SafariAdapter("http://127.0.0.1:4444").start({ url: "http://127.0.0.1:4176/", headless: false })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
-
-      escapeOnNavigate = false;
-      currentUrl = "http://127.0.0.1:4176/";
-      const actionAdapter = new SafariAdapter("http://127.0.0.1:4444");
-      await actionAdapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      escapeOnClick = true;
-      await expect(actionAdapter.act({ kind: "click", locator: { kind: "css", value: "#leave" } })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
-
-      escapeOnClick = false;
-      currentUrl = "http://127.0.0.1:4176/";
-      handles = ["window-main"];
-      const popupAdapter = new SafariAdapter("http://127.0.0.1:4444");
-      await popupAdapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      handles = ["window-main", "window-popup"];
-      await expect(popupAdapter.snapshot({ artifactDir: "/tmp/web-debug-safari-popup-test", captureScreenshot: false })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
-
-      handles = ["window-main"];
-      currentUrl = "http://127.0.0.1:4176/";
-      const preescapedAdapter = new SafariAdapter("http://127.0.0.1:4444");
-      await preescapedAdapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      currentUrl = "https://example.com/preescaped";
-      const elementRequestsBefore = fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/element")).length;
-      await expect(preescapedAdapter.act({ kind: "fill", locator: { kind: "css", value: "#secret" }, value: "do-not-send" })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
-      const elementRequestsAfter = fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/element")).length;
-      expect(elementRequestsAfter).toBe(elementRequestsBefore);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it("never treats an empty, malformed or foreign console record as delivery proof", async () => {
+    const { adapter, client } = await started();
+    client.console = [entry("foreign", "error", "page-other"), { text: 42, browsingContextHandle: "page-owned" }];
+    const snapshot = await adapter.snapshot(options);
+    expect(snapshot.console).toEqual([]);
+    expect(evaluateCheck({ kind: "noConsoleErrors" }, snapshot).state).toBe("unavailable");
+    await adapter.close();
   });
 
-  it("maps deterministic press, select, check, hover, and scroll actions to WebDriver", async () => {
-    const actionBodies: unknown[] = [];
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.endsWith("/session") && method === "POST") return jsonResponse({ value: { sessionId: "safari-actions" } });
-      if (url.endsWith("/window") && method === "GET") return jsonResponse({ value: "window-main" });
-      if (url.endsWith("/window/handles")) return jsonResponse({ value: ["window-main"] });
-      if (url.endsWith("/url") && method === "POST") return jsonResponse({ value: null });
-      if (url.endsWith("/url") && method === "GET") return jsonResponse({ value: "http://127.0.0.1:4176/" });
-      if (url.endsWith("/title")) return jsonResponse({ value: "Fixture" });
-      if (url.endsWith("/window/rect")) return jsonResponse({ value: { width: 800, height: 600 } });
-      if (url.endsWith("/element")) return jsonResponse({ value: { "element-6066-11e4-a52e-4f735466cecf": "element-1" } });
-      if (url.endsWith("/execute/sync")) {
-        const body = JSON.parse(String(init?.body ?? "{}")) as { script?: string };
-        if (body.script?.includes("bodyText")) return jsonResponse({ value: { bodyText: "Ready", elements: [] } });
-        return jsonResponse({ value: true });
-      }
-      if (url.endsWith("/element/element-1/value") || url.endsWith("/actions")) {
-        actionBodies.push(init?.body ? JSON.parse(String(init.body)) : null);
-        return jsonResponse({ value: null });
-      }
-      if (method === "DELETE") return jsonResponse({ value: null });
-      throw new Error(`Unexpected WebDriver request: ${method} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    try {
-      const adapter = new SafariAdapter("http://127.0.0.1:4444");
-      await adapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      await adapter.act({ kind: "press", locator: { kind: "css", value: "#input" }, key: "Enter" });
-      await adapter.act({ kind: "select", locator: { kind: "css", value: "#select" }, value: "option-1" });
-      await adapter.act({ kind: "check", locator: { kind: "css", value: "#check" }, checked: true });
-      await adapter.act({ kind: "hover", locator: { kind: "css", value: "#hover" } });
-      await adapter.act({ kind: "scroll", locator: { kind: "css", value: "#scroll" } });
-      expect(JSON.stringify(actionBodies)).toContain("\uE007");
-      expect(JSON.stringify(actionBodies)).toContain("pointerMove");
-      await adapter.close();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+  it("rejects actual page errors, preserves native source coordinates, and drains on reset", async () => {
+    const { adapter, client } = await started();
+    client.console = [entry("Payment validation failed", "error")];
+    const snapshot = await adapter.snapshot(options);
+    expect(snapshot.console).toEqual([{ text: "Payment validation failed", level: "error", url: `${url}app.js?token=[REDACTED]`, line: 8, column: 18 }]);
+    expect(snapshot.observations?.console).toMatchObject({ state: "pass", provenance: "safari-mcp" });
+    expect(evaluateCheck({ kind: "noConsoleErrors" }, snapshot).state).toBe("fail");
+    client.console = [entry("stale error", "error")];
+    await adapter.resetObservers();
+    const clean = await adapter.snapshot(options);
+    expect(clean.console).toEqual([]);
+    expect(evaluateCheck({ kind: "noConsoleErrors" }, clean).state).toBe("pass");
+    client.consoleFailure = true;
+    const failed = await adapter.snapshot(options);
+    expect(evaluateCheck({ kind: "noConsoleErrors" }, failed).state).toBe("unavailable");
+    expect(adapter.runtimeCapabilities().console.state).toBe("unsupported");
+    await adapter.close();
   });
 
-  it("blocks debugger and side-effect-free evaluation claims", async () => {
-    const adapter = new SafariAdapter();
-    await expect(adapter.setBreakpoint({ sourceUrl: "http://127.0.0.1/app.js", line: 1 })).rejects.toMatchObject({ code: "DEBUGGER_UNAVAILABLE" });
+  it("bounds console and network evidence and never requests network bodies", async () => {
+    const { adapter, client } = await started();
+    client.console = Array.from({ length: 250 }, (_, i) => entry(`message-${i}`));
+    client.network = [{ requestId: "request-1", url: `${url}api?secret=value`, method: "POST", status: 201, type: "Fetch", body: "private" }];
+    const snapshot = await adapter.snapshot(options);
+    expect(snapshot.console).toHaveLength(100);
+    expect(evaluateCheck({ kind: "noConsoleErrors" }, snapshot).state).toBe("unavailable");
+    expect(snapshot.warnings.join(" ")).toContain("truncated");
+    expect(snapshot.network).toEqual([{ requestId: "request-1", url: `${url}api?secret=[REDACTED]`, method: "POST", status: 201, resourceType: "Fetch", ok: true }]);
+    expect(JSON.stringify(snapshot)).not.toContain("private");
+    await adapter.close();
+  });
+
+  it("uses a hit-tested CSS point and fails when a native action does not complete", async () => {
+    const { adapter, client } = await started();
+    await adapter.act({ kind: "click", locator: { kind: "css", value: "#submit" } });
+    expect(client.calls.find(call => call.name === "page_interactions")?.args).toMatchObject({ interactions: [{ type: "click", point: { x: 100, y: 100 } }] });
+    client.pointAvailable = false;
+    await expect(adapter.act({ kind: "click", locator: { kind: "css", value: "#covered" } })).rejects.toMatchObject({ code: "ELEMENT_NOT_INTERACTABLE" });
+    client.pointAvailable = true;
+    client.successful = 0;
+    await expect(adapter.act({ kind: "click", locator: { kind: "css", value: "#submit" } })).rejects.toMatchObject({ code: "SAFARI_ACTION_FAILED" });
+    await adapter.close();
+  });
+
+  it("quarantines a redirect, later origin escape and secondary tabs", async () => {
+    const redirectClient = new FakeSafari(); redirectClient.escape = true;
+    await expect(new SafariAdapter(() => redirectClient).start({ url })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
+    expect(redirectClient.connected).toBe(false);
+    const { adapter, client } = await started();
+    client.url = "https://example.com/escape";
+    await expect(adapter.act({ kind: "fill", locator: { kind: "css", value: "#secret" }, value: "private" })).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
+    expect(client.calls.some(call => call.name === "page_interactions")).toBe(false);
+    const popup = await started(); popup.client.handles.push("page-popup");
+    await expect(popup.adapter.snapshot(options)).rejects.toMatchObject({ code: "NAVIGATION_ORIGIN_BLOCKED" });
+    expect(popup.client.handles).toEqual([]);
+  });
+
+  it("binds typing to the exact native focused UID and maps Space to one space without clicking", async () => {
+    const { adapter, client } = await started();
+    await adapter.act({ kind: "press", locator: { kind: "css", value: "#field" }, key: "Space" });
+    expect(client.calls.filter(call => call.name === "page_interactions").map(call => call.args)).toEqual([
+      { interactions: [{ type: "keyPress", node: "70", value: " ", purpose: expect.any(String) }] },
+    ]);
+    client.focusMatches = false;
+    await expect(adapter.act({ kind: "fill", locator: { kind: "css", value: "#field" }, value: "private" })).rejects.toMatchObject({ code: "SAFARI_FOCUS_MISMATCH" });
+    client.focusMatches = true;
+    client.focusedNodes = 2;
+    await expect(adapter.act({ kind: "fill", locator: { kind: "css", value: "#field" }, value: "private" })).rejects.toMatchObject({ code: "SAFARI_FOCUS_MISMATCH" });
+    expect(client.calls.some(call => call.name === "page_interactions" && JSON.stringify(call.args).includes('"type":"type"'))).toBe(false);
+    await adapter.close();
+  });
+
+  it("does not adopt or close another client's existing tabs", async () => {
+    const client = new FakeSafari(); client.handles = ["foreign-tab"];
+    await expect(new SafariAdapter(() => client).start({ url })).rejects.toMatchObject({ code: "SAFARI_SESSION_IN_USE" });
+    expect(client.calls.some(call => call.name === "close_tab" || call.name === "create_tab")).toBe(false);
+    expect(client.handles).toEqual(["foreign-tab"]);
+  });
+
+  it("retains explicit policy and unsupported surface boundaries", async () => {
+    const factory = vi.fn(() => new FakeSafari());
+    const adapter = new SafariAdapter(factory);
+    await expect(adapter.start({ url: "https://example.com" })).rejects.toMatchObject({ code: "REMOTE_TARGET_BLOCKED" });
+    await expect(adapter.start({ url, cdpEndpoint: "http://127.0.0.1:9222" })).rejects.toMatchObject({ code: "SAFARI_CDP_UNSUPPORTED" });
+    await expect(adapter.start({ url, tls: "allow-insecure-loopback" })).rejects.toMatchObject({ code: "SAFARI_TLS_UNAVAILABLE" });
+    await expect(adapter.start({ url, authFixture: "seeded-disposable" })).rejects.toMatchObject({ code: "SAFARI_AUTH_UNAVAILABLE" });
+    await expect(adapter.setBreakpoint({ sourceUrl: `${url}app.js`, line: 1 })).rejects.toMatchObject({ code: "DEBUGGER_UNAVAILABLE" });
     await expect(adapter.evaluate("1 + 1", false)).rejects.toMatchObject({ code: "EVALUATION_SIDE_EFFECTS_BLOCKED" });
-  });
-
-  it("blocks remote WebDriver endpoints without explicit opt-in", async () => {
-    const adapter = new SafariAdapter("http://192.0.2.1:4444");
-    await expect(adapter.start({ url: "http://127.0.0.1:4176/", headless: false })).rejects.toMatchObject({
-      code: "REMOTE_WEBDRIVER_BLOCKED",
-    });
-  });
-
-  it("rejects a remote BiDi endpoint returned by a loopback WebDriver", async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith("/session") && init?.method === "POST") return jsonResponse({ value: { sessionId: "remote-bidi", capabilities: { webSocketUrl: "wss://192.0.2.1/session/remote-bidi" } } });
-      if (url.endsWith("/window")) return jsonResponse({ value: "window-main" });
-      if (init?.method === "DELETE") return jsonResponse({ value: null });
-      throw new Error(`Unexpected WebDriver request: ${init?.method ?? "GET"} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    try {
-      await expect(new SafariAdapter("http://127.0.0.1:4444").start({ url: "http://127.0.0.1:4176/", headless: false })).rejects.toMatchObject({ code: "REMOTE_BIDI_BLOCKED" });
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("degrades explicitly when the Node runtime has no WebSocket support", async () => {
-    vi.stubGlobal("WebSocket", undefined);
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith("/session") && init?.method === "POST") {
-        return new Response(JSON.stringify({
-          value: {
-            sessionId: "safari-no-websocket",
-            capabilities: { webSocketUrl: "ws://127.0.0.1:8088/session/safari-no-websocket" },
-          },
-        }), { status: 200 });
-      }
-      if (url.endsWith("/url") && init?.method === "POST") return new Response(JSON.stringify({ value: null }), { status: 200 });
-      if (url.endsWith("/window") && (init?.method ?? "GET") === "GET") return jsonResponse({ value: "window-main" });
-      if (url.endsWith("/window/handles")) return jsonResponse({ value: ["window-main"] });
-      if (url.endsWith("/url") && init?.method === "GET") return new Response(JSON.stringify({ value: "http://127.0.0.1:4176/" }), { status: 200 });
-      if (url.endsWith("/title")) return new Response(JSON.stringify({ value: "Web Debug Fixture" }), { status: 200 });
-      if (url.endsWith("/execute/sync")) return new Response(JSON.stringify({ value: { bodyText: "Ready", elements: [] } }), { status: 200 });
-      if (url.endsWith("/window/rect")) return new Response(JSON.stringify({ value: { width: 800, height: 600 } }), { status: 200 });
-      if (init?.method === "DELETE") return new Response(JSON.stringify({ value: null }), { status: 200 });
-      throw new Error(`Unexpected WebDriver request: ${init?.method ?? "GET"} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      const adapter = new SafariAdapter("http://127.0.0.1:4444");
-      await adapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      const snapshot = await adapter.snapshot({ artifactDir: "/tmp/web-debug-safari-no-websocket-test", captureScreenshot: false });
-
-      expect(snapshot.console).toEqual([]);
-      expect(snapshot.warnings).toContainEqual(expect.stringContaining("requires Node WebSocket support"));
-      await adapter.close();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it("subscribes to BiDi console and network events when Safari provides a WebSocket", async () => {
-    const messages: Array<{ method: string; params?: Record<string, unknown> }> = [];
-    class FakeWebSocket {
-      static readonly CONNECTING = 0;
-      static readonly OPEN = 1;
-      static readonly CLOSED = 3;
-      readonly url: string;
-      readyState = FakeWebSocket.CONNECTING;
-      onopen: ((event: Event) => void) | null = null;
-      onmessage: ((event: MessageEvent) => void) | null = null;
-      onerror: ((event: Event) => void) | null = null;
-      onclose: ((event: CloseEvent) => void) | null = null;
-
-      constructor(url: string) {
-        this.url = url;
-        queueMicrotask(() => {
-          this.readyState = FakeWebSocket.OPEN;
-          this.onopen?.(new Event("open"));
-        });
-      }
-
-      send(payload: string): void {
-        const request = JSON.parse(payload) as { id: number; method: string };
-        messages.push({ method: request.method });
-        if (request.method !== "session.subscribe") return;
-        queueMicrotask(() => {
-          this.onmessage?.({ data: JSON.stringify({ id: request.id, type: "success", result: {} }) } as MessageEvent);
-          this.onmessage?.({
-            data: JSON.stringify({
-              type: "event",
-              method: "log.entryAdded",
-              params: { level: "info", text: "BiDi console event" },
-            }),
-          } as MessageEvent);
-          this.onmessage?.({
-            data: JSON.stringify({
-              type: "event",
-              method: "network.beforeRequestSent",
-              params: {
-                request: { request: "request-1", url: "http://127.0.0.1:4176/app.js", method: "GET" },
-                initiator: { type: "script" },
-              },
-            }),
-          } as MessageEvent);
-          this.onmessage?.({
-            data: JSON.stringify({
-              type: "event",
-              method: "network.responseCompleted",
-              params: { request: { request: "request-1", url: "http://127.0.0.1:4176/app.js", method: "GET" }, response: { status: 200 } },
-            }),
-          } as MessageEvent);
-        });
-      }
-
-      close(): void {
-        this.readyState = FakeWebSocket.CLOSED;
-      }
-    }
-    vi.stubGlobal("WebSocket", FakeWebSocket);
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      const url = String(input);
-      if (url.endsWith("/session") && init?.method === "POST") {
-        return new Response(JSON.stringify({
-          value: {
-            sessionId: "safari-bidi",
-            capabilities: { webSocketUrl: "ws://127.0.0.1:8088/session/safari-bidi" },
-          },
-        }), { status: 200 });
-      }
-      if (url.endsWith("/url") && init?.method === "POST") return new Response(JSON.stringify({ value: null }), { status: 200 });
-      if (url.endsWith("/window") && (init?.method ?? "GET") === "GET") return jsonResponse({ value: "window-main" });
-      if (url.endsWith("/window/handles")) return jsonResponse({ value: ["window-main"] });
-      if (url.endsWith("/url") && init?.method === "GET") return new Response(JSON.stringify({ value: "http://127.0.0.1:4176/" }), { status: 200 });
-      if (url.endsWith("/title")) return new Response(JSON.stringify({ value: "Web Debug Fixture" }), { status: 200 });
-      if (url.endsWith("/execute/sync")) return new Response(JSON.stringify({ value: { bodyText: "Ready", elements: [] } }), { status: 200 });
-      if (url.endsWith("/window/rect")) return new Response(JSON.stringify({ value: { width: 800, height: 600 } }), { status: 200 });
-      if (init?.method === "DELETE") return new Response(JSON.stringify({ value: null }), { status: 200 });
-      throw new Error(`Unexpected WebDriver request: ${init?.method ?? "GET"} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      const adapter = new SafariAdapter("http://127.0.0.1:4444");
-      await adapter.start({ url: "http://127.0.0.1:4176/", headless: false });
-      const snapshot = await adapter.snapshot({ artifactDir: "/tmp/web-debug-safari-bidi-test", captureScreenshot: false });
-
-      expect(messages).toEqual([{ method: "session.subscribe" }]);
-      expect(snapshot.console).toEqual([{ level: "info", text: "BiDi console event" }]);
-      expect(snapshot.network).toEqual([{
-        requestId: "request-1",
-        method: "GET",
-        url: "http://127.0.0.1:4176/app.js",
-        resourceType: "script",
-        status: 200,
-        ok: true,
-      }]);
-      expect(adapter.runtimeCapabilities()).toMatchObject({ console: { state: "supported" }, network: { state: "degraded", provenance: ["safari-bidi", "performance-resource-timing"] }, evaluation: { state: "degraded" } });
-      await adapter.close();
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    expect(factory).not.toHaveBeenCalled();
   });
 });
-
-function jsonResponse(value: unknown): Response {
-  return new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" } });
-}

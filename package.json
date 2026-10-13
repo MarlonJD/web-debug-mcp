@@ -71,9 +71,11 @@
     "serve:fixture": "node scripts/serve-fixture.mjs",
     "pretest": "npm run build --silent",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "smoke:source-correlation": "npm run build && node scripts/live-source-correlation-smoke.mjs"
   },
   "dependencies": {
+    "@jridgewell/trace-mapping": "0.3.31",
     "@modelcontextprotocol/sdk": "1.30.0",
     "playwright-core": "1.62.1",
     "zod": "4.4.3"
@@ -86,11 +88,11 @@
     "@angular/compiler-cli": "21.2.22",
     "@angular/core": "21.2.22",
     "@angular/platform-browser": "21.2.22",
+    "@types/node": "24.3.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "5.1.1",
     "@vitejs/plugin-vue": "6.0.8",
-    "@types/node": "24.3.0",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",

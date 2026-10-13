@@ -15,7 +15,7 @@ The fixture servers bind only to `127.0.0.1`: vanilla uses `npm run serve:fixtur
 - `cdpEndpoint`, pointing at a browser the caller deliberately selected; or
 - `WEB_DEBUG_CHROME_EXECUTABLE_PATH`, pointing at a Chromium executable used to create a fresh Playwright context.
 
-Safari sessions use `browser: "safari"` with local `safaridriver` or an explicit loopback WebDriver endpoint. Safari runs visibly, can subscribe to WebDriver BiDi console/network events when the Node runtime exposes WebSocket support, and may disclose a bounded Performance Resource Timing fallback when the installed Safari does not emit network events. Safari JavaScript debugger parity is not part of this contract.
+Safari sessions use `browser: "safari"` with Safari 27+ and the official local `safaridriver --mcp` stdio transport. Enable remote automation and external agents in Safari. The old WebDriver endpoint and experimental BiDi options are removed; `WEB_DEBUG_SAFARIDRIVER_PATH` selects a different installed driver. Safari runs visibly, captures Inspector console records, and discloses bounded Performance Resource Timing when native network records are absent. Safari JavaScript debugger parity is not part of this contract.
 
 Launch mode is the preferred deterministic path. Attach mode is supported for interactive debugging but the session summary marks it `isolated: false` and evidence includes a warning.
 
@@ -42,4 +42,8 @@ Live smokes use a shared bounded readiness/teardown helper: every early exit is 
 
 ## Unsupported environments
 
-Non-loopback targets and remote CDP/WebDriver endpoints require explicit opt-in and are marked non-isolated; no approved external remote target is currently available for live evidence. Production applications, credential-bearing browser profiles, and hosted MCP deployment are not part of this local contract.
+Non-loopback targets and remote CDP endpoints require explicit opt-in and are marked non-isolated; no approved external remote target is currently available for live evidence. Production applications, credential-bearing browser profiles, and hosted MCP deployment are not part of this local contract.
+
+### Safari 27 startup ownership
+
+If Safari 27 rejects a new automation session while normal Safari is running, use the user-approved recovery in [Reliability](../RELIABILITY.md#safari-27-session-recovery). Each native MCP driver owns its automation session; do not share that instance with another client. Preserve normal windows, never auto-close personal Safari, and restore normal browsing after tests. Empty Inspector buffers do not establish console delivery; a real record must first be observed.

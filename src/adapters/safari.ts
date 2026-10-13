@@ -1,5 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, lstat, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 
@@ -21,7 +20,7 @@ import type {
 import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
-import { MAX_SCREENSHOT_RESPONSE_BYTES, MAX_WEBDRIVER_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
+import { SafariMcpClient, type SafariClient } from "./safari-client.js";
 import { assertTopLevelOrigin, navigationOriginError, originOf } from "../core/origin-policy.js";
 import type {
   BrowserAdapter,
@@ -31,49 +30,12 @@ import type {
 } from "./browser.js";
 import { safariRuntimeCapabilities } from "./runtime-capabilities.js";
 
-const DEFAULT_DRIVER_ENDPOINT = "http://127.0.0.1:4444";
-const MAX_REQUEST_MS = 5_000;
-const MAX_BIDI_MESSAGE_BYTES = 256 * 1024;
-
-interface WebDriverEnvelope {
-  value?: unknown;
-  sessionId?: string;
-}
-
-interface WebDriverRect {
-  width?: number;
-  height?: number;
-}
-
-interface WebDriverElement {
-  [key: string]: unknown;
-}
-
-interface CreatedWebDriverSession {
-  id: string;
-  webSocketUrl?: string;
-  browserVersion?: string;
-}
-
-interface BidiEvent {
-  method?: string;
-  params?: Record<string, any>;
-}
-
-/**
- * Safari transport through the macOS safaridriver W3C WebDriver endpoint.
- * WebDriver provides browser actions, DOM, screenshots, and explicit JS
- * evaluation, but it does not expose Chromium's CDP debugger domains.
- */
+/** Safari 27 automation and Inspector evidence through its official local MCP server. */
 export class SafariAdapter implements BrowserAdapter {
-  private client: WebDriverClient | null = null;
+  private client: SafariClient | null = null;
   private sessionId: string | null = null;
-  private driverProcess: ChildProcess | null = null;
   private allowRemote = false;
   private baseOrigin: string | null = null;
-  private remoteTarget = false;
-  private bidi: SafariBidiClient | null = null;
-  private bidiWarning: string | null = null;
   private performanceNetworkFallbackUsed = false;
   private readonly consoleEntries: ConsoleEntry[] = [];
   private readonly networkEntries = new Map<string, NetworkEntry>();
@@ -81,50 +43,43 @@ export class SafariAdapter implements BrowserAdapter {
   private lastKnownTitle = "";
   private lastKnownDom: DomSnapshot = { bodyText: "", elements: [] };
   private browserVersionValue: string | null = null;
-  private selectedWindowHandle: string | null = null;
+  private consoleDeliveryObserved = false;
+  private consoleReadAvailable = false;
+  private consoleTruncated = false;
 
-  constructor(private readonly configuredEndpoint?: string) {}
+  constructor(private readonly createClient: () => SafariClient = () => new SafariMcpClient()) {}
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
-    if (options.tls === "allow-insecure-loopback") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari WebDriver does not support the guarded loopback TLS bypass.");
-    if (options.authState || options.authFixture === "seeded-disposable") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari WebDriver does not support disposable auth-state seeding.");
+    if (options.tls === "allow-insecure-loopback") throw new WebDebugError("SAFARI_TLS_UNAVAILABLE", "Safari MCP does not support the guarded loopback TLS bypass.");
+    if (options.authState || options.authFixture === "seeded-disposable") throw new WebDebugError("SAFARI_AUTH_UNAVAILABLE", "Safari MCP does not support disposable auth-state seeding.");
     if (options.cdpEndpoint) {
-      throw new WebDebugError("SAFARI_CDP_UNSUPPORTED", "Safari sessions use webdriverEndpoint, not cdpEndpoint.");
+      throw new WebDebugError("SAFARI_CDP_UNSUPPORTED", "Safari uses its local MCP driver; CDP endpoints are unsupported.");
     }
     this.allowRemote = options.allowRemote ?? false;
     this.headlessRequested = options.headless ?? true;
     assertAllowedUrl(options.url, this.allowRemote);
     this.baseOrigin = originOf(options.url);
 
-    const configured = options.webdriverEndpoint
-      ?? this.configuredEndpoint
-      ?? process.env.WEB_DEBUG_SAFARI_WEBDRIVER_ENDPOINT;
-    const endpoint = configured ?? DEFAULT_DRIVER_ENDPOINT;
-    assertAllowedEndpoint(endpoint, this.allowRemote);
-    this.remoteTarget = !isLoopback(new URL(endpoint).hostname);
-    this.client = new WebDriverClient(endpoint);
-
-    if (!configured) await this.ensureDriver(endpoint, context);
+    this.client = this.createClient();
     try {
-      const created = await this.client.createSession(context);
-      this.sessionId = created.id;
-      this.selectedWindowHandle = await this.command<string>("/window", "GET", undefined, context);
-      if (created.webSocketUrl) {
-        assertAllowedBidiEndpoint(created.webSocketUrl, this.allowRemote);
-        try {
-          this.bidi = await SafariBidiClient.connect(created.webSocketUrl, (event) => this.recordBidiEvent(event));
-        } catch (error) {
-          this.bidiWarning = `Safari WebDriver BiDi unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)} Console events are unavailable; network evidence will use Performance Resource Timing when available.`;
-        }
-      } else {
-        this.bidiWarning = "Safari WebDriver did not return a BiDi WebSocket URL; console events are unavailable; network evidence will use Performance Resource Timing when available.";
-      }
+      await this.client.connect(context);
+      const existing = await this.tabs(context);
+      if (existing.length) throw new WebDebugError("SAFARI_SESSION_IN_USE", "The Safari automation connection already contains tabs; Web Debug requires its own session.");
+      const created = await this.client.call<{ handle?: string }>("create_tab", {}, context);
+      if (typeof created.handle !== "string" || !created.handle) throw new WebDebugError("SAFARI_SESSION_CREATE_FAILED", "Safari MCP returned no owned tab handle.");
+      this.sessionId = created.handle;
+      await this.client.call("switch_tab", { handle: this.sessionId }, context);
+      if (options.viewport) await this.client.call("set_viewport_size", { ...options.viewport }, context);
+      // Enable Inspector before navigation so load-time console/network evidence is retained.
+      await this.readConsole(context);
+      await this.readNetwork(context);
       await this.navigate(options.url, context);
       await this.enforceOwnedTopLevelState(context);
       this.lastKnownTitle = await this.readTitle(context);
       this.lastKnownDom = await this.readDom(context);
-      this.browserVersionValue = created.browserVersion ?? null;
+      const userAgent = await this.executeSync<string>("return navigator.userAgent;", [], context);
+      this.browserVersionValue = typeof userAgent === "string" ? /Version\/([\d.]+)/.exec(userAgent)?.[1] ?? null : null;
       return await this.target(context);
     } catch (error) {
       await this.close();
@@ -133,34 +88,34 @@ export class SafariAdapter implements BrowserAdapter {
   }
 
   async close(): Promise<void> {
-    await this.bidi?.close();
-    this.bidi = null;
-    await this.client?.deleteSession().catch(() => undefined);
+    if (this.sessionId && this.client?.isConnected()) await this.client.call("close_tab", { handle: this.sessionId }).catch(() => undefined);
+    await this.client?.close();
     this.client = null;
     this.sessionId = null;
     this.baseOrigin = null;
-    this.remoteTarget = false;
-    this.bidiWarning = null;
     this.performanceNetworkFallbackUsed = false;
     this.browserVersionValue = null;
-    this.selectedWindowHandle = null;
+    this.consoleDeliveryObserved = false;
+    this.consoleReadAvailable = false;
+    this.consoleTruncated = false;
     this.consoleEntries.length = 0;
     this.networkEntries.clear();
-    if (this.driverProcess) {
-      this.driverProcess.kill("SIGTERM");
-      this.driverProcess = null;
-    }
   }
 
-  async resetObservers(_context: OperationContext = {}): Promise<void> {
+  async resetObservers(context: OperationContext = {}): Promise<void> {
+    await this.enforceOwnedTopLevelState(context);
+    await this.requireClient().call("browser_console_messages", { tab_handle: this.sessionId, limit: 500, clear: true }, context);
+    await this.requireClient().call("list_network_requests", { tab_handle: this.sessionId, clear: true }, context);
+    await this.executeSync("performance.clearResourceTimings(); return true;", [], context);
     this.consoleEntries.length = 0;
     this.networkEntries.clear();
     this.performanceNetworkFallbackUsed = false;
+    this.consoleTruncated = false;
   }
 
   targetIdentity(): string | null { return this.sessionId; }
   browserVersion(): string | null { return this.browserVersionValue; }
-  runtimeCapabilities() { return safariRuntimeCapabilities(this.bidi !== null); }
+  runtimeCapabilities() { return safariRuntimeCapabilities(this.client?.isConnected() === true && this.consoleReadAvailable, this.consoleDeliveryObserved); }
 
   async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
@@ -173,39 +128,39 @@ export class SafariAdapter implements BrowserAdapter {
         await this.navigate(action.url, context);
         break;
       case "click":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.click(action.locator.value, context);
         break;
       case "fill":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.fill(action.locator.value, action.value, context);
         break;
       case "press":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.press(action.locator.value, action.key, context);
         break;
       case "select":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.select(action.locator.value, action.value, context);
         break;
       case "check":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.setChecked(action.locator.value, action.checked, context);
         break;
       case "hover":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.hover(action.locator.value, context);
         break;
       case "scroll":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.scroll(action.locator.value, context);
         break;
       case "wait":
-        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only.");
+        if (action.locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only.");
         await this.waitForProbe(action, context);
         break;
       case "reload":
-        await this.command("/refresh", "POST", undefined, context);
+        await this.navigate(await this.currentUrl(context), context);
         break;
     }
     const url = await this.enforceOwnedTopLevelState(context);
@@ -218,7 +173,7 @@ export class SafariAdapter implements BrowserAdapter {
     const unique = [...new Set(properties)];
     if (unique.length === 0) throw new WebDebugError("PROBE_PROPERTIES_REQUIRED", "A locator probe must request at least one property.");
     if (unique.length > MAX_PROPERTIES_PER_PROBE) throw new WebDebugError("PROBE_PROPERTIES_LIMIT", `A locator probe may request at most ${MAX_PROPERTIES_PER_PROBE} properties.`);
-    if (locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari WebDriver supports CSS locators only; computed semantic locators are unavailable.");
+    if (locator.kind !== "css") throw new WebDebugError("LOCATOR_STRATEGY_UNAVAILABLE", "Safari MCP supports CSS locators only; computed semantic locators are unavailable.");
     if (!locator.value || locator.value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LOCATOR_INVALID", `Locator values are limited to ${MAX_LOCATOR_CHARS} characters.`);
     await this.enforceOwnedTopLevelState(context);
     const values = await this.executeSync<Record<string, unknown>>(
@@ -236,7 +191,7 @@ export class SafariAdapter implements BrowserAdapter {
       [locator.value],
       context,
     );
-    const result: LocatorProbeResult = { locator: { ...locator }, properties: unique, observedAt: new Date().toISOString(), provenance: "webdriver", warnings: [] };
+    const result: LocatorProbeResult = { locator: { ...locator }, properties: unique, observedAt: new Date().toISOString(), provenance: "safari-mcp", warnings: [] };
     for (const property of unique) {
       const value = values?.[property];
       if (property === "count") result.count = typeof value === "number" ? value : 0;
@@ -268,12 +223,17 @@ export class SafariAdapter implements BrowserAdapter {
     assertContext(context);
     await this.enforceOwnedTopLevelState(context);
     const warnings = [
-      "Safari WebDriver does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
-      "Safari WebDriver computed accessibility diagnostics and semantic locator suggestions are unavailable; use exact CSS locators and live CSS probes.",
+      "Safari MCP does not expose Chromium CDP JavaScript debugger domains; breakpoint and step controls remain unavailable.",
+      "Safari MCP computed accessibility diagnostics and semantic locator suggestions are unavailable; use exact CSS locators and live CSS probes.",
     ];
-    if (this.bidiWarning) warnings.push(this.bidiWarning);
-    if (this.headlessRequested) warnings.push("Safari WebDriver does not support headless mode; the session uses a visible Safari window.");
-    warnings.push("Safari WebDriver uses a visible Safari browser profile; profile isolation is not guaranteed.");
+    try { await this.readConsole(context); }
+    catch (error) {
+      this.consoleReadAvailable = false;
+      warnings.push(`Safari console unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+    }
+    if (!this.consoleDeliveryObserved) warnings.push("Safari Inspector console delivery has not been observed; an empty buffer cannot establish console availability.");
+    if (this.headlessRequested) warnings.push("Safari MCP does not support headless mode; the session uses a visible Safari window.");
+    warnings.push("Safari MCP uses a visible Safari browser profile; profile isolation is not guaranteed.");
 
     let url = "";
     let urlAvailable = true;
@@ -306,13 +266,20 @@ export class SafariAdapter implements BrowserAdapter {
       try {
         await mkdir(options.artifactDir, { recursive: true });
         screenshotPath = join(options.artifactDir, `safari-screenshot-${Date.now()}.png`);
-        const data = await this.screenshot(context);
-        await writeFile(screenshotPath, Buffer.from(data, "base64"));
+        await this.requireClient().call("screenshot", { savePath: screenshotPath }, context);
+        const info = await lstat(screenshotPath);
+        if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) throw new Error("Screenshot exceeded the owned file boundary.");
       } catch (error) {
-        warnings.push("Safari screenshot unavailable: WebDriver capture failed without exposing the local artifact path.");
+        if (screenshotPath) await rm(screenshotPath, { force: true }).catch(() => undefined);
+        screenshotPath = null;
+        warnings.push("Safari screenshot unavailable: native capture failed without exposing the local artifact path.");
       }
     }
 
+    if (!options.checksOnly) {
+      try { await this.readNetwork(context); }
+      catch (error) { warnings.push(`Safari Inspector network unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`); }
+    }
     if (!options.checksOnly && this.networkEntries.size === 0) {
       try {
         const performanceEntries = await this.readPerformanceNetwork(context);
@@ -323,7 +290,7 @@ export class SafariAdapter implements BrowserAdapter {
       }
     }
     if (this.performanceNetworkFallbackUsed) {
-      warnings.push("Safari WebDriver BiDi did not emit network events; network evidence uses bounded Performance Resource Timing metadata.");
+      warnings.push("Safari Inspector returned no network events; network evidence uses bounded Performance Resource Timing metadata.");
     }
 
     const consoleBound = boundItems(this.consoleEntries, 100);
@@ -334,7 +301,7 @@ export class SafariAdapter implements BrowserAdapter {
     const snapshot: BrowserSnapshot = {
       url: safeUrl(url),
       title,
-      viewport: await this.viewport(),
+      viewport: await this.viewport(context),
       dom,
       console: consoleBound.items,
       network: networkBound.items,
@@ -350,7 +317,9 @@ export class SafariAdapter implements BrowserAdapter {
       observations: {
         url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
         dom: { state: domAvailable ? "pass" : "unavailable", freshness: domAvailable ? "fresh" : "stale", provenance: domAvailable ? "browser" : "cached" },
-        console: this.bidi ? { state: "pass", freshness: "fresh", provenance: "webdriver-bidi" } : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari WebDriver BiDi console collection is unavailable." },
+        console: this.client?.isConnected() && this.consoleReadAvailable && this.consoleDeliveryObserved && !this.consoleTruncated && !consoleBound.truncated
+          ? { state: "pass", freshness: "fresh", provenance: "safari-mcp" }
+          : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari Inspector console delivery is unverified, incomplete, or disconnected; an empty buffer cannot prove no console errors." },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
@@ -360,14 +329,14 @@ export class SafariAdapter implements BrowserAdapter {
   async setBreakpoint(_input: { sourceUrl: string; line: number; column?: number }, _context: OperationContext = {}): Promise<DebuggerBreakpoint> {
     throw new WebDebugError(
       "DEBUGGER_UNAVAILABLE",
-      "Safari WebDriver does not expose the JavaScript debugger breakpoint domain.",
+      "Safari MCP does not expose the JavaScript debugger breakpoint domain.",
     );
   }
 
   async control(_action: "resume" | "stepOver" | "stepInto" | "stepOut", _context: OperationContext = {}): Promise<DebuggerSnapshot> {
     throw new WebDebugError(
       "DEBUGGER_UNAVAILABLE",
-      "Safari WebDriver does not expose Chromium-style pause and step controls.",
+      "Safari MCP does not expose Chromium-style pause and step controls.",
     );
   }
 
@@ -377,11 +346,12 @@ export class SafariAdapter implements BrowserAdapter {
     if (!allowSideEffects) {
       throw new WebDebugError(
         "EVALUATION_SIDE_EFFECTS_BLOCKED",
-        "Safari WebDriver cannot prove that an expression is side-effect free; set allowSideEffects=true explicitly.",
+        "Safari MCP cannot prove that an expression is side-effect free; set allowSideEffects=true explicitly.",
       );
     }
     await this.enforceOwnedTopLevelState(context);
     const result = await this.executeAsync(expression, context);
+    await this.enforceOwnedTopLevelState(context);
     if (!isRecord(result) || result.ok !== true) {
       throw new WebDebugError("EVALUATION_FAILED", boundText(isRecord(result) && typeof result.error === "string" ? result.error : "Safari evaluation failed.", 500));
     }
@@ -394,61 +364,46 @@ export class SafariAdapter implements BrowserAdapter {
     };
   }
 
-  private recordBidiEvent(event: BidiEvent): void {
-    const params = event.params ?? {};
-    if (event.method === "log.entryAdded") {
-      const callFrame = params.stackTrace?.callFrames?.[0];
-      let text = typeof params.text === "string" ? params.text : "";
-      if (!text) {
-        try { text = JSON.stringify(redactValue(params.args ?? "")); }
-        catch { text = "[UNSERIALIZABLE_BIDI_ARGUMENTS]"; }
-      }
+  private async readConsole(context: OperationContext): Promise<void> {
+    const entries = await this.requireClient().call<unknown>("browser_console_messages", { tab_handle: this.sessionId, limit: 200, clear: true }, context);
+    if (!Array.isArray(entries)) throw new WebDebugError("SAFARI_CONSOLE_INVALID", "Safari returned an invalid console buffer.");
+    if (entries.some(entry => !isRecord(entry) || typeof entry.text !== "string" || entry.browsingContextHandle !== this.sessionId)) throw new WebDebugError("SAFARI_CONSOLE_INVALID", "Safari console records did not match the owned tab contract.");
+    this.consoleReadAvailable = true;
+    if (entries.length >= 200) this.consoleTruncated = true;
+    for (const entry of entries.slice(-200)) {
+      this.consoleDeliveryObserved = true;
+      const frame = entry.stackTrace?.callFrames?.[0];
       this.consoleEntries.push({
-        level: mapBidiLogLevel(params.level),
-        text: boundText(text ?? "", 2_000),
-        ...(typeof callFrame?.url === "string" && callFrame.url ? { url: safeUrl(callFrame.url) } : {}),
-        ...(Number.isInteger(callFrame?.lineNumber) ? { line: callFrame.lineNumber + 1 } : {}),
-        ...(Number.isInteger(callFrame?.columnNumber) ? { column: callFrame.columnNumber + 1 } : {}),
+        level: mapLogLevel(entry.level), text: boundText(entry.text, 2_000),
+        ...(typeof frame?.url === "string" && frame.url ? { url: safeUrl(frame.url) } : {}),
+        // Inspector locations are already one-based (unlike BiDi stack frames).
+        ...(Number.isInteger(frame?.lineNumber) && frame.lineNumber > 0 ? { line: frame.lineNumber } : {}),
+        ...(Number.isInteger(frame?.columnNumber) && frame.columnNumber > 0 ? { column: frame.columnNumber } : {}),
       });
-      this.trimConsole();
-      return;
     }
-    if (event.method === "network.beforeRequestSent") {
-      const request = params.request;
-      if (!isRecord(request) || typeof request.request !== "string" || typeof request.url !== "string") return;
-      this.networkEntries.set(request.request, {
-        requestId: request.request,
-        method: typeof request.method === "string" ? request.method : "GET",
-        url: safeUrl(request.url),
-        resourceType: typeof params.initiator?.type === "string" ? params.initiator.type : "other",
-        status: null,
-        ok: null,
+    this.trimConsole();
+  }
+
+  private async readNetwork(context: OperationContext): Promise<void> {
+    const value = await this.requireClient().call<unknown>("list_network_requests", { tab_handle: this.sessionId, clear: true }, context);
+    if (!isRecord(value) || !Array.isArray(value.requests)) throw new WebDebugError("SAFARI_NETWORK_INVALID", "Safari returned an invalid network buffer.");
+    for (const entry of value.requests.slice(-200)) {
+      if (!isRecord(entry) || typeof entry.url !== "string" || typeof entry.requestId !== "string") continue;
+      const status = typeof entry.status === "number" ? entry.status : null;
+      this.networkEntries.set(entry.requestId, {
+        requestId: entry.requestId, url: safeUrl(entry.url), method: typeof entry.method === "string" ? boundText(entry.method, 20) : "GET",
+        resourceType: typeof entry.type === "string" ? boundText(entry.type, 100) : "other", status,
+        ok: status === null ? null : status >= 200 && status < 400,
       });
       this.trimNetwork();
-      return;
-    }
-    if (event.method === "network.responseCompleted") {
-      const request = params.request;
-      const response = params.response;
-      if (!isRecord(request) || typeof request.request !== "string" || !isRecord(response)) return;
-      const entry = this.networkEntries.get(request.request);
-      if (!entry) return;
-      entry.status = typeof response.status === "number" ? response.status : null;
-      entry.ok = typeof entry.status === "number" ? entry.status >= 200 && entry.status < 400 : null;
-      return;
-    }
-    if (event.method === "network.fetchError") {
-      const request = params.request;
-      if (!isRecord(request) || typeof request.request !== "string") return;
-      const entry = this.networkEntries.get(request.request);
-      if (!entry) return;
-      entry.ok = false;
-      entry.failure = typeof params.errorText === "string" ? boundText(params.errorText, 500) : "fetch error";
     }
   }
 
   private trimConsole(): void {
-    if (this.consoleEntries.length > 200) this.consoleEntries.splice(0, this.consoleEntries.length - 200);
+    if (this.consoleEntries.length > 200) {
+      this.consoleTruncated = true;
+      this.consoleEntries.splice(0, this.consoleEntries.length - 200);
+    }
   }
 
   private trimNetwork(): void {
@@ -484,63 +439,66 @@ export class SafariAdapter implements BrowserAdapter {
     });
   }
 
-  private async ensureDriver(endpoint: string, context: OperationContext = {}): Promise<void> {
-    this.client = this.requireClient();
-    try {
-      await this.client.status(context);
-      return;
-    } catch {
-      const port = Number(process.env.WEB_DEBUG_SAFARI_PORT ?? (new URL(endpoint).port || "4444"));
-      const driverPath = process.env.WEB_DEBUG_SAFARIDRIVER_PATH ?? "safaridriver";
-      const bidiPort = Number(process.env.WEB_DEBUG_SAFARI_BIDI_PORT ?? "4446");
-      this.driverProcess = spawn(driverPath, ["--port", String(port), "--bidi", String(bidiPort)], {
-        stdio: ["ignore", "ignore", "ignore"],
-      });
-      await this.waitForDriver(endpoint, context);
-    }
-  }
-
-  private async waitForDriver(endpoint: string, context: OperationContext = {}): Promise<void> {
-    const deadline = Math.min(performance.now() + 10_000, context.deadline ?? Number.POSITIVE_INFINITY);
-    let lastError = "not attempted";
-    while (performance.now() < deadline) {
-      if (this.driverProcess?.exitCode !== null && this.driverProcess?.exitCode !== undefined) {
-        throw new WebDebugError("SAFARI_WEBDRIVER_UNAVAILABLE", `safaridriver exited with code ${this.driverProcess.exitCode}.`);
-      }
-      try {
-        await new WebDriverClient(endpoint).status(context);
-        return;
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error);
-      }
-      assertContext(context);
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(resolve, 100);
-        context.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(new WebDebugError("REQUEST_CANCELLED", "The request was cancelled.")); }, { once: true });
-      });
-    }
-    throw new WebDebugError("SAFARI_WEBDRIVER_UNAVAILABLE", `Safari WebDriver did not become ready: ${boundText(lastError, 500)}`);
-  }
-
   private async navigate(url: string, context: OperationContext = {}): Promise<void> {
-    await this.command("/url", "POST", { url }, context);
+    await this.requireClient().call("navigate_to_url", { url, tab_uuid: this.sessionId }, context);
+  }
+
+  private async pointerAction(css: string, type: "click" | "hover", context: OperationContext): Promise<void> {
+    const point = await this.executeSync<unknown>(
+      `const element = document.querySelector(arguments[0]);
+       if (!element) return null;
+       element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+       const rect = element.getBoundingClientRect();
+       const left = Math.max(0, rect.left), top = Math.max(0, rect.top);
+       const right = Math.min(innerWidth, rect.right), bottom = Math.min(innerHeight, rect.bottom);
+       if (right <= left || bottom <= top || element.disabled) return null;
+       const x = (left + right) / 2, y = (top + bottom) / 2;
+       const hit = document.elementFromPoint(x, y);
+       if (!hit || !(hit === element || element.contains(hit))) return null;
+       return { x, y };`, [css], context);
+    if (!isRecord(point) || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new WebDebugError("ELEMENT_NOT_INTERACTABLE", "Safari could not hit-test the exact CSS target.");
+    const result = await this.requireClient().call<{ successful?: number }>("page_interactions", { interactions: [{ type, point, purpose: `Web Debug ${type} on the exact CSS target` }] }, context);
+    if (result.successful !== 1) throw new WebDebugError("SAFARI_ACTION_FAILED", "Safari did not complete the requested pointer action.");
   }
 
   private async click(css: string, context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(css, context);
-    await this.command(`/element/${encodeURIComponent(element)}/click`, "POST", undefined, context);
+    await this.pointerAction(css, "click", context);
   }
 
   private async fill(css: string, value: string, context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(css, context);
-    await this.command(`/element/${encodeURIComponent(element)}/clear`, "POST", undefined, context);
-    await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [...value] }, context);
+    await this.click(css, context);
+    await this.enforceOwnedTopLevelState(context);
+    const node = await this.nativeFocusedNode(css, context);
+    const result = await this.requireClient().call<{ successful?: number }>("page_interactions", { interactions: [{ type: "type", node, value, replaceAll: true, purpose: "Fill the focused exact CSS field" }] }, context);
+    if (result.successful !== 1) throw new WebDebugError("SAFARI_ACTION_FAILED", "Safari did not complete the requested fill.");
   }
 
   private async press(css: string, key: Extract<BrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(css, context);
-    const value = webdriverKey(key);
-    await this.command(`/element/${encodeURIComponent(element)}/value`, "POST", { text: value, value: [value] }, context);
+    await this.executeSync("document.querySelector(arguments[0])?.focus({ preventScroll: true }); return true;", [css], context);
+    await this.enforceOwnedTopLevelState(context);
+    const node = await this.nativeFocusedNode(css, context);
+    const result = await this.requireClient().call<{ successful?: number }>("page_interactions", { interactions: [{ type: "keyPress", node, value: key === "Space" ? " " : key, purpose: "Press the requested key on the CSS target" }] }, context);
+    if (result.successful !== 1) throw new WebDebugError("SAFARI_ACTION_FAILED", "Safari did not complete the requested key press.");
+  }
+
+  private async nativeFocusedNode(css: string, context: OperationContext): Promise<string> {
+    // Safari's structured focus metadata binds a native UID to the exact active CSS target.
+    const response = await this.requireClient().call<{ content?: string }>("get_page_content", { format: "json", nodeIds: "interactive", region: "viewport", maxWordsPerParagraph: 1 }, context);
+    let tree: unknown;
+    try { tree = JSON.parse(response.content ?? ""); }
+    catch { throw new WebDebugError("SAFARI_LOCATOR_UNAVAILABLE", "Safari did not return an inline structured target tree."); }
+    const pending = [tree], focused: string[] = [];
+    let visited = 0;
+    while (pending.length) {
+      if (++visited > 2_000) throw new WebDebugError("SAFARI_LOCATOR_LIMIT", "Safari's native target tree exceeded the bounded node limit.");
+      const node = pending.pop();
+      if (!isRecord(node)) continue;
+      if (node.focused === true && typeof node.uid === "string" && /^\d+$/.test(node.uid)) focused.push(node.uid);
+      if (Array.isArray(node.children)) pending.push(...node.children.slice(0, 2_001));
+    }
+    const matches = await this.executeSync<boolean>("return document.activeElement === document.querySelector(arguments[0]);", [css], context);
+    if (!matches || focused.length !== 1) throw new WebDebugError("SAFARI_FOCUS_MISMATCH", "Safari could not bind one native focused node to the exact CSS target.");
+    return focused[0]!;
   }
 
   private async select(css: string, value: string, context: OperationContext = {}): Promise<void> {
@@ -572,20 +530,7 @@ export class SafariAdapter implements BrowserAdapter {
   }
 
   private async hover(css: string, context: OperationContext = {}): Promise<void> {
-    const element = await this.findElement(css, context);
-    const origin = { "element-6066-11e4-a52e-4f735466cecf": element };
-    try {
-      await this.command("/actions", "POST", {
-        actions: [{
-          type: "pointer",
-          id: "web-debug-mouse",
-          parameters: { pointerType: "mouse" },
-          actions: [{ type: "pointerMove", duration: 0, origin, x: 0, y: 0 }],
-        }],
-      }, context);
-    } finally {
-      await this.command("/actions", "DELETE", undefined, context).catch(() => undefined);
-    }
+    await this.pointerAction(css, "hover", context);
   }
 
   private async scroll(css: string, context: OperationContext = {}): Promise<void> {
@@ -598,13 +543,6 @@ export class SafariAdapter implements BrowserAdapter {
       context,
     );
     if (!found) throw new WebDebugError("ELEMENT_NOT_FOUND", "Safari could not resolve the CSS locator for scrolling.");
-  }
-
-  private async findElement(css: string, context: OperationContext = {}): Promise<string> {
-    const value = await this.command<WebDriverElement>("/element", "POST", { using: "css selector", value: css }, context);
-    const elementId = value["element-6066-11e4-a52e-4f735466cecf"] ?? value.ELEMENT;
-    if (typeof elementId !== "string") throw new WebDebugError("ELEMENT_NOT_FOUND", "Safari could not resolve the CSS locator.");
-    return elementId;
   }
 
   private async readDom(context: OperationContext = {}): Promise<DomSnapshot> {
@@ -621,52 +559,43 @@ export class SafariAdapter implements BrowserAdapter {
       [],
       context,
     );
-    return isDomSnapshot(value) ? value : this.lastKnownDom;
+    if (!isDomSnapshot(value)) throw new WebDebugError("SAFARI_DOM_INVALID", "Safari returned an invalid DOM snapshot.");
+    return value;
   }
 
   private async readTitle(context: OperationContext = {}): Promise<string> {
-    const title = await this.command<string>("/title", "GET", undefined, context);
-    this.lastKnownTitle = boundText(title, 300);
+    const info = await this.requireClient().call<{ title?: string }>("page_info", {}, context);
+    this.lastKnownTitle = boundText(info.title ?? "", 300);
     return this.lastKnownTitle;
   }
 
   private async currentUrl(context: OperationContext = {}): Promise<string> {
-    return this.command<string>("/url", "GET", undefined, context);
+    const info = await this.requireClient().call<{ url?: string }>("page_info", {}, context);
+    if (typeof info.url !== "string") throw navigationOriginError("Safari did not return the current URL.");
+    return info.url;
   }
 
   private async viewport(context: OperationContext = {}): Promise<{ width: number; height: number } | null> {
-    try {
-      const rect = await this.command<WebDriverRect>("/window/rect", "GET", undefined, context);
-      if (Number.isFinite(rect.width) && Number.isFinite(rect.height)) return { width: rect.width!, height: rect.height! };
-    } catch {
-      // Safari versions without window rect support return no viewport metadata.
-    }
-    return null;
-  }
-
-  private async screenshot(context: OperationContext = {}): Promise<string> {
-    return this.command<string>("/screenshot", "GET", undefined, context);
+    return this.executeSync("return { width: innerWidth, height: innerHeight };", [], context);
   }
 
   private async executeSync<T>(body: string, args: unknown[], context: OperationContext = {}): Promise<T> {
-    return this.command<T>("/execute/sync", "POST", { script: body, args }, context);
+    return this.requireClient().call<T>("evaluate_javascript", { expression: `return (function() { ${body} }).apply(null, ${JSON.stringify(args)});` }, context);
   }
 
   private async executeAsync(expression: string, context: OperationContext = {}): Promise<unknown> {
-    return this.command("/execute/async", "POST", {
-      script: `const done = arguments[arguments.length - 1]; Promise.resolve().then(() => (${expression})).then((value) => done({ ok: true, value }), (error) => done({ ok: false, error: String(error) }));`,
-      args: [],
-    }, context);
+    return this.requireClient().call("evaluate_javascript", { expression: `return Promise.resolve().then(() => (${expression})).then(value => ({ ok: true, value: value === undefined ? null : value }), error => ({ ok: false, error: String(error) }));` }, context);
   }
 
-  private async command<T>(path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<T> {
-    const client = this.requireClient();
-    return client.command<T>(this.sessionId, path, method, body, context);
-  }
-
-  private requireClient(): WebDriverClient {
-    if (!this.client) throw new WebDebugError("SESSION_NOT_READY", "The Safari WebDriver session is not ready.");
+  private requireClient(): SafariClient {
+    if (!this.client?.isConnected()) throw new WebDebugError("SESSION_NOT_READY", "The Safari MCP session is not ready.");
     return this.client;
+  }
+
+  private async tabs(context: OperationContext): Promise<Array<{ handle: string; url?: string }>> {
+    const tabs = await this.requireClient().call<unknown>("list_tabs", {}, context);
+    if (!Array.isArray(tabs) || tabs.some(tab => !isRecord(tab) || typeof tab.handle !== "string")) throw navigationOriginError("Safari did not return the owned tab inventory.");
+    return tabs;
   }
 
   private assertSameOrigin(url: string): void {
@@ -675,20 +604,19 @@ export class SafariAdapter implements BrowserAdapter {
 
   private async enforceOwnedTopLevelState(context: OperationContext = {}): Promise<string> {
     try {
-      const handles = await this.command<string[]>("/window/handles", "GET", undefined, context);
-      const selected = this.selectedWindowHandle;
+      const handles = (await this.tabs(context)).map(tab => tab.handle);
+      const selected = this.sessionId;
       if (!selected || !Array.isArray(handles) || !handles.includes(selected)) {
         throw navigationOriginError("The selected Safari window is no longer available.");
       }
       const secondaryHandles = handles.filter((handle) => handle !== selected);
       if (secondaryHandles.length > 0) {
         for (const handle of secondaryHandles.slice(0, 8)) {
-          await this.command("/window", "POST", { handle }, context).catch(() => undefined);
-          await this.command("/window", "DELETE", undefined, context).catch(() => undefined);
+          await this.requireClient().call("close_tab", { handle }, context).catch(() => undefined);
         }
-        await this.command("/window", "POST", { handle: selected }, context).catch(() => undefined);
         throw navigationOriginError("Secondary Safari windows are outside the selected single-window session boundary.");
       }
+      await this.requireClient().call("switch_tab", { handle: selected }, context);
       const url = await this.currentUrl(context);
       this.assertSameOrigin(url);
       return url;
@@ -703,13 +631,13 @@ export class SafariAdapter implements BrowserAdapter {
   private async target(context: OperationContext = {}): Promise<BrowserTarget> {
     return {
       browser: "safari",
-      remote: this.remoteTarget,
+      remote: !isLoopback(new URL(this.baseOrigin!).hostname),
       url: safeUrl(await this.currentUrl(context)),
       title: await this.readTitle(context),
       viewport: await this.viewport(context),
       isolated: false,
       targetId: this.sessionId ?? undefined,
-      mode: "webdriver",
+      mode: "mcp",
       isolation: {
         browserProcess: false,
         context: false,
@@ -721,208 +649,6 @@ export class SafariAdapter implements BrowserAdapter {
         serverState: false,
       },
     };
-  }
-}
-
-class WebDriverClient {
-  constructor(private readonly endpoint: string) {}
-
-  async status(context: OperationContext = {}): Promise<void> {
-    await this.send("/status", "GET", undefined, context);
-  }
-
-  async createSession(context: OperationContext = {}): Promise<CreatedWebDriverSession> {
-    const response = await this.send("/session", "POST", {
-      capabilities: {
-        alwaysMatch: {
-          browserName: "safari",
-          acceptInsecureCerts: false,
-          webSocketUrl: true,
-          "safari:experimentalWebSocketUrl": true,
-        },
-      },
-    }, context);
-    const value = isRecord(response.value) ? response.value : {};
-    const capabilities = isRecord(value.capabilities) ? value.capabilities : {};
-    const sessionId = typeof response.sessionId === "string"
-      ? response.sessionId
-      : typeof value.sessionId === "string" ? value.sessionId : null;
-    if (!sessionId) throw new WebDebugError("SAFARI_SESSION_CREATE_FAILED", "Safari WebDriver returned no session ID.");
-    this.sessionId = sessionId;
-    return {
-      id: sessionId,
-      ...(typeof capabilities.browserVersion === "string" ? { browserVersion: boundText(capabilities.browserVersion, 100) } : {}),
-      ...(typeof capabilities.webSocketUrl === "string"
-        ? { webSocketUrl: capabilities.webSocketUrl }
-        : typeof value.webSocketUrl === "string" ? { webSocketUrl: value.webSocketUrl } : {}),
-    };
-  }
-
-  async deleteSession(): Promise<void> {
-    if (!this.sessionId) return;
-    await this.send(`/session/${encodeURIComponent(this.sessionId)}`, "DELETE").catch(() => undefined);
-    this.sessionId = null;
-  }
-
-  async command<T>(sessionId: string | null, path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<T> {
-    if (!sessionId) throw new WebDebugError("SESSION_NOT_READY", "The Safari WebDriver session is not ready.");
-    this.sessionId = sessionId;
-    const response = await this.send(`/session/${encodeURIComponent(sessionId)}${path}`, method, body, context);
-    return response.value as T;
-  }
-
-  private async send(path: string, method: "GET" | "POST" | "DELETE", body?: unknown, context: OperationContext = {}): Promise<WebDriverEnvelope> {
-    const controller = new AbortController();
-    const timeoutMs = context.deadline === undefined ? MAX_REQUEST_MS : Math.max(1, Math.min(MAX_REQUEST_MS, context.deadline - performance.now()));
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const onAbort = () => controller.abort();
-    context.signal?.addEventListener("abort", onAbort, { once: true });
-    try {
-      const response = await fetch(`${this.endpoint}${path}`, {
-        method,
-        redirect: "manual",
-        headers: body === undefined ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: controller.signal,
-      });
-      const responseLimit = path.endsWith("/screenshot") ? MAX_SCREENSHOT_RESPONSE_BYTES : MAX_WEBDRIVER_RESPONSE_BYTES;
-      const text = await readResponseTextBounded(response, responseLimit, "Safari WebDriver response", controller.signal);
-      let parsed: unknown = null;
-      try {
-        parsed = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error(`Safari WebDriver returned malformed JSON: ${boundText(text, 300)}`);
-      }
-      if (!isRecord(parsed)) throw new Error("Safari WebDriver returned an invalid response envelope.");
-      const value = parsed.value;
-      if (!response.ok || (isRecord(value) && typeof value.error === "string")) {
-        const message = isRecord(value) && typeof value.message === "string" ? value.message : `HTTP ${response.status}`;
-        throw new Error(`Safari WebDriver request failed: ${boundText(message, 500)}`);
-      }
-      return parsed as WebDriverEnvelope;
-    } finally {
-      clearTimeout(timeout);
-      context.signal?.removeEventListener("abort", onAbort);
-    }
-  }
-
-  private sessionId: string | null = null;
-}
-
-class SafariBidiClient {
-  private constructor(
-    private readonly socket: WebSocket,
-    private readonly onEvent: (event: BidiEvent) => void,
-  ) {
-    this.socket.onmessage = (event) => { void this.handleMessage(event); };
-    this.socket.onerror = () => this.rejectPending(new Error("Safari WebDriver BiDi socket error."));
-    this.socket.onclose = () => this.rejectPending(new Error("Safari WebDriver BiDi socket closed."));
-  }
-
-  private readonly pending = new Map<number, {
-    resolve: (value: unknown) => void;
-    reject: (error: Error) => void;
-    timeout: ReturnType<typeof setTimeout>;
-  }>();
-  private nextId = 1;
-
-  static async connect(url: string, onEvent: (event: BidiEvent) => void): Promise<SafariBidiClient> {
-    const WebSocketConstructor = getWebSocketConstructor();
-    if (!WebSocketConstructor) {
-      throw new Error("Safari WebDriver BiDi requires Node WebSocket support; use Node 20.10+ with --experimental-websocket or Node 21+.");
-    }
-    const socket = new WebSocketConstructor(url);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Safari WebDriver BiDi connection timed out.")), MAX_REQUEST_MS);
-        socket.onopen = () => {
-          clearTimeout(timeout);
-          resolve();
-        };
-        socket.onerror = () => {
-          clearTimeout(timeout);
-          reject(new Error("Safari WebDriver BiDi connection failed."));
-        };
-      });
-    } catch (error) {
-      if (socket.readyState === 1 || socket.readyState === 0) socket.close();
-      throw error;
-    }
-    const client = new SafariBidiClient(socket, onEvent);
-    try {
-      await client.command("session.subscribe", {
-        events: [
-          "log.entryAdded",
-          "network.beforeRequestSent",
-          "network.responseCompleted",
-          "network.fetchError",
-        ],
-      });
-    } catch (error) {
-      await client.close();
-      throw error;
-    }
-    return client;
-  }
-
-  async close(): Promise<void> {
-    this.rejectPending(new Error("Safari WebDriver BiDi client closed."));
-    if (this.socket.readyState === 1 || this.socket.readyState === 0) {
-      this.socket.close();
-    }
-  }
-
-  private async command(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const id = this.nextId++;
-    const result = new Promise<unknown>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`Safari WebDriver BiDi command timed out: ${method}`));
-      }, MAX_REQUEST_MS);
-      this.pending.set(id, { resolve, reject, timeout });
-    });
-    this.socket.send(JSON.stringify({ id, method, params }));
-    return result;
-  }
-
-  private async handleMessage(event: MessageEvent): Promise<void> {
-    const raw = await boundedBidiMessageText(event.data);
-    if (raw === null) {
-      this.rejectPending(new Error("Safari WebDriver BiDi message exceeded the bounded input limit."));
-      if (this.socket.readyState === 1 || this.socket.readyState === 0) this.socket.close();
-      return;
-    }
-    let message: unknown;
-    try {
-      message = JSON.parse(raw);
-    } catch {
-      return;
-    }
-    if (!isRecord(message)) return;
-    if (typeof message.id === "number") {
-      const pending = this.pending.get(message.id);
-      if (!pending) return;
-      this.pending.delete(message.id);
-      clearTimeout(pending.timeout);
-      if (message.type === "error" || typeof message.error === "string") {
-        const detail = typeof message.message === "string" ? message.message : String(message.error ?? "unknown error");
-        pending.reject(new Error(`Safari WebDriver BiDi request failed: ${boundText(detail, 500)}`));
-      } else {
-        pending.resolve(message.result);
-      }
-      return;
-    }
-    if (typeof message.method === "string") {
-      this.onEvent({ method: message.method, params: isRecord(message.params) ? message.params : {} });
-    }
-  }
-
-  private rejectPending(error: Error): void {
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timeout);
-      pending.reject(error);
-    }
-    this.pending.clear();
   }
 }
 
@@ -947,54 +673,6 @@ function assertAllowedUrl(raw: string, allowRemote: boolean): void {
   }
 }
 
-function assertAllowedEndpoint(raw: string, allowRemote: boolean): void {
-  if (raw.length > 2_048) throw new WebDebugError("WEBDRIVER_ENDPOINT_LIMIT", "Safari WebDriver endpoints are limited to 2,048 characters.");
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new WebDebugError("WEBDRIVER_ENDPOINT_INVALID", `Invalid Safari WebDriver endpoint: ${raw}`);
-  }
-  if (!["http:", "https:"].includes(url.protocol)) {
-    throw new WebDebugError("WEBDRIVER_ENDPOINT_PROTOCOL_BLOCKED", "Safari WebDriver endpoints must use http or https.");
-  }
-  if (!allowRemote && !isLoopback(url.hostname)) {
-    throw new WebDebugError("REMOTE_WEBDRIVER_BLOCKED", "Remote Safari WebDriver endpoints are blocked by default; set allowRemote explicitly.");
-  }
-}
-
-function assertAllowedBidiEndpoint(raw: string, allowRemote: boolean): void {
-  if (raw.length > 2_048) throw new WebDebugError("BIDI_ENDPOINT_LIMIT", "Safari BiDi endpoints are limited to 2,048 characters.");
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    throw new WebDebugError("BIDI_ENDPOINT_INVALID", "Safari WebDriver returned an invalid BiDi WebSocket endpoint.");
-  }
-  if (url.protocol !== "ws:" && url.protocol !== "wss:") {
-    throw new WebDebugError("BIDI_ENDPOINT_PROTOCOL_BLOCKED", "Safari BiDi endpoints must use ws or wss.");
-  }
-  if (!allowRemote && !isLoopback(url.hostname)) {
-    throw new WebDebugError("REMOTE_BIDI_BLOCKED", "Remote Safari BiDi endpoints are blocked by default; set allowRemote explicitly.");
-  }
-}
-
-async function boundedBidiMessageText(data: unknown): Promise<string | null> {
-  if (typeof data === "string") return Buffer.byteLength(data) <= MAX_BIDI_MESSAGE_BYTES ? data : null;
-  if (data instanceof ArrayBuffer) return data.byteLength <= MAX_BIDI_MESSAGE_BYTES ? new TextDecoder().decode(data) : null;
-  if (ArrayBuffer.isView(data)) {
-    return data.byteLength <= MAX_BIDI_MESSAGE_BYTES
-      ? new TextDecoder().decode(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
-      : null;
-  }
-  if (typeof Blob !== "undefined" && data instanceof Blob) {
-    if (data.size > MAX_BIDI_MESSAGE_BYTES) return null;
-    const text = await data.text();
-    return Buffer.byteLength(text) <= MAX_BIDI_MESSAGE_BYTES ? text : null;
-  }
-  return null;
-}
-
 function isLoopback(hostname: string): boolean {
   const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase();
   return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
@@ -1008,12 +686,7 @@ function isDomSnapshot(value: unknown): value is DomSnapshot {
   return isRecord(value) && typeof value.bodyText === "string" && Array.isArray(value.elements);
 }
 
-function getWebSocketConstructor(): typeof WebSocket | null {
-  const candidate = (globalThis as { WebSocket?: unknown }).WebSocket;
-  return typeof candidate === "function" ? candidate as typeof WebSocket : null;
-}
-
-function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
+function mapLogLevel(level: unknown): ConsoleEntry["level"] {
   switch (level) {
     case "error":
       return "error";
@@ -1026,22 +699,6 @@ function mapBidiLogLevel(level: unknown): ConsoleEntry["level"] {
     default:
       return "log";
   }
-}
-
-function webdriverKey(key: Extract<BrowserAction, { kind: "press" }>["key"]): string {
-  const keys: Record<Extract<BrowserAction, { kind: "press" }>["key"], string> = {
-    Enter: "\uE007",
-    Escape: "\uE00C",
-    Tab: "\uE004",
-    ArrowUp: "\uE013",
-    ArrowDown: "\uE015",
-    ArrowLeft: "\uE012",
-    ArrowRight: "\uE014",
-    Backspace: "\uE003",
-    Delete: "\uE017",
-    Space: "\uE00D",
-  };
-  return keys[key];
 }
 
 function assertContext(context: OperationContext): void {
