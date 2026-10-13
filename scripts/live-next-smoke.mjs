@@ -30,6 +30,10 @@ let session;
 try {
   await waitForHttpReady(url, next, { label: "Next fixture", timeoutMs: 20_000, pollMs: 200 });
   session = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
+  const summary = await manager.capture(session.id);
+  // Inspect small project metadata before the full action trace can reach the
+  // evidence bound and legitimately prune optional metadata.
+  const metadataCapture = await manager.capture(session.id, { profile: "include", surfaces: ["next"] });
   const actionId = await waitForServerActionId(fixtureRoot, next);
   const routeInspection = await manager.inspectNext(session.id, { kind: "compileRoute", routeSpecifier: "/" });
   const actionInspection = await manager.inspectNext(session.id, { kind: "resolveServerAction", actionId });
@@ -46,7 +50,7 @@ try {
   const nextEvidence = verificationEvidence.next;
   const actionNextEvidence = actionCapture.details.next;
   const routes = nextEvidence?.routes;
-  const projectMetadata = nextEvidence?.projectMetadata;
+  const projectMetadata = metadataCapture.details.next?.projectMetadata;
   const compilationIssues = nextEvidence?.compilationIssues;
   const logTail = nextEvidence?.logTail;
   const routeCompilation = routeInspection.result;
@@ -55,6 +59,8 @@ try {
   const requestInsights = actionNextEvidence?.requestInsights;
   const requestTraces = actionNextEvidence?.requestTraces;
   const assertions = {
+    selectiveSummary: summary.collection.next === "not-collected" && summary.collection.react === "not-collected",
+    selectedNextFresh: metadataCapture.collection.next === "fresh" && verificationCapture.collection.next === "fresh",
     flowCaptured: verificationCapture.redaction.applied === true,
     nextDetected: nextEvidence?.detected === true,
     nextEndpoint: nextEvidence?.endpoint.endsWith("/_next/mcp") ?? false,

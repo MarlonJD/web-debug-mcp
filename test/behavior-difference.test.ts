@@ -5,7 +5,7 @@ import type { BrowserSnapshot } from "../src/domain/types.js";
 
 function browser(changes: Partial<BrowserSnapshot> = {}): BrowserSnapshot {
   return { url: "http://127.0.0.1:4173/", title: "fixture", viewport: null, dom: { bodyText: "", elements: [] }, console: [], network: [], screenshotPath: null,
-    debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] }, react: null, angular: null, vue: null, next: null, vite: null, warnings: [], ...changes };
+    debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] }, react: null, angular: null, vue: null, next: null, vite: null, warnings: [], webmcp: null, interactiveElements: null, ...changes };
 }
 describe("explanatory behavioral differences", () => {
   it("reports errors and endpoint counts without producing a fix verdict", () => {

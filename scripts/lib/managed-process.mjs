@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+
 const DEFAULT_READY_TIMEOUT_MS = 15_000;
 const DEFAULT_STOP_TIMEOUT_MS = 2_000;
 const MAX_DIAGNOSTIC_CHARS = 4_000;
@@ -96,7 +98,20 @@ function signalProcessGroup(processGroupId, signal) {
 
 function processGroupExists(processGroupId) {
   try { process.kill(-processGroupId, 0); return true; }
-  catch (error) { if (error?.code === "ESRCH") return false; throw error; }
+  catch (error) {
+    if (error?.code === "ESRCH") return false;
+    if (error?.code === "EPERM" && process.platform === "darwin") {
+      // macOS can reject a group probe while its last members are being reaped.
+      // A read-only inventory may prove exit; a live or unreadable group still fails closed.
+      const inventory = execFileSync("/bin/ps", ["-axo", "pgid=,stat="], { encoding: "utf8", timeout: 1_000, maxBuffer: 256 * 1024 });
+      const live = inventory.split("\n").some((line) => {
+        const [group, state] = line.trim().split(/\s+/);
+        return Number(group) === processGroupId && state && !state.startsWith("Z");
+      });
+      if (!live) return false;
+    }
+    throw error;
+  }
 }
 
 async function waitForProcessGroupExit(processGroupId, timeoutMs) {

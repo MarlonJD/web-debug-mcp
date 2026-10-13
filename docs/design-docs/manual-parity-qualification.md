@@ -2,7 +2,7 @@
 
 ## Decision
 
-The Web Debug plugin packages `manual-parity-qualification` as a second workflow skill. The skill turns approved manual cases—or source-backed candidate requirements when no approved manual baseline exists—into reviewed qualification metadata around repository-native tests.
+The Web Debug plugin packages `manual-parity-qualification` and `webmcp-tool-authoring` as reviewed workflow skills. Manual parity turns approved manual cases—or source-backed candidate requirements when no approved manual baseline exists—into qualification metadata around repository-native tests. WebMCP authoring requires an approved capability and never self-approves production registration.
 
 The target repository owns executable Playwright actions, selectors, actor fixtures, API/domain read-backs, data setup, assertions, reporters, and CI commands. The skill may create or update that native code when the user requests implementation, but JSON artifacts never dispatch browser or API actions.
 
@@ -28,7 +28,7 @@ Ambiguous mutable actions are never retried blindly. Without a correlation, rece
 
 ## Relationship to MCP scenarios
 
-Qualification metadata is not scenario schema 5, is never imported by `web_repro_record`, and does not alter the session-only persistence decision. The MCP continues to own bug reproduction, bounded browser evidence, and same-session post-fix verification. Repository-native runners continue to own durable regression and qualification execution.
+Qualification metadata is not scenario schema 6, is never imported by `web_repro_record`, and does not alter the session-only persistence decision. A WebMCP-only contract case remains `contract-only`; a hybrid WebMCP/UI case remains `ui-required` with `visible-ui` plus independent domain/API/history/audit/outbox evidence for mutations. The MCP continues to own bug reproduction, bounded browser evidence, and same-session post-fix verification. Repository-native runners continue to own durable regression and qualification execution; WebMCP output is never the mutation oracle.
 
 ## Revisit boundary
 

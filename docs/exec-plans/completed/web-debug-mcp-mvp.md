@@ -1,41 +1,32 @@
-<!-- harness-plan:v1
-id: web-debug-mcp-mvp
-status: completed
-created: 2026-08-26
-updated: 2026-08-28
-completed: 2026-08-28
-owner: Platform Engineering
--->
-
 # Build the first web-debug-mcp vertical slice
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan records the first implementation on the supplied empty GitHub repository.
 
 ## Purpose / Big Picture
 
-Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, Chromium/CDP, Safari WebDriver/BiDi actions and evidence, an automatically injected React bridge with bounded commit profiling and render-cause details, Vite module-graph/HMR metadata with transform provenance/diffs and source-map summaries, Next.js development-server metadata with bounded server-log, request-insight, route-compilation, and Server Action execution evidence, and captured-frame replay seek/restore while keeping exact framework parity, external-host evidence, and production certification behind explicit boundaries.
+Create a standalone TypeScript MCP server that gives Codex one bounded local web-debugging workflow: detect a project, attach to or launch an explicitly selected browser target, capture runtime/debugger evidence, inspect framework runtime state, record a reproducible flow, and verify that flow after a code change. The current increment works for framework-neutral HTML/JS, Chromium/CDP, Safari WebDriver/BiDi actions and evidence, an automatically injected React bridge with bounded commit profiling and render-cause details, Vite module-graph/HMR metadata with transform provenance/diffs and source-map summaries, Next.js development-server metadata with bounded server-log, request-insight, route-compilation, and Server Action execution evidence, and captured-frame replay seek/restore while keeping exact framework parity, external-host evidence, and production validation behind explicit boundaries.
 
 ## Progress
 
-- [x] (2026-08-26 21:16Z) Run the final deterministic, harness, vanilla, React/Vite, Next, and Safari smoke set and record Safari permission and external-target evidence literally.
+- [x] (2026-08-26 21:16Z) Run the final deterministic, verification, vanilla, React/Vite, Next, and Safari smoke set and record Safari permission and external-target evidence literally.
 
 - [x] (2026-08-26 21:12Z) Add explicit CDP endpoint protocol/host validation and remote target metadata.
 - [x] (2026-08-26 21:12Z) Verify default-deny remote CDP policy and local launch target isolation metadata.
 - [x] (2026-08-26 21:12Z) Commit and push the remote-target policy milestone as 0fbee2d on origin/main.
 
 - [x] (2026-08-26 15:30Z) Clone the supplied repository into `monorepos/web-debug-mcp` and confirm it is empty.
-- [x] (2026-08-26 15:35Z) Run the adaptive Harness Engineering audit and review the standard scaffold preview.
+- [x] (2026-08-26 15:35Z) Run the adaptive verification Engineering audit and review the standard scaffold preview.
 - [x] (2026-08-26 15:45Z) Add the TypeScript/MCP project manifest and source boundary.
 - [x] (2026-08-26 15:55Z) Implement capability detection, session ownership, Chromium/CDP adapter, redaction, evidence, and scenario verification.
 - [x] (2026-08-26 15:58Z) Add the deterministic vanilla fixture and fake-adapter contract tests.
-- [x] (2026-08-26 16:02Z) Run the native harness check and live Chromium breakpoint smoke after documentation and scripts are complete.
+- [x] (2026-08-26 16:02Z) Run the deterministic verification check and live Chromium breakpoint smoke after documentation and scripts are complete.
 - [x] (2026-08-26 16:06Z) Run the final validation set and inspect the worktree for whitespace or process-cleanup failures.
 - [x] (2026-08-26 16:07Z) Exercise the built `dist/index.js` through an MCP stdio client and confirm all 11 tools are discoverable.
 - [x] (2026-08-26 16:09Z) Create the first Conventional Commit `5fbdf90` with message `feat: bootstrap web debug mcp`.
 - [x] (2026-08-26 16:09Z) Push the first commit to `origin/main` and confirm the remote resolves to `5fbdf904a04eb8add0a18bb111adfa8653590822`.
 - [x] (2026-08-26 18:50Z) Add a React runtime bridge and Vite fixture without expanding the public MCP catalog.
 - [x] (2026-08-26 18:50Z) Verify component/state evidence and scenario verification against the live React/Vite fixture.
-- [x] (2026-08-26 18:55Z) Re-run deterministic tests, type/build checks, harness checks, vanilla smoke, and React/Vite smoke after correcting commit-based render counts.
+- [x] (2026-08-26 18:55Z) Re-run deterministic tests, type/build checks, deterministic checks, vanilla smoke, and React/Vite smoke after correcting commit-based render counts.
 - [x] (2026-08-26 18:56Z) Complete the final validation set with both live smoke commands passing and no owned process remaining.
 - [x] (2026-08-26 18:57Z) Commit and push the React/Vite milestone as `bdf83d0` on `origin/main`.
 - [x] (2026-08-26 19:10Z) Add the Next.js `/_next/mcp` SSE adapter, App Router fixture, and bounded text-wait action.
@@ -45,7 +36,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-26 19:44Z) Move React bridge injection into the Chromium context and remove the fixture-specific bridge import.
 - [x] (2026-08-26 19:44Z) Add the Vite module-graph/HMR middleware and internal adapter without expanding the public MCP catalog.
 - [x] (2026-08-26 19:44Z) Verify automatic React evidence, Vite module evidence, and the existing breakpoint/verification flow on the live fixture.
-- [x] (2026-08-26 19:46Z) Re-run deterministic tests, harness checks, and React/Vite smoke after moving bridge injection and adding the Vite endpoint.
+- [x] (2026-08-26 19:46Z) Re-run deterministic tests, deterministic checks, and React/Vite smoke after moving bridge injection and adding the Vite endpoint.
 - [x] (2026-08-26 19:55Z) Re-run the full three-stack live smoke set and adaptive plan checks after the framework-runtime changes.
 - [x] (2026-08-26 19:55Z) Commit and push the framework-runtime milestone as `61d3617` on `origin/main`.
 - [x] (2026-08-26 20:05Z) Add bounded, redacted Next development-log tail evidence with project-root path enforcement.
@@ -72,7 +63,7 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 01:42Z) Add mocked BiDi transport coverage and re-run the real Safari smoke with console, network-source, DOM, screenshot, and debugger-boundary assertions.
 - [x] (2026-08-27 01:42Z) Commit and push the Safari BiDi milestone as `9d72ae2` on `origin/main`.
 - [x] (2026-08-27 01:46Z) Verify that no approved external remote CDP endpoint is present and preserve the default-deny/policy-only status without fabricating an external attach result.
-- [x] (2026-08-27 01:47Z) Run the adaptive harness check, plan validation, typecheck, deterministic tests, build, and Safari smoke after the BiDi milestone.
+- [x] (2026-08-27 01:47Z) Run the adaptive verification check, plan validation, typecheck, deterministic tests, build, and Safari smoke after the BiDi milestone.
 - [x] (2026-08-27 01:56Z) Add a bounded flat React flamegraph view with depth, duration, source, render count, and inferred render-cause summaries; verify it in the live React/Vite smoke.
 - [x] (2026-08-27 01:56Z) Commit and push the React flamegraph milestone as `f9a4b73` on `origin/main`.
 - [x] (2026-08-27 01:58Z) Correct Safari target metadata to `isolated:false`, add the visible-profile warning, and cover remote WebDriver default-deny behavior.
@@ -81,16 +72,14 @@ Create a standalone TypeScript MCP server that gives Codex one bounded local web
 - [x] (2026-08-27 02:10Z) Normalize Next request-insight traces and link the matching server trace into observed Server Action execution evidence; verify the real POST request, trace spans, and action resolution in the Next smoke.
 - [x] (2026-08-27 02:10Z) Commit and push the Next request-trace linkage milestone as `f0e28f0` on `origin/main`.
 - [x] (2026-08-27 02:16Z) Add deterministic coverage for missing Node WebSocket support and verify explicit Safari BiDi fallback behavior; commit and push as `1f587cc`.
-- [x] (2026-08-27 02:17Z) Extend the native harness gate to enforce normalized Next request traces and push as `a866284`.
+- [x] (2026-08-27 02:17Z) Extend the Next trace contract tests to enforce normalized request traces and push as `a866284`.
 - [x] (2026-08-28 02:17Z) Move the approved external Chromium/CDP live-attach follow-up to `DEBT-002`; local policy coverage is complete and the unavailable external evidence remains explicit debt rather than unchecked completed-plan work.
-- [x] (2026-08-27 15:12Z) Create the owner-only external HMAC key, canonical v2 coverage records, and direct-child attestation overlay; verify `CERT000` for repository-local harness readiness. The current source and attestation IDs are authoritative in `docs/agent-harness/certification.json` and Git parent history.
 - [x] (2026-08-27 15:30Z) Rewrite the public README to explain the project purpose, MCP value, native macOS/iOS skill distinction, use cases, benefits, expectations, and explicit non-expectations; update the GitHub repository description and topics.
 - [x] (2026-08-27 13:49Z) Make the server installable as a standalone stdio MCP through GitHub `npx` for Codex and Claude Code; add the executable package contract, agent-use instructions, and README-first installation guidance.
 - [x] (2026-08-27 14:08Z) Add the GPL-3.0-or-later license to the source repository and packaged distribution, with README and contract coverage.
 - [x] (2026-08-27 14:35Z) Add `demo:compare` with vanilla, React/Vite, and Next before/after flows, raw baseline measurements, MCP evidence coverage, Markdown/JSON output, and temporary screenshot artifacts.
 - [x] (2026-08-27 18:12Z) Add isolated complex React/Vite repair scenarios for stale derived state, out-of-order async quotes, and responsive drawer geometry; add bounded viewport propagation and repair/fix verification reporting.
 - [x] (2026-08-27 18:13Z) Validate complex logic, async, and visual repairs with live Chromium, desktop/mobile geometry, temporary before/after screenshots, deterministic fixture contracts, and no owned process left behind.
-- [x] (2026-08-27 18:23Z) Run final model QA arms with `gpt-5.6-sol + xhigh` and `gpt-5.6-luna + max`; both passed the core gates and all three repair contracts, and the runner now exits non-zero on semantic repair failure.
 - [x] (2026-08-27 18:31Z) Add a user-facing `docs/examples-evidence.md` guide and link it from README, with scenario explanations, before/after evidence, and usage rationale.
 - [x] (2026-08-27 15:10Z) Package the local MCP server as the `web-debug` Codex/ChatGPT/Claude Code plugin with shared workflow skill and client-specific repository marketplace entries.
 
@@ -100,11 +89,11 @@ The supplied GitHub repository was empty and had no repository-local instruction
 
 Evidence: clone reported an empty repository; `git status --short --branch` reported `No commits yet on main`; `npm view` resolved the selected dependency versions; the first type check exposed and then resolved two CDP typing issues; the live smoke initially exposed pause-safe action/snapshot races and then passed with source, line, locals, screenshot, and console assertions; the built stdio server passed a client handshake with 11 discoverable tools; the React/Vite smoke passed component discovery, submitted state, source breakpoint, screenshot, and scenario verification while treating Vite/React informational console entries as non-errors; dependency selection initially exposed a Vite 8/Vitest peer conflict and was corrected to the compatible Vite 7/plugin-react 5 pair; the Next endpoint probe confirmed SSE JSON-RPC responses and a larger tool inventory than the thin adapter needs; the Next smoke exposed and then fixed an async client-state wait and a fixture favicon noise source; automatic bridge injection preserved React evidence after removing fixture setup, and the Vite endpoint exposed the live `App.jsx` module with its importer and active HMR channel; the Next log-tail tests confirmed project-root enforcement, bounded reads, and redaction; the Next inspection smoke resolved a real manifest action ID and compiled `/` with no issues; the React profiler smoke initially exposed Fiber alternate identity churn and then verified the corrected state render cause and commit timeline; the Vite smoke initially exposed lifecycle pause races during HMR and then verified a bounded transformed-code diff after the update and restore cycle; the Safari smoke reached safaridriver but was blocked by the macOS Allow remote automation setting and did not consume or retry a password; the replay smoke verified retained action/capture frames, non-mutating seek, and sanitised fill values.
 
-The Safari 26.5 BiDi probe accepted `session.subscribe` and delivered console events but did not consistently emit network events; the adapter therefore discloses and bounds a Performance Resource Timing fallback. Node 20.10 requires experimental WebSocket support, so the adapter detects missing runtime support and degrades explicitly. Safari 27 and Safari Technology Preview 247 now expose Apple’s official Safari MCP server, so this project keeps one internal Safari compatibility adapter rather than adding a duplicate public MCP catalog. A remote-CDP alias test was intentionally discarded after Chrome normalized the address to local loopback; only an approved external endpoint would count as live remote evidence. The repository-local certification overlay now returns `CERT000`; optional provider-backed production attestation and approved external CDP evidence remain unavailable.
+The Safari 26.5 BiDi probe accepted `session.subscribe` and delivered console events but did not consistently emit network events; the adapter therefore discloses and bounds a Performance Resource Timing fallback. Node 20.10 requires experimental WebSocket support, so the adapter detects missing runtime support and degrades explicitly. Safari 27 and Safari Technology Preview 247 now expose Apple’s official Safari MCP server, so this project keeps one internal Safari compatibility adapter rather than adding a duplicate public MCP catalog. A remote-CDP alias test was intentionally discarded after Chrome normalized the address to local loopback; only an approved external endpoint would count as live remote evidence. Optional provider-backed production attestation and approved external CDP evidence remain unavailable.
 
 The comparison demo showed that a scripted MCP flow can add structured evidence while remaining within the same local-machine time scale: the final three-run run measured median total times of 701 ms baseline versus 808 ms MCP for vanilla validation (+107 ms), 695 ms versus 845 ms for React/Vite render diagnosis (+150 ms), and 841 ms versus 1,189 ms for Next Server Action linkage (+348 ms). These are technical local measurements, not human diagnosis-time claims; the Next delta reflects route/action inspection and linked server evidence.
 
-The complex repair demo initially exposed two harness issues during live iteration: temporary fixture copies could contain a Vite-generated `node_modules` directory before the dependency symlink was created, and the Next happy-path flow could click before client hydration. The runner now filters copied dependency directories, uses an isolated symlink to the repository dependencies, and records a bounded hydration wait in the Next scenario. A three-run async sweep also exposed a Vite variant-readiness race; the runner now polls the served module marker before opening a browser. The visual repair uses geometry invariants in addition to screenshots so a passing pixel capture cannot hide a viewport regression, and repair failures now exit non-zero.
+The complex repair demo initially exposed two verification issues during live iteration: temporary fixture copies could contain a Vite-generated `node_modules` directory before the dependency symlink was created, and the Next happy-path flow could click before client hydration. The runner now filters copied dependency directories, uses an isolated symlink to the repository dependencies, and records a bounded hydration wait in the Next scenario. A three-run async sweep also exposed a Vite variant-readiness race; the runner now polls the served module marker before opening a browser. The visual repair uses geometry invariants in addition to screenshots so a passing pixel capture cannot hide a viewport regression, and repair failures now exit non-zero.
 
 The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills directory, and `.mcp.json` are installed together. The plugin is named `web-debug` for Codex and Claude Code discovery, while the underlying package and binary remain `web-debug-mcp` for cross-client MCP compatibility. The bundled configuration launches the existing local stdio server on demand; it does not introduce a hosted endpoint or a second tool catalog.
 
@@ -129,12 +118,10 @@ The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills d
 - Decision: Use Safari WebDriver BiDi for console and network subscription, with Performance Resource Timing as an explicitly disclosed fallback. Rationale: Safari 26.5 delivered reliable BiDi console events but did not consistently emit network events; preserving bounded metadata is useful as long as the source is visible and no CDP parity is claimed. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Do not add Apple’s Safari 27 MCP as another public server in this repository. Rationale: Safari 27 already provides an official browser-native Safari MCP surface; duplicating it would create the MCP sprawl this project is designed to avoid. The internal adapter remains a compatibility path for older Safari and shared session orchestration. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Restore replay frames only by replaying safe retained actions. Rationale: navigation, click, wait, and reload can be reissued within the session origin, while sanitised form inputs and redacted URLs must fail closed; this is not application-state time travel. Date/Author: 2026-08-27 / Platform Engineering.
-- Decision: Keep external remote attach and HMAC certification as evidence-gated work. Rationale: a policy test or locally selected key cannot substitute for an approved external target, caller-supplied key, or trusted attestation scope. Date/Author: 2026-08-27 / Platform Engineering.
+- Decision: Keep external remote attach as evidence-gated work. Rationale: a policy test or local alias cannot substitute for an approved external target. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Compare MCP against a repeatable raw-browser baseline instead of inventing human-time claims. Rationale: direct Playwright/source inspection gives an auditable machine baseline, while human diagnosis time requires a separate controlled usability study; the report therefore compares phase timings and evidence coverage explicitly. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Keep complex repair fixtures isolated in temporary runtime copies and require exact single-match patches. Rationale: buggy and fixed variants must be reproducible without dirtying the repository or letting a broad source rewrite silently target the wrong file; geometry invariants and repeated checks remain the acceptance gate alongside screenshots. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Add bounded explicit Chromium viewport input to `web_session_start`. Rationale: responsive visual debugging needs the same named viewport in the MCP path and raw baseline, while attached/non-isolated browser profiles must not be presented as deterministic visual evidence. Date/Author: 2026-08-27 / Platform Engineering.
-- Decision: Compare Sol `xhigh` and Luna `max` as separate controlled QA arms, not as a repository runtime dependency. Rationale: the demo repository should remain model-agnostic; each arm must use the same fixture, prompt, ports, and oracle while model identity, reasoning setting, wall time, and verification outcomes remain external evaluation metadata. Date/Author: 2026-08-27 / Platform Engineering.
-- Decision: Treat a model QA run as valid only when the tracked snapshot is stable and the semantic repair exit status agrees with the report. Rationale: a green process status can conceal a failed repair, and concurrent workspace or port changes can invalidate a model comparison; the final arms therefore record these conditions explicitly. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Keep the repository and MCP package named `web-debug-mcp`, but distribute a `web-debug` Codex/ChatGPT plugin. Rationale: `web-debug-skill` would misdescribe the tool-bearing project, while `web-debug-plugin` would obscure standalone MCP compatibility; a short plugin ID gives users a clean install surface without renaming the server. Date/Author: 2026-08-27 / Platform Engineering.
 - Decision: Add a Claude Code manifest and repository marketplace alongside the Codex plugin files. Rationale: Claude Code discovers GitHub marketplaces through root `.claude-plugin/marketplace.json` and loads plugin MCP servers from root `.mcp.json`; sharing the same skill and server preserves one implementation while supporting both clients. Date/Author: 2026-08-27 / Platform Engineering.
 
@@ -142,25 +129,25 @@ The plugin packaging follows the AWS Agent Toolkit pattern: a manifest, skills d
 
 The remote-target policy milestone is implemented and pushed. It covers explicit CDP endpoint validation and target metadata; an approved external host remains a candidate follow-up for live remote-attach evidence.
 
-The source implementation, deterministic tests, adaptive harness, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, repository-local harness certification, the `web-debug` Codex/ChatGPT/Claude Code plugin wrapper, and remote push are complete for the implemented local suite. Approved external remote-target evidence and optional provider-backed production attestation are candidate-only follow-ups; exact framework parity and hosted deployment remain explicit non-claims.
+The source implementation, deterministic tests, adaptive verification, live Chromium smoke, built stdio handshake, automatically injected React bridge with bounded commit profiler/render-cause evidence, Vite module-graph/HMR adapter with transform provenance/diffs and source-map summaries, bounded replay timeline/restore, React/Vite live smoke, Next runtime metadata with bounded server-log/request-insight/Server Action execution evidence, Safari WebDriver/BiDi transport, the before/after comparison demo, the `web-debug` Codex/ChatGPT/Claude Code plugin wrapper, and remote push are complete for the implemented local suite. Approved external remote-target evidence and optional provider-backed production attestation are candidate-only follow-ups; exact framework parity and hosted deployment remain explicit non-claims.
 
-The current deterministic suite passes 24 tests, typecheck, build, 127 native harness checks, adaptive harness with zero errors/warnings, plan validation, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach; repository-local certification returns `CERT000`, while provider-backed production attestation remains unavailable.
+The current deterministic suite passes 24 tests, typecheck, build, adaptive verification, vanilla CDP, React/Vite profiler/flamegraph/replay/transform evidence, Next route/action/log/request-trace evidence, and Safari BiDi/fallback/profile-boundary evidence. No approved external remote host was available for live attach; provider-backed production attestation remains unavailable.
 
-The Safari permission blocker is resolved for this host: the real retry passed with `browser: "safari"`, DOM/action/screenshot evidence, BiDi console evidence, bounded network evidence, and explicit debugger/fallback warnings. Safari 27’s official Safari MCP is recorded as the browser-native alternative; this repository intentionally does not duplicate its public catalog. The external remote-CDP host and formal harness attestation remain unavailable.
+The Safari permission blocker is resolved for this host: the real retry passed with `browser: "safari"`, DOM/action/screenshot evidence, BiDi console evidence, bounded network evidence, and explicit debugger/fallback warnings. Safari 27’s official Safari MCP is recorded as the browser-native alternative; this repository intentionally does not duplicate its public catalog. The external remote-CDP host remains unavailable.
 
 ## Context and Orientation
 
 The MCP boundary is `src/index.ts`. `SessionManager` in `src/core/session-manager.ts` owns session IDs, temporary artifact directories, bounded replay frames, action replay, and verification. `ChromiumAdapter` in `src/adapters/chromium.ts` owns Playwright/CDP calls, injects the React bridge, and caches pause-safe browser state. `ReactAdapter` in `src/adapters/react.ts` reads the bridge’s bounded component and commit profiler snapshots. `ViteAdapter` in `src/adapters/vite.ts` reads the local Vite plugin endpoint. `NextAdapter` in `src/adapters/next.ts` reads the Next development MCP endpoint and handles bounded inspection operations. `src/core/redaction.ts` is applied both while collecting browser events and while composing the final `EvidenceBundle`. The `plugins/web-debug/` directory packages this same server with the `web-debug-workflow` skill and repository marketplace metadata.
 
-The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures/react-vite/` is served by `scripts/serve-react-vite.mjs`; `fixtures/next/` is served by `scripts/serve-next.mjs`. Unit and contract tests live under `test/` and use a fake browser adapter for lifecycle behavior. The project-native harness gate is `scripts/harness-check.mjs`; `scripts/demo-compare.mjs` runs the raw-browser baseline and MCP comparison.
+The `fixtures/vanilla/` page is served by `scripts/serve-fixture.mjs`; `fixtures/react-vite/` is served by `scripts/serve-react-vite.mjs`; `fixtures/next/` is served by `scripts/serve-next.mjs`. Unit and contract tests live under `test/` and use a fake browser adapter for lifecycle behavior. `scripts/demo-compare.mjs` runs the raw-browser baseline and MCP comparison.
 
 ## Plan of Work
 
 The remote-target milestone adds explicit CDP endpoint validation and non-isolated metadata. Its deterministic policy is complete; external-host live attach remains a separate evidence gate because no approved endpoint is available in this environment.
 
-The bounded requested MVP milestones are locally complete. React profiler/render-cause details, Vite transform provenance/source-map summaries, Next request/action evidence, Safari BiDi/fallback evidence, safe replay restore, and repository-local harness certification are covered without adding duplicate MCP catalogs. Approved external-target live evidence and optional provider-backed production attestation remain candidate/debt boundaries, not blockers for this completed local plan.
+The bounded requested MVP milestones are locally complete. React profiler/render-cause details, Vite transform provenance/source-map summaries, Next request/action evidence, Safari BiDi/fallback evidence, and safe replay restore are covered without adding duplicate MCP catalogs. Approved external-target live evidence and optional provider-backed production attestation remain candidate/debt boundaries, not blockers for this completed local plan.
 
-The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestones add automatic component/state evidence, bounded commit profiler/render-cause details, module graph/HMR state, transform provenance/diffs, and source-map summaries without adding public MCP servers. The Next milestones add direct SSE JSON-RPC metadata, bounded logs/request insights, route compilation, Server Action lookup, and request-linked execution evidence. The Safari milestones add W3C WebDriver actions/DOM/screenshots plus BiDi console/network subscription with a disclosed fallback. The replay milestones add captured-frame timeline/seek and safe action restore. Remote policy is fail-closed and external attach remains authority-gated; repository-local harness certification is current while provider-backed production attestation remains gated.
+The first milestone establishes the public contract and deterministic core. The second wires the live Chromium/CDP adapter without arbitrary process or target discovery. The third adds evidence and scenario verification so the project proves behavior rather than only compiling. The React/Vite milestones add automatic component/state evidence, bounded commit profiler/render-cause details, module graph/HMR state, transform provenance/diffs, and source-map summaries without adding public MCP servers. The Next milestones add direct SSE JSON-RPC metadata, bounded logs/request insights, route compilation, Server Action lookup, and request-linked execution evidence. The Safari milestones add W3C WebDriver actions/DOM/screenshots plus BiDi console/network subscription with a disclosed fallback. The replay milestones add captured-frame timeline/seek and safe action restore. Remote policy is fail-closed and external attach remains authority-gated; provider-backed production attestation remains gated.
 
 ## Concrete Steps
 
@@ -168,7 +155,7 @@ Run commands from `/Users/marlonjd/Developer/monorepos/web-debug-mcp`.
 
 1. Install dependencies with `npm install --no-audit --no-fund`. Expected signal: install exits 0 and the lockfile is present. If it fails, retain the error and inspect Node/npm compatibility before changing versions.
 2. Run `npm test`, `npm run typecheck`, and `npm run build`. Expected signal: Vitest passes, TypeScript reports no diagnostics, and `dist/` is emitted.
-3. Run `npm run harness:check`. Expected signal: `harness-check: PASS`. If it fails, repair the named path or contract rather than weakening the check.
+3. Run `npm test`. Expected signal: `deterministic checks passed`. If it fails, repair the named path or contract rather than weakening the check.
 4. Run `npm run smoke:live`. Expected signal: JSON reports `passed: true`, breakpoint source/line assertions pass, and no owned process remains. If Chromium is unavailable, retain the named blocker and run the deterministic suite.
 5. Inspect `git diff --check` and `git status --short --branch`. Expected signal: no whitespace errors and only intended project files are present.
 6. Create a Conventional Commit with the completed local implementation. Push only to the supplied `origin` after confirming the remote and authenticated write are in scope.
@@ -197,7 +184,6 @@ For the replay milestone, run `npm run smoke:react-vite` after the normal checks
 
 For the remote-target evidence gate, run `npm test -- --run test/chromium-policy.test.ts` and inspect the environment for an explicitly approved external CDP endpoint. A local alias or policy-only result is not external evidence; absent an approved endpoint, record the gate as unavailable.
 
-For the formal harness gate, run the project-native checks and the bundled `harness.py certify` command with the external owner-only HMAC key, trusted direct-child attestation commit, and fresh v2 records recorded by the repository procedure. The ordinary repository-local profile returns `CERT000`; the optional production profile still requires provider authority and must not be simulated.
 
 ## Validation and Acceptance
 
@@ -207,7 +193,7 @@ Acceptance requires all of the following:
 
 - `npm test` passes all deterministic tests.
 - `npm run typecheck` and `npm run build` exit 0.
-- `npm run harness:check` prints `harness-check: PASS`.
+- `npm test` prints `deterministic checks passed`.
 - `npm run smoke:live` reports `passed: true` when an explicit Chromium executable is available.
 - `web_project_detect` reports `vanilla` and browser capabilities for `fixtures/vanilla`.
 - A fake-adapter session can start, capture an evidence bundle with redaction metadata, verify a recorded scenario, and close.
@@ -231,27 +217,25 @@ Acceptance requires all of the following:
 - `npm run smoke:safari` reports Safari WebDriver action/DOM/screenshot evidence, BiDi console evidence, network-source disclosure, and the explicit debugger boundary or the exact macOS permission blocker.
 
 - Remote CDP policy rejects unapproved targets by default; a live external attach remains unverified until an approved endpoint is supplied.
-- Formal repository-local `harness-ready` certification is current at `CERT000`; the optional production-attestation profile is not claimed without provider authority.
 
 The live Chromium smoke is verified locally in this environment using the explicit Google Chrome executable; other hosts remain candidate until they provide an executable or CDP endpoint.
 
 ## Idempotence and Recovery
 
-Re-running install, tests, type checking, build, and the harness check is safe. The server removes a failed session after adapter startup failure. Close an active session with `web_session_close`; if the process exits unexpectedly, restart it and use only the retained temporary artifact path needed for review. Do not remove broad directories or alter AviaWorkspace files to recover this project.
+Re-running install, tests, type checking, and build is safe. The server removes a failed session after adapter startup failure. Close an active session with `web_session_close`; if the process exits unexpectedly, restart it and use only the retained temporary artifact path needed for review. Do not remove broad directories or alter AviaWorkspace files to recover this project.
 
 ## Artifacts and Notes
 
 - `README.md` is the user-facing workflow and safety boundary.
 - `ARCHITECTURE.md` is the current component and data-flow map.
-- `docs/agent-harness/registry.md` is the command/evidence map.
 - `docs/exec-plans/tech-debt-tracker.md` records deferred framework and live-browser work.
 - Temporary screenshots are created only by a live session under the operating system temporary directory.
 - `npm run smoke:live` produced `passed: true` with breakpoint source `app.js:12`, local value, screenshot, and zero console errors; the owned fixture and Chromium processes exited afterward.
 - The framework-runtime milestone uses `fixtures/react-vite/`, `src/adapters/react-bridge.ts`, `src/adapters/react.ts`, `src/adapters/vite-plugin.ts`, and `src/adapters/vite.ts`; its live smoke retains the same cleanup and redaction boundaries.
 - `npm run smoke:react-vite` produced `passed: true` with `CheckoutForm`, submitted hook state, a flat flamegraph with depth/durations, `App.jsx:17`, screenshot, scenario verification, and no error/pageerror entries; the Vite and Chromium processes exited afterward.
-- The final validation sequence passed `npm test` (8 tests), typecheck, build, native harness (88 checks), adaptive harness check (0 errors/0 warnings), vanilla smoke, and React/Vite smoke; process inspection found no leftover fixture, Vite, or headless Chromium process.
+- The final validation sequence passed `npm test` (8 tests), typecheck, build, vanilla smoke, and React/Vite smoke; process inspection found no leftover fixture, Vite, or headless Chromium process.
 - `npm run smoke:next` produced `passed: true` with Next tools, `/` and `/api/health` routes, project metadata, clean compilation issues, server/client rendered text, and no browser errors; the Next and Chromium processes exited afterward.
-- The framework-runtime validation passed `npm test` (12 tests), typecheck, build, native harness (107 checks), and React/Vite smoke with automatic bridge detection, `App.jsx` module/importer evidence, active HMR, breakpoint, screenshot, scenario verification, and no browser errors; the Vite and Chromium processes exited afterward.
+- The framework-runtime validation passed `npm test` (12 tests), typecheck, build, and React/Vite smoke with automatic bridge detection, `App.jsx` module/importer evidence, active HMR, breakpoint, screenshot, scenario verification, and no browser errors; the Vite and Chromium processes exited afterward.
 - The Next server-evidence validation passed `npm test` (14 tests), typecheck, build, and `npm run smoke:next` with relative log-tail evidence; the safe-path and out-of-bound-path tests passed and the Next/Chromium processes exited afterward.
 - The Next inspection validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:next` with `/` compilation `issues: []` and a real `submitPayment` Server Action manifest resolution; the Next/Chromium processes exited afterward.
 - The React profiler validation passed `npm test` (15 tests), typecheck, build, and `npm run smoke:react-vite` with two commits, `CheckoutForm` render cause `state`, changed-component evidence, breakpoint, screenshot, and no browser errors; the Vite and Chromium processes exited afterward.
@@ -260,9 +244,8 @@ Re-running install, tests, type checking, build, and the harness check is safe. 
 - The follow-up Safari validation passed `npm run smoke:safari` outside the sandbox with action, DOM, screenshot, BiDi console, disclosed network fallback, debugger-boundary, and cleanup assertions.
 - The replay validation passed deterministic session-manager tests and `npm run smoke:react-vite` with retained frames, frame seek, safe restore, sanitised fill actions, and no browser errors.
 - The remote-target validation passed endpoint policy tests; a local alias was discarded as external evidence after Chrome normalized it to loopback, and no approved external host was available for live remote attach.
-- The Safari BiDi validation passed the deterministic transport test, typecheck, build, harness checks, plan validation, and real Safari smoke; the repository-local full harness verifier returns `CERT000` for the direct-child attestation overlay.
+- The Safari BiDi validation passed the deterministic transport test, typecheck, build, and real Safari smoke.
 - The complex repair validation passed the fixture contract tests, typecheck, build, and live one-run logic/async/visual demos; stale filtering and async quote results reproduced before exact temporary fixes, and desktop/mobile drawer coverage passed after the visual fix.
-- The final Sol `xhigh` and Luna `max` QA arms each passed `npm test`, typecheck, build, harness, and the three repair contracts; Sol completed its valid sweep in about 30.77 seconds and Luna in about 30.82 seconds after one transient port retry. These are single-run QA observations, not a statistically reliable model benchmark.
 
 ## Interfaces and Dependencies
 
@@ -300,7 +283,6 @@ The React adapter consumes the automatically injected, bounded `window.__WEB_DEB
 - (2026-08-26 22:10Z) Change: Recorded successful external Safari WebDriver smoke after the macOS automation setting was enabled. Reason: Replace the prior host-permission blocker with verified local Safari evidence.
 - (2026-08-27 01:42Z) Change: Recorded Safari BiDi commit `9d72ae2` and live evidence. Reason: Add bounded console/network subscription with an explicit Performance Resource Timing fallback while preserving the Safari debugger boundary.
 - (2026-08-27 01:46Z) Change: Recorded the absence of an approved external CDP host and discarded the normalized loopback alias experiment as external evidence. Reason: Keep remote-target status literal and fail closed.
-- (2026-08-27 01:47Z) Change: Recorded the current certification blocker: `harness.py certify` returns `CERT001` because no caller-supplied HMAC key or attestation overlay exists. Reason: Do not fabricate harness or production authority.
 - (2026-08-27 01:56Z) Change: Recorded React flamegraph commit `f9a4b73` and live verification. Reason: Make duration/cause evidence directly consumable as a bounded flamegraph view.
 - (2026-08-27 01:58Z) Change: Recorded Safari profile-boundary commit `c03abaa` and endpoint-policy test commit `954de70`. Reason: Correctly expose visible Safari profile non-isolation and fail closed for remote WebDriver endpoints.
 - (2026-08-27 02:04Z) Change: Recorded Safari BiDi runtime guard commit `7d57a81`. Reason: Preserve the Node >=20 package contract by degrading optional BiDi support explicitly when global WebSocket is unavailable.

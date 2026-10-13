@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: safari-session-recovery
-status: completed
-created: 2026-10-13
-updated: 2026-10-13
-completed: 2026-10-13
-owner: Platform Engineering
--->
-
 # Recover Safari 27 automation startup and report remaining capabilities honestly
 
 ## Purpose / Big Picture

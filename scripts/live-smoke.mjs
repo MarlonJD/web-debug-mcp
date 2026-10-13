@@ -56,9 +56,20 @@ try {
     sideEffectFreeRead: beforeEvaluation.value === 0 && afterEvaluation.value === 0,
     sideEffectRejected: sideEffectBlocked,
   };
+  if (snapshot.debugger.paused) await adapter.control("resume");
+  const interactiveSnapshot = await adapter.snapshot({ artifactDir, captureScreenshot: false, surfaces: ["interactiveElements"] });
+  const interactive = interactiveSnapshot.interactiveElements?.elements ?? [];
+  const submit = interactive.find((element) => element.name === "Submit payment");
+  const amount = interactive.find((element) => element.name === "Amount");
+  const disabled = interactive.find((element) => element.name === "Disabled action");
+  const remember = interactive.find((element) => element.name === "Remember this device");
+  assertions.interactiveMap = Boolean(submit?.uniqueAtCapture && submit.locator.kind === "role" && submit.locator.role === "button");
+  assertions.labeledInput = Boolean(amount?.locator.kind === "label" && amount.locator.text === "Amount" && amount.text === "");
+  assertions.interactiveGeometry = Boolean((submit?.bounds?.width ?? 0) > 0 && (submit?.bounds?.height ?? 0) > 0);
+  assertions.inputValueNotExposed = !JSON.stringify(amount ?? {}).includes("249.90");
+  assertions.interactiveState = disabled?.enabled === false && remember?.checked === true && !interactive.some((element) => element.name === "Hidden action") && !interactive.some((element) => element.role === "status");
   const passed = Object.values(assertions).every(Boolean);
   process.stdout.write(`${JSON.stringify({ passed, assertions, browserVersion: adapter.browserVersion(), target, breakpoint, artifactDir }, null, 2)}\n`);
-  if (snapshot.debugger.paused) await adapter.control("resume");
   if (!passed) process.exitCode = 1;
 } finally {
   await adapter.close();

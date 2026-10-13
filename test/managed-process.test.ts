@@ -3,11 +3,30 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { stopOwnedProcess, waitForHttpReady, waitForOutputReady } from "../scripts/lib/managed-process.mjs";
 
 describe("managed smoke process helper", () => {
+  it.skipIf(process.platform !== "darwin")("requires read-only exit evidence after a macOS EPERM group probe", async () => {
+    const child = spawn(process.execPath, ["-e", "console.log('ready'); setInterval(() => {}, 1000)"], { detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    await waitForOutputReady(child, "ready", { timeoutMs: 1_000 });
+    const kill = process.kill.bind(process);
+    const probe = vi.spyOn(process, "kill").mockImplementation((pid, signal) => {
+      if (pid === -child.pid! && signal === 0) throw Object.assign(new Error("probe denied"), { code: "EPERM" });
+      return kill(pid, signal);
+    });
+    try {
+      await expect(stopOwnedProcess(child, { processGroup: true })).rejects.toMatchObject({ code: "EPERM" });
+      child.kill("SIGTERM");
+      await new Promise(resolve => child.once("close", resolve));
+      await expect(stopOwnedProcess(child, { processGroup: true })).resolves.toMatchObject({ forced: false });
+    } finally {
+      probe.mockRestore();
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    }
+  });
+
   it("observes bounded output readiness and awaits graceful shutdown", async () => {
     const child = spawn(process.execPath, ["-e", "console.log('ready'); setInterval(() => {}, 1000)"], { stdio: ["ignore", "pipe", "pipe"] });
     try {

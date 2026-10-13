@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: execution-source-correlation
-status: completed
-created: 2026-10-12
-updated: 2026-10-13
-completed: 2026-10-12
-owner: Platform Engineering
--->
-
 # Connect browser execution to original source and behavioral changes
 
 Maintain this plan according to `docs/PLANS.md`.

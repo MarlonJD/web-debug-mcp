@@ -17,6 +17,9 @@ class FakeSafari implements SafariClient {
   successful = 1;
   focusMatches = true;
   focusedNodes = 1;
+  performanceFailure = false;
+  performanceEntries: unknown[] = [];
+  performanceReads = 0;
   calls: Array<{ name: SafariTool; args: Record<string, unknown> }> = [];
   async connect() { this.connected = true; }
   isConnected() { return this.connected; }
@@ -42,7 +45,11 @@ class FakeSafari implements SafariClient {
         if (expression.includes("navigator.userAgent")) value = "Version/27.0 Safari/625.1";
         else if (expression.includes("bodyText")) value = { bodyText: "Payment submitted", elements: [] };
         else if (expression.includes("innerWidth, height")) value = { width: 1280, height: 800 };
-        else if (expression.includes("getEntriesByType")) value = [];
+        else if (expression.includes("getEntriesByType")) {
+          this.performanceReads++;
+          if (this.performanceFailure) throw new Error("Performance observation failed");
+          value = this.performanceEntries;
+        }
         else if (expression.includes("elementFromPoint")) value = this.pointAvailable ? { x: 100, y: 100 } : null;
         else if (expression.includes("document.activeElement")) value = this.focusMatches;
         else if (expression.includes("count: elements.length")) value = { count: 1, visible: true, enabled: true, checked: false, text: "Payment submitted" };
@@ -66,6 +73,23 @@ function entry(text: string, level = "info", handle = "page-owned") {
 }
 
 describe("Safari native MCP adapter", () => {
+  it("preserves fresh, stale and unavailable network observations across fallback refreshes", async () => {
+    const { adapter, client } = await started();
+    client.performanceFailure = true;
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "unavailable", freshness: "unknown" });
+    client.performanceFailure = false;
+    client.performanceEntries = [{ requestId: "performance-first", url: `${url}api`, method: "GET", resourceType: "fetch", status: 200 }];
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "pass", freshness: "fresh", provenance: "performance-resource-timing" });
+    client.performanceFailure = true;
+    expect((await adapter.snapshot(options)).observations?.network).toMatchObject({ state: "pass", freshness: "stale", provenance: "cached" });
+    client.performanceFailure = false;
+    client.performanceEntries = [];
+    expect((await adapter.snapshot(options)).observations?.network?.freshness).toBe("fresh");
+    expect(client.performanceReads).toBe(4);
+    expect((await adapter.snapshot({ ...options, checksOnly: true })).observations?.network?.state).toBe("unavailable");
+    expect(client.performanceReads).toBe(4);
+    await adapter.close();
+  });
   it("owns one tab and primes native observers before navigation", async () => {
     const { adapter, client, target } = await started();
     expect(target).toMatchObject({ browser: "safari", mode: "mcp", isolated: false, targetId: "page-owned", viewport: { width: 1280, height: 800 } });

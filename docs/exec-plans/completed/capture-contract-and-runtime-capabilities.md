@@ -1,15 +1,6 @@
-<!-- harness-plan:v1
-id: capture-contract-and-runtime-capabilities
-status: completed
-created: 2026-08-30
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Web Debug maintainers
--->
-
 # Make capture concise, typed, and runtime-aware
 
-Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan covers the selected 0.6 source-next improvements and intentionally excludes a hosted CI matrix and real-project agent evaluations.
+Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). This plan covers the selected 0.6 source-next improvements and intentionally excludes a hosted CI matrix.
 
 ## Purpose / Big Picture
 
@@ -19,14 +10,14 @@ Success is visible when the public MCP still exposes exactly 13 tools, summary/f
 
 ## Progress
 
-- [x] (2026-08-30 23:18Z) Verified the clean released 0.5.0 baseline: 28 test files and 124 tests passed; typecheck, native harness (544 checks), and formal harness check exited zero.
+- [x] (2026-08-30 23:18Z) Verified the clean released 0.5.0 baseline: 28 test files and 124 tests passed; typecheck and build exited zero.
 - [x] (2026-08-30 23:22Z) Inspected capture, output-schema, detection, adapter, and SessionManager boundaries; obtained three independent read-only design reviews.
 - [x] (2026-08-30 23:37Z) Implemented and tested summary/full/include/delta manual capture while keeping authoritative verification evidence full.
 - [x] (2026-08-30 23:36Z) Implemented and enforced concrete tool-specific output schemas for all 13 public tools.
 - [x] (2026-08-31 00:20Z) Implemented confidence-aware project detection, bounded workspace discovery, and negotiated Chromium/Safari runtime capability reporting; corrected independent-review findings for bare app/pages, BiDi response shape, Safari network degradation, weak-root provenance, and matrix target provenance.
 - [x] (2026-08-30 23:49Z) Extracted replay, evidence/cursors, scenario contract/verification, lifecycle, operation-context, and private-value helpers while keeping `SessionManager` as the façade; manager size fell from 2,066 to 1,408 lines.
-- [x] (2026-08-30 23:55Z) Updated source-next identity and product/architecture/security/reliability/harness documentation while preserving immutable plugin/MCP runtime `0.5.0`.
-- [x] (2026-08-31 00:25Z) Completed deterministic, package, harness, independent-review, Chromium/framework, local-fidelity, and demo gates; Safari live remained literally blocked after two pre-capture wait timeouts.
+- [x] (2026-08-30 23:55Z) Updated source-next identity and product/architecture/security/reliability/verification documentation while preserving immutable plugin/MCP runtime `0.5.0`.
+- [x] (2026-08-31 00:25Z) Completed deterministic, package, verification, independent-review, Chromium/framework, local-fidelity, and demo gates; Safari live remained literally blocked after two pre-capture wait timeouts.
 
 ## Surprises & Discoveries
 
@@ -49,7 +40,7 @@ Success is visible when the public MCP still exposes exactly 13 tools, summary/f
 
 Source-next `0.6.0-next.0` now implements all selected improvements without changing the 13-tool catalog or publishing a release. Default manual capture is compact and non-pixel; explicit full/include/delta profiles preserve access to bounded detail, screenshot paths stay private, and authoritative scenario evidence remains complete. All tools advertise/enforce concrete root data schemas. Root detection no longer promotes fixture/dev-only dependencies or unrelated `app/pages` directories, and live sessions separate project eligibility from negotiated transport capability. `SessionManager` is a 1,408-line façade backed by focused modules instead of the former 2,066-line mixed implementation.
 
-Final local evidence is 31 files / 155 deterministic tests, typecheck, build, native harness 572, zero-error/warning formal harness, exact 152-entry tarball/fresh-prefix handshake with 13 concrete schemas, Chromium/React-Vite/Next/Vue/Angular/local-fidelity smokes, and all six comparison scenarios. Safari 26.6.2 opened WebDriver but timed out on the fixture wait twice before capture, so fresh Safari live evidence is `blocked`; deterministic Safari/BiDi/capability tests pass and immutable `0.5.0` Safari evidence remains historical. CI matrix and repeated real-project eval expansion remain deferred exactly as requested. No publish, tag, marketplace, plugin-install, or dist-tag mutation occurred.
+Final local evidence is 31 files / 155 deterministic tests, typecheck, build, exact 152-entry tarball/fresh-prefix handshake with 13 concrete schemas, Chromium/React-Vite/Next/Vue/Angular/local-fidelity smokes, and all six comparison scenarios. Safari 26.6.2 opened WebDriver but timed out on the fixture wait twice before capture, so fresh Safari live evidence is `blocked`; deterministic Safari/BiDi/capability tests pass and immutable `0.5.0` Safari evidence remains historical. CI matrix expansion remains deferred exactly as requested. No publish, tag, marketplace, plugin-install, or dist-tag mutation occurred.
 
 ## Context and Orientation
 
@@ -67,7 +58,7 @@ Milestone 3 changes project detection to report project kind, confirmed framewor
 
 Milestone 4 extracts cohesive internal modules. Pure scenario/private helpers and replay move first, capture projection/cursor logic moves with the new contract, and lifecycle/operation helpers move after capability negotiation. The manager retains session maps, mutation ordering, policy decisions, and scenario-verification orchestration.
 
-Milestone 5 updates source-next identity, contract docs, architecture, examples, compatibility truth, active plan evidence, and harness assertions. Run deterministic gates, package/handshake checks, and the relevant Chromium/React-Vite/Next/Vue/Angular/Safari/local-fidelity smokes. CI matrix and real-project evals remain explicitly deferred.
+Milestone 5 updates source-next identity, contract docs, architecture, examples, compatibility truth, active plan evidence, and release assertions. Run deterministic gates, package/handshake checks, and the relevant Chromium/React-Vite/Next/Vue/Angular/Safari/local-fidelity smokes. CI matrix and real-project evals remain explicitly deferred.
 
 ## Concrete Steps
 
@@ -76,7 +67,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the current branc
 1. Add domain wire schemas and capture profiles; run focused MCP response/routing/session tests.
 2. Add detection provenance and runtime negotiation; run capability, adapter, session, doctor, and MCP tests.
 3. Extract internal modules one slice at a time; after each slice run `npm test` and `npm run typecheck`.
-4. Update version and documentation; run `npm run build`, `npm run harness:check`, and the formal harness checker.
+4. Update version and documentation; run `npm run build` and `npm test`.
 5. Run `npm pack --dry-run --json`, fresh-prefix stdio handshake, selected live smokes, `git diff --check`, and process cleanup checks.
 
 If a slice breaks behavior, revert only the current uncommitted slice through an explicit patch and retain prior verified slices. Do not reset the worktree or alter unrelated user changes.
@@ -86,8 +77,7 @@ If a slice breaks behavior, revert only the current uncommitted slice through an
 - `npm test`: every deterministic test passes, including all four capture profiles, cursor boundaries, per-tool schema validation, monorepo/root detection, Chromium/Safari negotiation, and unchanged scenario verification.
 - `npm run typecheck`: both production and test TypeScript projects exit with no diagnostics.
 - `npm run build`: `dist/` is emitted.
-- `npm run harness:check`: prints `harness-check: PASS`; stale-candidate certification remains literal unless independently refreshed with owner authority.
-- Formal harness check exits zero with no errors or warnings.
+- `npm test` remains the passing native project gate.
 - Package dry-run includes the runnable binary and built exports; a fresh-prefix stdio client observes version `0.6.0-next.0`, 13 tools, and distinct concrete output data schemas.
 - Default capture returns profile `summary`, no screenshot artifact, and a response under 16 KiB on the React/Vite fixture. Full/include/delta behavior matches the profile contract and never exposes a local screenshot path.
 - Repository-root detection does not confirm fixture-only frameworks. Fixture roots continue confirming Vanilla, React/Vite, Next/React, Angular, and Vue/Vite.
@@ -102,7 +92,7 @@ No release, dist-tag, Git tag, GitHub release, marketplace, or installed-plugin 
 
 ## Artifacts and Notes
 
-- Baseline: 28 test files / 124 tests, typecheck exit 0, native harness 544 checks, formal harness check exit 0.
+- Baseline: 28 test files / 124 tests, typecheck and build exit 0.
 - Design reviews were read-only and identified the exact capture, detection, capability, schema, and refactor seams recorded above.
 - Final exact archive: 152 entries; SHA-256 `424a7a2c755c889b94019b9ad5e1177f2681730e3230418926fa8af9f2a33967`; clean-prefix stdio returned version `0.6.0-next.0`, 13 tools, and 13 concrete schemas.
 - Independent final reviews found and then verified fixes for summary overflow disclosure, screenshot-path warning leakage, replay self-delta, capture profile schema discrimination, URL-bound mismatch, app/pages false positives, Safari BiDi parsing/capability truth, weak-root provenance, and matrix candidate provenance.

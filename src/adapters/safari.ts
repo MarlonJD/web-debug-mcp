@@ -4,7 +4,8 @@ import { performance } from "node:perf_hooks";
 
 import type {
   ActionResult,
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
@@ -16,8 +17,9 @@ import type {
   OperationContext,
   LocatorProbeResult,
   LocatorProperty,
+  InteractiveElements,
 } from "../domain/types.js";
-import { MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
+import { CAPTURE_SURFACES, MAX_LOCATOR_CHARS, MAX_PROPERTIES_PER_PROBE, MAX_RESULT_BYTES } from "../domain/types.js";
 import { WebDebugError } from "../core/errors.js";
 import { boundItems, boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { SafariMcpClient, type SafariClient } from "./safari-client.js";
@@ -29,6 +31,12 @@ import type {
   SnapshotOptions,
 } from "./browser.js";
 import { safariRuntimeCapabilities } from "./runtime-capabilities.js";
+import {
+  normalizeInteractiveElement,
+  parseRawInteractiveElements,
+  safariInteractiveLocator,
+  interactiveElementsScript,
+} from "./interactive-elements.js";
 
 /** Safari 27 automation and Inspector evidence through its official local MCP server. */
 export class SafariAdapter implements BrowserAdapter {
@@ -117,11 +125,13 @@ export class SafariAdapter implements BrowserAdapter {
   browserVersion(): string | null { return this.browserVersionValue; }
   runtimeCapabilities() { return safariRuntimeCapabilities(this.client?.isConnected() === true && this.consoleReadAvailable, this.consoleDeliveryObserved); }
 
-  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+  async act(action: DirectBrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     assertContext(context);
     this.requireClient();
     await this.enforceOwnedTopLevelState(context);
     switch (action.kind) {
+      case "webmcp":
+        throw new WebDebugError("WEBMCP_UNAVAILABLE", "WebMCP is unavailable in the Safari MCP transport.");
       case "navigate":
         assertAllowedUrl(action.url, this.allowRemote);
         this.assertSameOrigin(action.url);
@@ -165,7 +175,7 @@ export class SafariAdapter implements BrowserAdapter {
     }
     const url = await this.enforceOwnedTopLevelState(context);
     const title = await this.readTitle(context);
-    return { kind: action.kind, url: safeUrl(url), title };
+    return { schemaVersion: 1, kind: action.kind, url: safeUrl(url), title };
   }
 
   async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {
@@ -203,7 +213,7 @@ export class SafariAdapter implements BrowserAdapter {
     return result;
   }
 
-  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+  private async waitForProbe(action: Extract<ReplayableBrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
     const timeout = boundedTimeout(action.timeoutMs);
     const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
     while (performance.now() <= deadline) {
@@ -276,15 +286,18 @@ export class SafariAdapter implements BrowserAdapter {
       }
     }
 
+    let networkAvailable = false;
     if (!options.checksOnly) {
-      try { await this.readNetwork(context); }
+      try { await this.readNetwork(context); networkAvailable = true; }
       catch (error) { warnings.push(`Safari Inspector network unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`); }
     }
-    if (!options.checksOnly && this.networkEntries.size === 0) {
+    if (!options.checksOnly && (this.performanceNetworkFallbackUsed || this.networkEntries.size === 0)) {
+      networkAvailable = false;
       try {
         const performanceEntries = await this.readPerformanceNetwork(context);
         for (const entry of performanceEntries) this.networkEntries.set(entry.requestId, entry);
-        if (performanceEntries.length > 0) this.performanceNetworkFallbackUsed = true;
+        this.performanceNetworkFallbackUsed = true;
+        networkAvailable = true;
       } catch (error) {
         warnings.push(`Safari network evidence unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
       }
@@ -292,6 +305,11 @@ export class SafariAdapter implements BrowserAdapter {
     if (this.performanceNetworkFallbackUsed) {
       warnings.push("Safari Inspector returned no network events; network evidence uses bounded Performance Resource Timing metadata.");
     }
+
+    const wantsInteractiveElements = !options.checksOnly && (options.surfaces ?? CAPTURE_SURFACES).includes("interactiveElements");
+    const interactiveElements = wantsInteractiveElements
+      ? await this.collectInteractiveElements(context, warnings)
+      : null;
 
     const consoleBound = boundItems(this.consoleEntries, 100);
     const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
@@ -313,6 +331,8 @@ export class SafariAdapter implements BrowserAdapter {
       next: null,
       vite: null,
       accessibility: null,
+      interactiveElements,
+      webmcp: null,
       warnings,
       observations: {
         url: { state: urlAvailable ? "pass" : "unavailable", freshness: urlAvailable ? "fresh" : "unknown", provenance: urlAvailable ? "browser" : "cached", observed: safeUrl(url) },
@@ -320,10 +340,66 @@ export class SafariAdapter implements BrowserAdapter {
         console: this.client?.isConnected() && this.consoleReadAvailable && this.consoleDeliveryObserved && !this.consoleTruncated && !consoleBound.truncated
           ? { state: "pass", freshness: "fresh", provenance: "safari-mcp" }
           : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari Inspector console delivery is unverified, incomplete, or disconnected; an empty buffer cannot prove no console errors." },
+        network: networkAvailable
+          ? { state: "pass", freshness: "fresh", provenance: this.performanceNetworkFallbackUsed ? "performance-resource-timing" : "safari-mcp" }
+          : networkBound.items.length > 0
+            ? { state: "pass", freshness: "stale", provenance: "cached", warning: "Safari network observation could not be refreshed." }
+            : { state: "unavailable", freshness: "unknown", provenance: "unknown", warning: "Safari network collection is unavailable." },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
     return snapshot;
+  }
+
+  private async collectInteractiveElements(context: OperationContext, warnings: string[]): Promise<InteractiveElements | null> {
+    try {
+      const raw = parseRawInteractiveElements(await this.executeSync<unknown>(interactiveElementsScript(), [], context));
+      if (!raw) {
+        warnings.push("Interactive element map unavailable: optional DOM discovery failed.");
+        return null;
+      }
+      const candidates = raw.elements.flatMap((candidate) => {
+        const locator = safariInteractiveLocator(candidate);
+        return locator?.kind === "css" ? [{ candidate, locator }] : [];
+      });
+      const selectors = candidates.map(({ locator }) => locator.value);
+      const values = selectors.length === 0
+        ? []
+        : await this.executeSync<Array<{ count?: unknown; visible?: unknown; enabled?: unknown; checked?: unknown }>>(
+          `return arguments[0].map((css) => {
+            const elements = Array.from(document.querySelectorAll(css));
+            const element = elements[0];
+            const style = element ? getComputedStyle(element) : null;
+            const disabled = Boolean(element && ((typeof element.disabled === "boolean" && element.disabled) || element.getAttribute("aria-disabled") === "true"));
+            return {
+              count: elements.length,
+              visible: Boolean(element && style && style.visibility !== "hidden" && style.display !== "none" && element.getClientRects().length),
+              enabled: Boolean(element && !disabled),
+              checked: Boolean(element && element.checked === true),
+            };
+          });`,
+          [selectors],
+          context,
+        );
+      const elements = candidates.flatMap(({ candidate, locator }, index) => {
+        const value = values[index];
+        if (!value) return [];
+        return [normalizeInteractiveElement(candidate, locator, {
+          count: typeof value.count === "number" ? value.count : 0,
+          visible: value.visible === true,
+          enabled: value.enabled === true,
+          checked: value.checked === true,
+        })];
+      });
+      const detailWarnings = ["Safari interactive element locators are CSS-only and derived from stable id/data-testid attributes."];
+      const omitted = raw.elements.length - candidates.length;
+      if (omitted > 0) detailWarnings.push(`${omitted} interactive candidates were omitted because Safari could not derive a bounded CSS locator.`);
+      if (raw.truncated) detailWarnings.push("Interactive element candidates were truncated to the bounded capture limit.");
+      return { elements, truncated: raw.truncated, warnings: detailWarnings };
+    } catch (error) {
+      warnings.push(`Interactive element map unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      return null;
+    }
   }
 
   async setBreakpoint(_input: { sourceUrl: string; line: number; column?: number }, _context: OperationContext = {}): Promise<DebuggerBreakpoint> {
@@ -473,7 +549,7 @@ export class SafariAdapter implements BrowserAdapter {
     if (result.successful !== 1) throw new WebDebugError("SAFARI_ACTION_FAILED", "Safari did not complete the requested fill.");
   }
 
-  private async press(css: string, key: Extract<BrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
+  private async press(css: string, key: Extract<ReplayableBrowserAction, { kind: "press" }>["key"], context: OperationContext = {}): Promise<void> {
     await this.executeSync("document.querySelector(arguments[0])?.focus({ preventScroll: true }); return true;", [css], context);
     await this.enforceOwnedTopLevelState(context);
     const node = await this.nativeFocusedNode(css, context);
@@ -630,6 +706,7 @@ export class SafariAdapter implements BrowserAdapter {
 
   private async target(context: OperationContext = {}): Promise<BrowserTarget> {
     return {
+      schemaVersion: 1,
       browser: "safari",
       remote: !isLoopback(new URL(this.baseOrigin!).hostname),
       url: safeUrl(await this.currentUrl(context)),

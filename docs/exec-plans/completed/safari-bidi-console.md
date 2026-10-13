@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: safari-bidi-console
-status: completed
-created: 2026-10-13
-updated: 2026-10-13
-completed: 2026-10-13
-owner: Platform Engineering
--->
-
 # Restore Safari console delivery through native MCP
 
 ## Purpose / Big Picture

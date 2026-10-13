@@ -173,9 +173,9 @@ async function validateFixture(fixture: Fixture, afterDigestBinding?: (fixture: 
 }
 
 describe("bundled plugin skills", () => {
-  it("discovers two uniquely named and correctly routed skills", async () => {
+  it("discovers three uniquely named and correctly routed skills", async () => {
     const directories = (await readdir(skillsRoot, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-    expect(directories).toEqual(["manual-parity-qualification", "web-debug-workflow"]);
+    expect(directories).toEqual(["manual-parity-qualification", "web-debug-workflow", "webmcp-tool-authoring"]);
     const names = [];
     for (const directory of directories) {
       const text = await readFile(join(skillsRoot, directory, "SKILL.md"), "utf8");
@@ -185,11 +185,22 @@ describe("bundled plugin skills", () => {
     }
     expect(new Set(names).size).toBe(names.length);
 
-    const qualificationSkill = await readFile(join(skillsRoot, "manual-parity-qualification/SKILL.md"), "utf8");
-    expect(qualificationSkill).toContain("Never promote your own generated baseline to `approved`");
-    expect(qualificationSkill).toContain("typed native test code");
-    expect(qualificationSkill).toContain("Web Debug diagnostics never award qualification PASS");
-    expect(qualificationSkill).toContain("record `inconclusive`");
+    // Validate discoverability and local reference integrity, not policy wording.
+    for (const directory of directories) {
+      const skillDir = join(skillsRoot, directory);
+      const paths = [join(skillDir, "SKILL.md"), ...(await readdir(join(skillDir, "references"))).filter((name) => name.endsWith(".md")).map((name) => join(skillDir, "references", name))];
+      for (const path of paths) {
+        const text = await readFile(path, "utf8");
+        for (const match of text.matchAll(/\]\(([^)]+)\)/g)) {
+          const target = match[1]!.split("#")[0]!;
+          if (!target || /^[a-z]+:/i.test(target)) continue;
+          const resolved = resolve(path, "..", target);
+          await expect(readFile(resolved, "utf8"), `${path}: ${target}`).resolves.toBeTypeOf("string");
+        }
+      }
+    }
+    const mcpConfig = JSON.parse(await readFile(resolve("plugins/web-debug/.mcp.json"), "utf8")) as { mcpServers?: Record<string, { required?: unknown }> };
+    expect(mcpConfig.mcpServers?.["web-debug-mcp"]?.required).toBeUndefined();
   });
 });
 

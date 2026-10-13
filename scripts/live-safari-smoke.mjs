@@ -82,8 +82,14 @@ try {
     throw new Error("Safari native evidence capture returned no evidence.");
   }
   const evidence = verificationCapture.details;
+  const interactive = evidence.interactiveElements?.elements ?? [];
+  const submit = interactive.find((element) => element.name === "Submit payment");
+  const amount = interactive.find((element) => element.name === "Amount");
+  const disabled = interactive.find((element) => element.name === "Disabled action");
+  const remember = interactive.find((element) => element.name === "Remember this device");
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
+    networkFreshness: verificationCapture.collection.network === "fresh" && verificationCapture.summary.observations?.network?.freshness === "fresh",
     flowCaptured: verificationCapture.redaction.applied === true,
     safariTarget: session.target?.browser === "safari",
     runtimeNegotiated: session.runtimeCapabilities?.transport === "safari-mcp" && session.runtimeCapabilities.javascriptDebugger.state === "unsupported" && session.runtimeCapabilities.locators.semantic.state === "unsupported",
@@ -94,7 +100,7 @@ try {
     networkEvidence: evidence.network.length > 0,
     networkSourceDisclosed: !usesPerformanceNetwork || verificationCapture.warnings.some((warning) => warning.includes("Performance Resource Timing")),
     nativeConsoleEvidence: evidence.console.some((entry) => entry.text.includes("Safari native smoke event after reset")),
-    applicationErrorEvidence: errorSnapshot.console.some(entry => entry.level === "error" && entry.text.includes("Payment validation failed") && entry.url?.endsWith("/app.js") && entry.line === 8),
+    applicationErrorEvidence: errorSnapshot.console.some(entry => entry.level === "error" && entry.text.includes("Payment validation failed") && entry.url?.endsWith("/app.js") && entry.line === 18),
     noConsoleErrorsRejectsRealError: errorCheck.state === "fail",
     observerReset: !evidence.console.some(entry => entry.text.includes("Payment validation failed")),
     nativeProvenance: verificationCapture.summary.observations?.console.provenance === "safari-mcp",
@@ -103,6 +109,10 @@ try {
       ? verificationCapture.summary.observations?.console.state === "pass"
       : verificationCapture.summary.observations?.console.state === "unavailable",
     debuggerUnavailableIsExplicit: evidence.debugger.paused === false && verificationCapture.warnings.some((warning) => warning.includes("JavaScript debugger")),
+    interactiveMap: Boolean(submit?.uniqueAtCapture && submit.locator.kind === "css" && submit.locator.value === "#submit"),
+    interactiveGeometry: Boolean((submit?.bounds?.width ?? 0) > 0 && (submit?.bounds?.height ?? 0) > 0),
+    interactiveInputValueNotExposed: !JSON.stringify(amount ?? {}).includes("249.90") && amount?.text === "",
+    interactiveState: disabled?.enabled === false && remember?.checked === true && !interactive.some((element) => element.name === "Hidden action") && !interactive.some((element) => element.role === "status"),
   };
   const passed = Object.values(assertions).every(Boolean);
   const failures = Object.entries(assertions).filter(([, value]) => !value).map(([name]) => name);

@@ -18,12 +18,13 @@ Build a reviewable qualification system around the target repository's native te
 
 1. Read the most local repository instructions and inspect the existing test stack before proposing a layout or command.
 2. Gather authoritative sources: approved manual cases, product requirements, role/permission matrices, state-transition rules, API contracts, existing tests, and relevant incident or support records.
-3. If approved manual cases do not exist, derive source-linked requirements and cases as `candidate`. Never promote your own generated baseline to `approved`; only an explicitly identified product/domain review can do that.
+3. If approved manual cases do not exist, complete source-linked requirements, case mappings, and requested test preparation as `candidate` within the authorized task. Existing authorization from earlier turns remains valid. Never promote your own generated baseline to `approved`; only an explicitly identified product/domain review can do that.
 4. Record conflicts and missing expected behavior instead of inferring it from the current UI. A rendered implementation is evidence of current behavior, not automatically the requirement.
 
 ## Design qualification coverage
 
 - Separate a short ordered golden journey from atomic branches. The golden journey is witness/smoke evidence; atomic authorization, transition, privacy, and no-drift branches are the principal correctness evidence.
+- When a browser flow is unfamiliar, use Web Debug's selected `interactiveElements` surface as a bounded discovery aid: inspect visible roles/names, live locator uniqueness, enabled/checked state, and geometry, then write the final selectors and assertions in typed native test code. Discovery output is not an approved requirement, an assertion oracle, or executable test metadata.
 - Give every source, requirement, manual case, actor, native test, and campaign a stable unique ID.
 - Give every requirement source provenance, one canonical owning manual case, required evidence facets, review state, and mutation policy.
 - Keep coverage, execution, and stability independent:
@@ -32,15 +33,24 @@ Build a reviewable qualification system around the target repository's native te
   - stability: `clean`, `flaky`, or `unknown`.
 - Classify execution as `ui-required`, `api-only`, `contract-only`, or `manual-only`. API-only evidence cannot claim UI parity.
 
+## WebMCP and hybrid cases
+
+- A WebMCP-only contract case is `contract-only`; a journey that combines a WebMCP action with visible UI is `ui-required` and must include the `visible-ui` facet.
+- Every attempted WebMCP mutation also requires an independent `api-readback`, `domain-state`, `history`, `audit`, or `outbox` facet. A tool's returned text is output, never the state oracle.
+- Treat `readOnlyHint` as untrusted metadata. Direct WebMCP calls require explicit side-effect authorization, run once, are never retried into PASS, and are not replayable scenario actions. Timeout, rejection, origin drift, or disagreement is failed or inconclusive according to the native runner.
+- Chrome may call `document.modelContext` directly in a target-owned native test. Safari without WebMCP uses the target repository's native Safari runner for the same visible journey. Web Debug/Safari MCP artifacts are diagnostic only and cannot award qualification PASS.
+
 Before creating or validating qualification artifacts, read [references/artifact-contract.md](references/artifact-contract.md). Use its default layout only when the target repository has no stronger convention.
 
 ## Implement with native runners
 
-1. Implement only approved requirements as gating native tests. Candidate test skeletons may be created when the user asks, but keep them non-gating and visibly candidate-only; do not create an official qualification run record until the baseline is approved.
+1. Implement only approved requirements as gating native tests. A request to prepare qualification coverage authorizes non-gating candidate test skeletons; keep them visibly candidate-only and complete that preparation before requesting product review; do not create an official qualification run record until the baseline is approved.
 2. Use isolated actor contexts, deterministic seed/reset evidence, unique execution namespaces, and the application's supported setup APIs or fixtures. Do not force state with browser storage or direct database mutation unless the repository's explicit test contract owns that setup path.
 3. After a mutable UI action, use an authenticated API/domain read-back. For high-risk transitions, add independent history, audit, outbox, privacy, or read-only domain evidence when available.
 4. Never blindly retry an ambiguous mutable action. Check its idempotency key, correlation/receipt, expected revision, or authoritative final state. Confirmed mutation evidence must name the same execution namespace and a digest-bound receipt/object correlation. Without evidence tying the observed state to the attempted action, record `inconclusive` and start a fresh execution namespace for any later rerun.
 5. Keep screenshots, traces, logs, and Web Debug captures as artifact references. They support diagnosis and review but are not qualifying evidence facets by themselves.
+
+For the Marionette-style explore-to-test handoff, keep the boundary explicit: `interactiveElements` helps an agent find and exercise the current UI, `web_repro_record` can preserve a session-bound diagnostic reproduction, and only reviewed repository-native tests become durable CI coverage. A returned `uniqueAtCapture` flag describes one capture moment; it does not make a selector stable across releases.
 
 ## Validate and run
 
@@ -56,7 +66,7 @@ node <skill-dir>/scripts/validate-manual-parity.mjs \
 
 All paths must be relative to the explicit project root. The validator is read-only and proves structural consistency, not reviewer identity, artifact authenticity, or product correctness. The native test report and reviewed domain evidence remain authoritative.
 
-Run the target repository's exact native commands. If a browser failure remains unclear, collect bounded Web Debug diagnostics, fix the product or test as authorized, rerun the native test, and keep the native result as the verdict.
+Run the target repository's exact native commands at the requested scope. Once the relevant checks pass, repeat or broaden them only for a change, failure, unresolved evidence, or explicit requirement. Keep same-session browser operations sequential; independent source review or isolated actor runs may proceed concurrently when the native runner permits it. If a browser failure remains unclear, collect bounded Web Debug diagnostics, fix the product or test as authorized, rerun the native test, and keep the native result as the verdict.
 
 ## Report truthfully
 

@@ -1,20 +1,17 @@
 {
   "schemaVersion": 2,
-  "scope": "0.6.0-release-local",
-  "observedAt": "2026-08-31T03:41:00+03:00",
-  "sourceVersion": "0.6.0",
+  "scope": "0.12.0-release",
+  "observedAt": "2026-10-13T04:31:03.945872+00:00",
+  "sourceVersion": "0.12.0",
   "releaseBaseline": {
-    "version": "0.5.0",
-    "commit": "4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b",
-    "archiveShasum": "e5bc37a37ad6f8efb35b79944ce6548e5aaa1068"
+    "version": "0.11.0",
+    "commit": "601ff637cd8bd1e2fd0af25d526c25386d285e8c"
   },
   "runtime": {
-    "node": "24.18.0",
-    "node20": "20.20.2",
-    "node22": "22.23.2",
-    "mcpSdk": "1.30.0",
-    "chromium": "151.0.7922.174",
-    "safari": "26.6.2",
+    "node": "24.19.0",
+    "mcpSdk": "1.32.1",
+    "chromium": "153.0.8010.36",
+    "safari": "27.0 (22625.1.29.11.27)",
     "react": "19.2.8",
     "vite": "7.3.6",
     "next": "16.3.3",
@@ -25,26 +22,101 @@
     "typescript": "5.9.2"
   },
   "checks": [
-    { "command": "npm test", "status": "passed", "signal": "155/155 deterministic tests including capture profiles/cursors, tool-specific schemas, detection/runtime negotiation, extracted replay/scenario modules, manual-parity validation, and prior security/lifecycle contracts" },
-    { "command": "final exact archive handshake under Node 24.18.0", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas from a clean prefix" },
-    { "command": "final 0.6.0 archive handshake under Node 20.20.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
-    { "command": "final 0.6.0 archive handshake under Node 22.23.2", "status": "passed", "signal": "serverInfo 0.6.0, 13 tools, and 13 concrete data schemas" },
-    { "command": "npm run smoke:live", "status": "passed", "signal": "Chromium debugger, screenshot, local policy, and side-effect rejection" },
-    { "command": "npm run smoke:react-vite", "status": "passed", "signal": "React state/profiler, Vite transform, replay, breakpoint, and screenshot" },
-    { "command": "npm run smoke:next", "status": "passed", "signal": "Next metadata, route compilation, Server Action linkage, traces, logs, DOM, and console" },
-    { "command": "npm run smoke:vue-vite", "status": "passed", "signal": "Vue 3 component/props/state/update evidence plus Vite module graph and HMR transform diff" },
-    { "command": "npm run smoke:angular", "status": "passed", "signal": "Angular 21 development DOM-host component/state/change evidence with no Vite provenance claim" },
-    { "command": "npm run smoke:safari", "status": "blocked", "signal": "Safari 26.6.2 WebDriver opened, but the fixture wait condition exceeded 5 seconds on two isolated retries before capture; deterministic Safari capability/BiDi contracts pass and immutable 0.5.0 live evidence remains historical" },
-    { "command": "npm run smoke:local-fidelity", "status": "passed", "signal": "TLS/auth, redirect and popup zero-leak policy, service-worker guard, accessibility, checkpoints, and matrix verification" },
-    { "command": "npm run demo:compare -- --runs=1", "status": "passed", "signal": "all six fixture scenarios reproduced/captured or verified with schema-3 project/runtime-aware fingerprints" },
-    { "command": "public npm 0.6.0 fresh-cache handshake", "status": "passed", "signal": "empty prefix/cache installed 96 packages and returned 0.6.0, 13 tools, and 13 concrete data schemas" },
-    { "command": "Codex plugin update", "status": "passed", "signal": "one enabled 0.6.0+codex.20260831002920 plugin with two skills and bundled web-debug-mcp@0.6.0" }
+    {
+      "command": "npm test",
+      "status": "passed",
+      "signal": "228 tests across 37 files; source/native Safari/upstream 0.11 contracts and pause/redaction/cleanup regressions passed."
+    },
+    {
+      "command": "npm run typecheck",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run build",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm audit --omit=dev",
+      "status": "passed",
+      "signal": "Production dependency audit: 0 vulnerabilities."
+    },
+    {
+      "command": "npm run smoke:live",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:source-correlation",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:webmcp",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:react-vite",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:next",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:safari",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:local-fidelity",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:vue-vite",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run smoke:angular",
+      "status": "passed",
+      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+    },
+    {
+      "command": "npm run demo:compare -- --runs=1",
+      "status": "passed",
+      "signal": "Six scenarios completed; complex/async/responsive repair verification passed."
+    },
+    {
+      "command": "exact release archive handshake",
+      "status": "not-run",
+      "signal": "Final integrated release verification pending."
+    },
+    {
+      "command": "public npm fresh-cache handshake",
+      "status": "not-run",
+      "signal": "Final integrated release verification pending."
+    },
+    {
+      "command": "Codex plugin update",
+      "status": "not-run",
+      "signal": "Final integrated release verification pending."
+    },
+    {
+      "command": "plugin skill validation",
+      "status": "passed",
+      "signal": "All three skill validators and repository plugin/Antigravity/release-identity contracts passed."
+    }
   ],
   "limits": [
-    "Angular 21.2.22 and Vue 3.5.42 are verified locally only for the exact development fixtures and Chromium runtime recorded here.",
-    "Node 20.20.2, 22.23.2, and 24.18.0 all passed exact final 0.6.0 archive handshakes; broader deterministic/live browser jobs used Node 24.18.0.",
-    "Safari 26.6.2 final live rerun is blocked at the pre-capture fixture wait after two retries; deterministic adapter/runtime negotiation passes, but this run does not claim fresh Safari capture evidence.",
-    "Angular 22/TypeScript 6, Vue 2, Nuxt, Angular SSR/hydration, Safari framework enrichment, approved external CDP, provider authority, and production remain candidate-only or unavailable.",
-    "Final 0.6.0 release evidence does not refresh HMAC certification or establish provider/production authority."
+    "Safari 27+ native MCP is required; the former WebDriver endpoint and experimental BiDi route are removed.",
+    "Safari remains visible/non-isolated, has no Chromium debugger/framework parity, and discloses Performance Resource Timing when native network records are absent.",
+    "Direct WebMCP remains one-shot and non-replayable; diagnostic associations do not establish causality or fix acceptance.",
+    "Provider/production authority, external CDP and live Antigravity remain unverified."
   ]
 }

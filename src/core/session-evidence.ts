@@ -2,22 +2,28 @@ import { createHash, randomUUID } from "node:crypto";
 
 import type {
   CaptureDetails,
+  CaptureCollection,
+  CaptureCollectionState,
   CaptureSurface,
   CaptureSummary,
   CaptureView,
-  BrowserAction,
+  ReplayableBrowserAction,
+  BrowserLocator,
   BrowserSnapshot,
   BrowserRuntimeCapabilities,
   BrowserObservations,
   EvidenceBundle,
+  InteractiveElement,
   IssueCaptureResult,
 } from "../domain/types.js";
-import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES } from "../domain/types.js";
+import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES, MAX_INTERACTIVE_ELEMENTS, MAX_INTERACTIVE_TEXT_CHARS, MAX_WEBMCP_DETAIL_BYTES } from "../domain/types.js";
 import { WebDebugError } from "./errors.js";
 import { boundText } from "./redaction.js";
-import { actionSecrets, cloneJson, replaceSecrets } from "./private-values.js";
+import { actionSecrets, cloneJson, replaceSecrets, scrubReplayFrame } from "./private-values.js";
+import { cloneSummary } from "./session-lifecycle.js";
 import { summarizeBehavior, compareBehavior } from "./behavior-difference.js";
 import type { BehaviorSummary } from "../domain/types.js";
+import { scrubDiagnosticValue } from "./diagnostic-redaction.js";
 
 const MAX_CAPTURE_CURSORS = 8;
 const MAX_SUMMARY_CAPTURE_BYTES = 16 * 1024;
@@ -26,7 +32,7 @@ const MAX_PARTIAL_CAPTURE_BYTES = 64 * 1024;
 export interface CaptureCursorState {
   cursor: string;
   generation: number;
-  digests: Record<CaptureSurface, string>;
+  digests: Partial<Record<CaptureSurface, string>>;
   behavior: BehaviorSummary;
 }
 
@@ -82,12 +88,14 @@ export function projectIssueCapture(input: {
       ? "suppressed"
       : "unavailable";
   const surfaces = captureSurfaces(evidence, screenshotStatus);
-  const digests = surfaceDigests(surfaces, screenshotRequested);
+  const collection = captureCollection(evidence, view, screenshotStatus);
+  const digests = surfaceDigests(surfaces, collection, screenshotRequested);
   const cursor = randomUUID();
   const selected = selectedSurfaces(view);
-  const summary = captureSummary(evidence);
+  const summary = captureSummary(evidence, collection);
   const common: IssueCaptureResult = {
-    schemaVersion: 4,
+    schemaVersion: 6,
+    collection,
     profile: view.profile,
     capturedAt: evidence.capturedAt,
     cursor,
@@ -96,6 +104,7 @@ export function projectIssueCapture(input: {
       url: evidence.session.url,
       status: evidence.session.status,
       target: evidence.session.target ? {
+        schemaVersion: evidence.session.target.schemaVersion,
         browser: evidence.session.target.browser,
         remote: evidence.session.target.remote,
         viewport: evidence.session.target.viewport,
@@ -164,7 +173,7 @@ function normalizeSurfaces(surfaces: CaptureSurface[], requireOne: boolean): Cap
   return CAPTURE_SURFACES.filter((surface) => unique.includes(surface));
 }
 
-function selectedSurfaces(view: CaptureView): CaptureSurface[] {
+export function selectedSurfaces(view: CaptureView): CaptureSurface[] {
   if (view.profile === "summary") return [];
   if (view.profile === "full") return [...CAPTURE_SURFACES];
   if (view.profile === "include") return [...view.surfaces];
@@ -185,8 +194,10 @@ function captureSurfaces(evidence: EvidenceBundle, screenshotStatus: NonNullable
     next: evidence.browser.next,
     vite: evidence.browser.vite,
     accessibility: evidence.browser.accessibility ?? null,
+    interactiveElements: evidence.browser.interactiveElements ?? null,
     replay: evidence.replay,
     screenshot: { status: screenshotStatus },
+    webmcp: evidence.browser.webmcp ?? null,
   };
 }
 
@@ -194,20 +205,55 @@ function pickSurfaces(all: Required<CaptureDetails>, selected: CaptureSurface[])
   return Object.fromEntries(selected.map((surface) => [surface, all[surface]])) as CaptureDetails;
 }
 
-function surfaceDigests(all: Required<CaptureDetails>, screenshotRequested: boolean): Record<CaptureSurface, string> {
-  return Object.fromEntries(CAPTURE_SURFACES.map((surface) => {
-    if (surface === "screenshot" && screenshotRequested && all.screenshot.status === "captured") return [surface, randomUUID()];
-    return [surface, createHash("sha256").update(JSON.stringify(all[surface])).digest("hex")];
-  })) as Record<CaptureSurface, string>;
+function captureCollection(evidence: EvidenceBundle, view: CaptureView, screenshotStatus: "captured" | "suppressed" | "unavailable"): CaptureCollection {
+  const selected = new Set(selectedSurfaces(view));
+  const browser = evidence.browser;
+  const runtime = evidence.session.runtimeCapabilities;
+  const state = (surface: CaptureSurface): CaptureCollectionState => {
+    if (surface === "dom" || surface === "console" || surface === "network") {
+      if (surface === "network" && (!runtime || runtime.network.state === "unsupported")) return "unavailable";
+      const observation = browser.observations?.[surface];
+      return !observation || observation.state === "unavailable" || observation.freshness === "unknown" ? "unavailable" : observation.freshness === "stale" ? "stale" : "fresh";
+    }
+    if (surface === "debugger") return !runtime || runtime.javascriptDebugger.state === "unsupported" ? "unavailable" : "fresh";
+    if (surface === "replay") return "fresh";
+    if (surface === "screenshot") return !captureRequestsScreenshot(view) ? "not-collected" : screenshotStatus === "captured" ? "fresh" : screenshotStatus;
+    if (["react", "angular", "vue", "next", "vite"].includes(surface)) {
+      if (!evidence.project.projectCapabilities[surface as "react" | "angular" | "vue" | "next" | "vite"]) return "not-detected";
+      if (["react", "angular", "vue"].includes(surface) && runtime?.pageRuntimeEnrichment.state === "unsupported") return "unavailable";
+    }
+    if (surface === "accessibility" && runtime?.accessibility.state === "unsupported") return "unavailable";
+    if (surface === "interactiveElements") {
+      if (!selected.has(surface)) return "not-collected";
+      return browser.interactiveElements ? "fresh" : "unavailable";
+    }
+    if (surface === "webmcp" && runtime?.webmcp.state === "unsupported") return "unavailable";
+    if (!selected.has(surface)) return "not-collected";
+    const value = browser[surface as "react" | "angular" | "vue" | "next" | "vite" | "accessibility" | "webmcp"];
+    if (!value) return "unavailable";
+    if (["react", "angular", "vue"].includes(surface) && browser.debugger.paused) return "stale";
+    return "fresh";
+  };
+  return Object.fromEntries(CAPTURE_SURFACES.map((surface) => [surface, state(surface)])) as CaptureCollection;
 }
 
-function captureSummary(evidence: EvidenceBundle): CaptureSummary {
+function surfaceDigests(all: Required<CaptureDetails>, collection: CaptureCollection, screenshotRequested: boolean): Partial<Record<CaptureSurface, string>> {
+  return Object.fromEntries(CAPTURE_SURFACES.filter((surface) => collection[surface] !== "not-collected").map((surface) => {
+    if (surface === "screenshot" && screenshotRequested && all.screenshot.status === "captured") return [surface, randomUUID()];
+    return [surface, createHash("sha256").update(JSON.stringify([collection[surface], all[surface]])).digest("hex")];
+  }));
+}
+
+function captureSummary(evidence: EvidenceBundle, collection: CaptureCollection): CaptureSummary {
   const browser = evidence.browser;
   const errors = browser.console.filter((entry) => entry.level === "error" || entry.level === "pageerror");
   const consoleWarnings = browser.console.filter((entry) => entry.level === "warning");
   const failures = browser.network.filter((entry) => entry.ok === false || entry.failure !== undefined || (entry.status !== null && entry.status >= 400));
   const pending = browser.network.filter((entry) => entry.status === null && entry.failure === undefined);
-  const runtimeState = (enabled: boolean, value: unknown) => !enabled ? "not-detected" as const : value ? "present" as const : "unavailable" as const;
+  const runtimeState = (surface: "react" | "angular" | "vue" | "next" | "vite" | "accessibility") => {
+    const state = collection[surface];
+    return state === "fresh" ? "present" as const : state === "suppressed" ? "unavailable" as const : state;
+  };
   const replayFrames = evidence.replay.frames;
   return {
     title: boundText(browser.title, 300),
@@ -241,22 +287,25 @@ function captureSummary(evidence: EvidenceBundle): CaptureSummary {
       breakpoints: browser.debugger.breakpoints.length,
     },
     runtimes: {
-      react: runtimeState(evidence.project.projectCapabilities.react, browser.react),
-      angular: runtimeState(evidence.project.projectCapabilities.angular, browser.angular),
-      vue: runtimeState(evidence.project.projectCapabilities.vue, browser.vue),
-      next: runtimeState(evidence.project.projectCapabilities.next, browser.next),
-      vite: runtimeState(evidence.project.projectCapabilities.vite, browser.vite),
-      accessibility: evidence.session.runtimeCapabilities?.accessibility.state === "unsupported"
-        ? "unavailable"
-        : browser.accessibility
-          ? "present"
-          : "unavailable",
+      react: runtimeState("react"),
+      angular: runtimeState("angular"),
+      vue: runtimeState("vue"),
+      next: runtimeState("next"),
+      vite: runtimeState("vite"),
+      accessibility: runtimeState("accessibility"),
     },
     replay: {
       frames: replayFrames.length,
       truncated: evidence.replay.truncated,
       oldestIndex: replayFrames[0]?.index ?? null,
       newestIndex: replayFrames.at(-1)?.index ?? null,
+      restorable: evidence.replay.restorable,
+      restoreBlockedReason: evidence.replay.restoreBlockedReason,
+    },
+    webmcp: {
+      state: evidence.session.runtimeCapabilities?.webmcp.state ?? "unsupported",
+      callableTools: collection.webmcp === "fresh" ? browser.webmcp?.tools.length ?? 0 : null,
+      truncated: browser.webmcp?.truncated ?? false,
     },
     observations: compactObservations(browser.observations),
   };
@@ -271,6 +320,7 @@ function captureWarnings(evidence: EvidenceBundle): string[] {
     ...(evidence.browser.next?.warnings ?? []),
     ...(evidence.browser.vite?.warnings ?? []),
     ...(evidence.browser.accessibility?.warnings ?? []),
+    ...(evidence.browser.interactiveElements?.warnings ?? []),
     ...evidence.session.warnings,
   ].map((warning) => boundText(warning, 300)))].slice(0, 6);
 }
@@ -295,6 +345,7 @@ function compactRuntimeCapabilities(runtime: BrowserRuntimeCapabilities | null):
     compact.authSeeding,
     compact.sourceMapping,
     compact.executionCoverage,
+    compact.webmcp,
   ]) delete capability.reason;
   return compact;
 }
@@ -354,6 +405,13 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     bounded.browser.accessibility.nodes = bounded.browser.accessibility.nodes.slice(0, 128);
     bounded.browser.accessibility.suggestions = bounded.browser.accessibility.suggestions.slice(0, 32);
   }
+  if (bounded.browser.interactiveElements) {
+    bounded.browser.interactiveElements.elements = bounded.browser.interactiveElements.elements
+      .slice(0, MAX_INTERACTIVE_ELEMENTS)
+      .map((element) => boundInteractiveElement(element));
+    bounded.browser.interactiveElements.warnings = bounded.browser.interactiveElements.warnings.slice(0, 20).map((warning) => boundText(warning, 500));
+  }
+  if (bounded.browser.webmcp) pruneWebMcpDetail(bounded.browser.webmcp);
   bounded.replay.frames = bounded.replay.frames.slice(-8);
   if (serializedBytes(bounded) > MAX_EVIDENCE_BUNDLE_BYTES) {
     optionalTruncated = true;
@@ -365,6 +423,7 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
     bounded.browser.vue = null;
     bounded.browser.vite = null;
     bounded.browser.accessibility = null;
+    bounded.browser.interactiveElements = null;
     if (bounded.browser.next) {
       bounded.browser.next.projectMetadata = null;
       bounded.browser.next.pageMetadata = null;
@@ -392,10 +451,19 @@ export function boundEvidence(evidence: EvidenceBundle): EvidenceBundle {
   return bounded;
 }
 
-export function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]): EvidenceBundle {
+export function scrubEvidence(evidence: EvidenceBundle, actions: ReplayableBrowserAction[]): EvidenceBundle {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return evidence;
   const sanitized = replaceSecrets(evidence, secrets) as EvidenceBundle;
+  // Session identities and the capture clock are host-owned metadata, not page
+  // echoes. Redacting a short numeric input inside their strings breaks the wire
+  // contract; keep the existing field-aware summary redaction for page text.
+  sanitized.session = cloneSummary(evidence.session, secrets);
+  sanitized.capturedAt = evidence.capturedAt;
+  sanitized.replay.frames = evidence.replay.frames.map((frame) => scrubReplayFrame(frame, secrets));
+  preserveObservationMetadata(sanitized.browser, evidence.browser);
+  preserveDiagnosticMetadata(sanitized.browser, evidence.browser, secrets);
+  if (sanitized.browser.webmcp && evidence.browser.webmcp) sanitized.browser.webmcp.observedAt = evidence.browser.webmcp.observedAt;
   const rawScreenshotPath = evidence.browser.screenshotPath;
   const safeScreenshotPath = sanitized.browser.screenshotPath;
   if (rawScreenshotPath && safeScreenshotPath && rawScreenshotPath !== safeScreenshotPath) {
@@ -405,9 +473,39 @@ export function scrubEvidence(evidence: EvidenceBundle, actions: BrowserAction[]
   return sanitized;
 }
 
-export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: BrowserAction[]): BrowserSnapshot {
+export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: ReplayableBrowserAction[]): BrowserSnapshot {
   const secrets = actionSecrets(actions);
-  return secrets.length === 0 ? browser : replaceSecrets(browser, secrets) as BrowserSnapshot;
+  if (secrets.length === 0) return browser;
+  const sanitized = replaceSecrets(browser, secrets) as BrowserSnapshot;
+  preserveObservationMetadata(sanitized, browser);
+  preserveDiagnosticMetadata(sanitized, browser, secrets);
+  if (sanitized.webmcp && browser.webmcp) sanitized.webmcp.observedAt = browser.webmcp.observedAt;
+  return sanitized;
+}
+
+function preserveDiagnosticMetadata(sanitized: BrowserSnapshot, original: BrowserSnapshot, secrets: string[]): void {
+  if (original.sources) sanitized.sources = scrubDiagnosticValue(original.sources, secrets);
+  if (original.execution) sanitized.execution = scrubDiagnosticValue(original.execution, secrets);
+  original.console.forEach((entry, index) => {
+    if (entry.source && sanitized.console[index]) sanitized.console[index]!.source = scrubDiagnosticValue(entry.source, secrets);
+  });
+  original.debugger.callFrames.forEach((frame, index) => {
+    if (frame.source && sanitized.debugger.callFrames[index]) sanitized.debugger.callFrames[index]!.source = scrubDiagnosticValue(frame.source, secrets);
+  });
+}
+
+function preserveObservationMetadata(sanitized: BrowserSnapshot, original: BrowserSnapshot): void {
+  // Adapter-owned enums describe evidence quality. A private input such as
+  // "stale" must not change that quality; observed/warning remain redacted.
+  for (const surface of ["url", "dom", "console", "network"] as const) {
+    const source = original.observations?.[surface];
+    const target = sanitized.observations?.[surface];
+    if (source && target) {
+      target.state = source.state;
+      target.freshness = source.freshness;
+      target.provenance = source.provenance;
+    }
+  }
 }
 
 export function pruneEvidence(evidence: EvidenceBundle): EvidenceBundle {
@@ -418,6 +516,7 @@ export function pruneEvidence(evidence: EvidenceBundle): EvidenceBundle {
   pruned.browser.angular = null;
   pruned.browser.vue = null;
   pruned.browser.vite = null;
+  pruned.browser.interactiveElements = null;
   if (pruned.browser.next) {
     pruned.browser.next.requestTraces = pruned.browser.next.requestTraces.slice(-2).map((trace) => ({ ...trace, spans: trace.spans.slice(0, 5), fetches: trace.fetches.slice(0, 5) }));
     pruned.browser.next.serverActionExecutions = pruned.browser.next.serverActionExecutions.slice(-2).map((execution) => ({ ...execution, trace: execution.trace ? { ...execution.trace, spans: execution.trace.spans.slice(0, 5), fetches: execution.trace.fetches.slice(0, 5) } : null }));
@@ -450,4 +549,47 @@ function pruneRequestInsights(value: unknown): unknown {
     const item = request as Record<string, unknown>;
     return [{ requestId: item.requestId ?? null, kind: item.kind ?? null, route: item.route ?? null, url: item.url ?? null, status: item.status ?? null, durationMs: item.durationMs ?? null }];
   }) };
+}
+
+function pruneWebMcpDetail(detail: NonNullable<BrowserSnapshot["webmcp"]>): void {
+  const serialized = () => serializedBytes(detail);
+  if (serialized() <= MAX_WEBMCP_DETAIL_BYTES) return;
+  detail.truncated = true;
+  for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.inputSchemaJson = null;
+  for (let index = detail.tools.length - 1; index >= 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES; index -= 1) detail.tools[index]!.description = "";
+  while (detail.tools.length > 0 && serialized() > MAX_WEBMCP_DETAIL_BYTES) detail.tools.pop();
+}
+
+function boundInteractiveElement(element: InteractiveElement): InteractiveElement {
+  const matchCount = Number.isInteger(element.matchCount) && element.matchCount >= 0 ? element.matchCount : 0;
+  return {
+    ...element,
+    tag: boundText(element.tag, 40),
+    role: element.role ? boundText(element.role, 100) : null,
+    name: boundText(element.name, 300),
+    text: boundText(element.text, MAX_INTERACTIVE_TEXT_CHARS),
+    locator: boundLocator(element.locator),
+    matchCount,
+    uniqueAtCapture: matchCount === 1,
+    bounds: element.bounds ? {
+      x: finiteBound(element.bounds.x),
+      y: finiteBound(element.bounds.y),
+      width: Math.max(0, finiteBound(element.bounds.width)),
+      height: Math.max(0, finiteBound(element.bounds.height)),
+    } : null,
+  };
+}
+
+function boundLocator(locator: BrowserLocator): BrowserLocator {
+  switch (locator.kind) {
+    case "css": return { kind: "css", value: boundText(locator.value, 500) };
+    case "role": return { kind: "role", role: boundText(locator.role, 100), ...(locator.name === undefined ? {} : { name: boundText(locator.name, 300) }) };
+    case "text": return { kind: "text", text: boundText(locator.text, 500) };
+    case "label": return { kind: "label", text: boundText(locator.text, 500) };
+    case "testId": return { kind: "testId", value: boundText(locator.value, 500) };
+  }
+}
+
+function finiteBound(value: number): number {
+  return Number.isFinite(value) ? value : 0;
 }

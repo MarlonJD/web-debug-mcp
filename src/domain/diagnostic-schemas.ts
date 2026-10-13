@@ -1,18 +1,18 @@
 import { z } from "zod";
 
-export const sourceLocationSchema = z.object({ url: z.string().max(2560), line: z.number().int().positive(), column: z.number().int().positive() }).strict();
+export const sourceLocationSchema = z.object({ url: z.string().max(2560), line: z.number().int().positive(), column: z.number().int().positive() }).strict().meta({ id: "SourceLocationOutput" });
 export const sourceReferenceSchema = z.object({
   scriptId: z.string().max(100), scriptHash: z.string().max(128).nullable(),
   generated: sourceLocationSchema, original: sourceLocationSchema.nullable(),
   mapping: z.enum(["mapped", "unavailable"]), reason: z.string().max(500).optional(),
-}).strict();
+}).strict().meta({ id: "SourceReferenceOutput" });
 export const sourceInventorySchema = z.object({
   schemaVersion: z.literal(1), scope: z.literal("main-frame-default-world"),
   scripts: z.array(z.object({
     scriptId: z.string().max(100), url: z.string().max(2560), hash: z.string().max(128).nullable(),
     sources: z.array(z.string().max(2560)).max(30), mapping: z.enum(["available", "unavailable"]), reason: z.string().max(500).optional(),
   }).strict()).max(20), truncated: z.boolean(),
-}).strict();
+}).strict().meta({ id: "SourceInventoryOutput" });
 export const executionDiagnosticsSchema = z.object({
   schemaVersion: z.literal(1), actionId: z.string().uuid(), startedAt: z.string().max(100), durationMs: z.number().nonnegative(),
   association: z.literal("temporal-window"),
@@ -33,9 +33,9 @@ export const executionDiagnosticsSchema = z.object({
     initiator: sourceReferenceSchema.nullable(), initiatorType: z.string().max(50), association: z.enum(["cdp-initiator", "unavailable"]),
   }).strict()).max(30),
   truncated: z.boolean(), cleanup: z.literal("complete"), warnings: z.array(z.string().max(500)).max(10),
-}).strict();
-const strings = z.array(z.string().max(300)).max(20);
-const stringDifference = z.object({ added: strings, removed: strings }).strict();
+}).strict().meta({ id: "ExecutionDiagnosticsOutput" });
+const strings = z.array(z.string().max(300)).max(20).meta({ id: "DiagnosticStringsOutput" });
+const stringDifference = z.object({ added: strings, removed: strings }).strict().meta({ id: "DiagnosticStringDifferenceOutput" });
 export const behaviorDifferenceSchema = z.object({
   schemaVersion: z.literal(1), diagnosticOnly: z.literal(true), state: z.enum(["compared", "unavailable"]),
   console: stringDifference,
@@ -43,4 +43,4 @@ export const behaviorDifferenceSchema = z.object({
   react: z.object({ commitsBefore: z.number().int(), commitsAfter: z.number().int(), addedKeys: strings, removedKeys: strings }).strict().nullable(),
   execution: stringDifference.nullable(), truncated: z.boolean(), warnings: z.array(z.string().max(500)).max(10),
   requestCompletionOrder: z.object({ before: strings, after: strings }).strict().nullable(),
-}).strict();
+}).strict().meta({ id: "BehaviorDifferenceOutput" });

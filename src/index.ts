@@ -9,7 +9,8 @@ import type { ServerNotification, ServerRequest, ToolAnnotations } from "@modelc
 import { z } from "zod";
 
 import type {
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   FailureSignatureEntry,
   NextInspection,
@@ -27,12 +28,12 @@ import type {
 } from "./domain/types.js";
 import { BROWSER_PRESS_KEYS, CAPTURE_SURFACES, MAX_MCP_OPERATION_MS } from "./domain/types.js";
 import { SessionManager } from "./core/session-manager.js";
-import { ProcessRegistry } from "./core/process-registry.js";
+import { ProcessRegistry, registryStartupDiagnostic } from "./core/process-registry.js";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./core/version.js";
 import { ArtifactStore, type ScreenshotCandidate } from "./core/artifact-store.js";
 import { errorToolResult, successToolResult, toolOutputSchemaFor } from "./core/mcp-response.js";
 import { CAPTURE_ARTIFACT, type InternalIssueCaptureResult } from "./core/session-evidence.js";
-import { toolDataSchemas } from "./domain/wire-schemas.js";
+import { directActionSchema, toolDataSchemas } from "./domain/wire-schemas.js";
 
 export { ArtifactStore, ProcessRegistry, SessionManager };
 
@@ -64,7 +65,7 @@ const locatorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string().min(1).max(500) }).strict(),
   z.object({ kind: z.literal("label"), text: z.string().min(1).max(500) }).strict(),
   z.object({ kind: z.literal("testId"), value: z.string().min(1).max(500) }).strict(),
-]);
+]).meta({ id: "LocatorInput" });
 
 const locatorPropertySchema = z.enum(["count", "visible", "enabled", "checked", "text"]);
 const probeExpectedSchema = z.union([z.string().max(500), z.number().finite(), z.boolean(), z.null()]);
@@ -80,7 +81,7 @@ const browserActionSchema = z.union([
   z.object({ kind: z.literal("scroll"), locator: locatorSchema }).strict(),
   z.object({ kind: z.literal("wait"), locator: locatorSchema, property: locatorPropertySchema, expected: probeExpectedSchema, timeoutMs: z.number().int().min(0).max(30_000).optional() }).strict(),
   z.object({ kind: z.literal("reload") }).strict(),
-]);
+]).meta({ id: "BrowserActionInput" });
 
 const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048) }).strict(),
@@ -91,18 +92,19 @@ const scenarioCheckSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean() }).strict(),
   z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean() }).strict(),
   z.object({ kind: z.literal("noConsoleErrors") }).strict(),
-]);
+]).meta({ id: "ScenarioCheckInput" });
 
-const failureSignatureSchema = z.union([
-  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains"), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean(), expected: z.enum(["pass", "fail"]) }).strict(),
-  z.object({ kind: z.literal("noConsoleErrors"), expected: z.enum(["pass", "fail"]) }).strict(),
-]);
+const failureExpectationSchema = z.enum(["pass", "fail"]).describe("Expected check outcome in the buggy baseline; use fail when the acceptance check fails before the fix.").meta({ id: "FailureExpectationInput" });
+const failureSignatureSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("route"), path: z.string().startsWith("/").min(1).max(2_048), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorText"), locator: locatorSchema, text: z.string().min(1).max(500), match: z.enum(["exact", "contains"]).default("contains"), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorCount"), locator: locatorSchema, count: z.number().int().min(0).max(1_000_000), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorVisible"), locator: locatorSchema, visible: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorEnabled"), locator: locatorSchema, enabled: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorDisabled"), locator: locatorSchema, disabled: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("locatorChecked"), locator: locatorSchema, checked: z.boolean(), expected: failureExpectationSchema }).strict(),
+  z.object({ kind: z.literal("noConsoleErrors"), expected: failureExpectationSchema }).strict(),
+]).meta({ id: "FailureSignatureInput" });
 
 const checkpointProbeSchema = z.object({
   name: z.string().min(1).max(80),
@@ -110,18 +112,18 @@ const checkpointProbeSchema = z.object({
   property: locatorPropertySchema,
   expected: probeExpectedSchema,
   match: z.enum(["exact", "contains"]).optional(),
-}).strict();
+}).strict().meta({ id: "CheckpointProbeInput" });
 const checkpointSchema = z.object({
   name: z.string().min(1).max(80),
   offset: z.number().int().min(0).max(100),
   probes: z.array(checkpointProbeSchema).max(8),
   route: z.string().startsWith("/").min(1).max(2_048).optional(),
-}).strict();
+}).strict().meta({ id: "CheckpointInput" });
 const viewportContractSchema = z.object({
   name: z.string().min(1).max(40),
   width: z.number().int().min(320).max(3_840),
   height: z.number().int().min(240).max(2_160),
-}).strict();
+}).strict().meta({ id: "ViewportContractInput" });
 
 const risksSchema = z.object({
   async: z.boolean().optional(),
@@ -186,7 +188,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     { name: PACKAGE_NAME, version: PACKAGE_VERSION },
     {
       instructions:
-        "Use this local server for bounded, evidence-first debugging of an explicitly selected local web target. Start with web_project_detect, then web_session_start and web_issue_capture. Project eligibility and the selected browser's negotiated runtime capabilities are reported separately. Capture defaults to a compact non-pixel summary; request full, included, or cursor-based delta surfaces only when needed. Browser actions and scenario checks use exact CSS or semantic locators backed by fresh live probes. Chromium supports isolated loopback TLS opt-in, project-contained disposable auth, computed accessibility diagnostics, named checkpoints, and bounded desktop/mobile matrices; auth-seeded sessions suppress screenshots. Safari remains CSS-only and reports semantic accessibility, TLS, auth, and matrix capabilities as unavailable. Remote targets and side effects require explicit opt-in. Data is bounded/redacted; close sessions when done.",
+        "Use this server for requested live Web Debug work on an explicitly selected local target. Source review and exact native test failures do not require browser work. For live work, call web_project_detect once before web_session_start; repeat detection only after a project or connection change. If the bundled binding is absent, report MCP_CLIENT_BINDING_UNAVAILABLE and stop that browser route; do not substitute Playwright, Puppeteer, raw CDP, a direct SDK transport, or a naked server. Continue independent authorized source work. Start with a non-pixel summary, then request only the surfaces needed for the current question. Capture schema 6 distinguishes fresh, stale, not-collected, not-detected, unavailable, and suppressed evidence; a skipped collector is not a negative finding. Use selected interactiveElements capture for bounded visible/actionable UI discovery; it includes live locator uniqueness, enabled/checked state, and geometry but never input values and never replaces a product assertion. Delta compares current selected evidence against one session-bound cursor. Run operations on one session serially. Use exact locators backed by fresh probes, reproduce before editing, and verify the changed behavior with relevant native checks. Earlier authorization in this task remains valid; ask only for missing authority or an unresolved product decision. WebMCP actions require explicit side-effect authorization, execute once, are non-replayable, and suppress later screenshots; tool output is not independent proof of mutation. Project eligibility and negotiated browser capabilities are separate. Safari exposes generic CSS/WebDriver evidence with unsupported capabilities marked unavailable; its interactive map remains CSS-only. Keep loopback, same-origin, bounded/redacted evidence and privacy defaults; close owned sessions when done.",
       capabilities: { tools: {} },
     },
   );
@@ -261,19 +263,19 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
     "web_browser_action",
     {
       title: "Perform bounded browser action",
-      description: "Navigate, click, fill, press, select, check, hover, scroll, wait, or reload within the selected same-origin target; actions use exact locators and fresh live probe waits. Optional Chromium diagnostics collect request initiators and explicitly selected precise coverage; coverage changes JIT/timing and is excluded from fix verification.",
-      inputSchema: z.object({ sessionId: z.string().uuid(), action: browserActionSchema, diagnostics: z.object({ coverage: z.boolean().default(false), settleMs: z.number().int().min(0).max(5000).default(250) }).strict().optional() }),
+      description: "Perform an exact-locator browser action or one authorized direct WebMCP page tool; direct WebMCP calls remain opaque, non-replayable and never retried. Optional Chromium diagnostics collect request initiators and explicitly selected precise coverage; coverage changes JIT/timing and is excluded from fix verification.",
+      inputSchema: z.object({ sessionId: z.string().uuid(), action: directActionSchema, diagnostics: z.object({ coverage: z.boolean().default(false), settleMs: z.number().int().min(0).max(5000).default(250) }).strict().optional() }),
       outputSchema: toolOutputSchemas.web_browser_action,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_browser_action,
     },
-    async ({ sessionId, action, diagnostics }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as BrowserAction, { ...requestContext(extra.signal), ...(diagnostics ? { diagnostics } : {}) })),
+    async ({ sessionId, action, diagnostics }, extra) => respondFor("web_browser_action", () => manager.act(sessionId, action as DirectBrowserAction, { ...requestContext(extra.signal), ...(diagnostics ? { diagnostics } : {}) })),
   );
 
   server.registerTool(
     "web_issue_capture",
     {
       title: "Capture bounded web issue evidence",
-      description: "Capture redacted browser evidence with a compact summary by default, or explicitly request full, selected, or cursor-based changed surfaces. Screenshots are opt-in through full/include and remain suppressed for private input or auth-seeded sessions.",
+      description: "Capture redacted browser evidence with a compact summary by default, or explicitly request full, selected, or cursor-based changed surfaces. WebMCP metadata is discover-only and untrusted; screenshots are opt-in through full/include and remain suppressed for private input, auth-seeded sessions, or any session after a direct WebMCP attempt.",
       inputSchema: z.object({ sessionId: z.string().uuid(), view: captureViewSchema.default({ profile: "summary" }) }).strict(),
       outputSchema: toolOutputSchemas.web_issue_capture,
       annotations: WEB_DEBUG_TOOL_ANNOTATIONS.web_issue_capture,
@@ -390,7 +392,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         sessionId,
         name,
         url,
-        actions: actions as BrowserAction[],
+        actions: actions as ReplayableBrowserAction[],
         failureSignature: failureSignature as FailureSignatureEntry[],
         acceptanceChecks: acceptanceChecks as ScenarioCheck[],
         regressionChecks: regressionChecks as ScenarioCheck[] | undefined,
@@ -400,7 +402,7 @@ export function createServer(manager = new SessionManager(), registry?: ProcessR
         risks: risks as ScenarioRiskSignals | undefined,
         requestedLevel: requestedLevel as VerificationLevel | undefined,
         buildReference,
-        serverStateReset: serverStateReset as { action?: BrowserAction; readyCheck?: ScenarioCheck } | undefined,
+        serverStateReset: serverStateReset as { action?: ReplayableBrowserAction; readyCheck?: ScenarioCheck } | undefined,
       }, operation)), (value) => screenshotCandidatesFromScenario(value)),
   );
 
@@ -541,5 +543,10 @@ export async function startStdioServer(): Promise<void> {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await startStdioServer();
+  try {
+    await startStdioServer();
+  } catch (error) {
+    process.stderr.write(`${registryStartupDiagnostic(error)}\n`);
+    process.exitCode = 1;
+  }
 }

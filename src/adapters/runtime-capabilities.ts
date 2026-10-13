@@ -12,13 +12,13 @@ function capability(
   return { state, provenance: provenance.slice(0, 2), ...(reason ? { reason: reason.slice(0, 500) } : {}) };
 }
 
-export function chromiumRuntimeCapabilities(attached: boolean): BrowserRuntimeCapabilities {
+export function chromiumRuntimeCapabilities(attached: boolean, webmcpAvailable?: boolean): BrowserRuntimeCapabilities {
   const cdp = capability("supported", ["playwright", "chromium-cdp"]);
   const launchOnly = attached
     ? capability("unsupported", ["session-policy"], "Attached Chromium targets cannot provide fresh isolated launch state.")
     : capability("supported", ["playwright", "session-policy"]);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     browser: "chromium",
     transport: attached ? "chromium-cdp-attach" : "chromium-launch",
     actions: cdp,
@@ -36,6 +36,11 @@ export function chromiumRuntimeCapabilities(attached: boolean): BrowserRuntimeCa
     authSeeding: launchOnly,
     sourceMapping: capability("degraded", ["chromium-cdp"], "Only bounded maps for selected main-frame default-world scripts are resolved; missing or ambiguous mappings remain unavailable."),
     executionCoverage: cdp,
+    webmcp: webmcpAvailable === true
+      ? capability("supported", ["webmcp-page-api"])
+      : webmcpAvailable === false
+        ? capability("unsupported", ["webmcp-page-api"], "The selected page did not expose a callable WebMCP API.")
+        : capability("degraded", ["webmcp-page-api"], "WebMCP availability is negotiated from the selected page at startup."),
   };
 }
 
@@ -43,7 +48,7 @@ export function safariRuntimeCapabilities(consoleAvailable: boolean, consoleDeli
   const native = capability("supported", ["safari-mcp"]);
   const unavailable = (reason: string) => capability("unsupported", ["safari-mcp"], reason);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     browser: "safari",
     transport: "safari-mcp",
     actions: native,
@@ -70,5 +75,6 @@ export function safariRuntimeCapabilities(consoleAvailable: boolean, consoleDeli
     authSeeding: unavailable("Disposable auth-state seeding is unavailable in Safari MCP."),
     sourceMapping: unavailable("Source-map resolution requires Chromium CDP."),
     executionCoverage: unavailable("Precise execution coverage requires Chromium CDP."),
+    webmcp: unavailable("WebMCP is a Chromium page API and is unavailable in Safari MCP."),
   };
 }

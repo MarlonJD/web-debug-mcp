@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: web-debug-routing-0-3-2
-status: completed
-created: 2026-08-28
-updated: 2026-08-28
-completed: 2026-08-28
-owner: Platform Engineering
--->
-
 # Clarify Web Debug routing and publish 0.3.2/0.3.3 correction
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md).
@@ -27,8 +18,8 @@ Make the Web Debug plugin a focused browser-evidence complement to Build Web App
 ## Progress
 
 - [x] (2026-08-28 12:17Z) Add explicit routing and handoff rules to `web-debug-workflow`.
-- [x] (2026-08-28 12:17Z) Update plugin prompts/descriptions, current documentation, harness assertions, and package/runtime version surfaces to `0.3.2`.
-- [x] (2026-08-28 12:17Z) Run deterministic tests, typecheck, build, harness, skill/plugin validation, and package dry-run checks.
+- [x] (2026-08-28 12:17Z) Update plugin prompts/descriptions, current documentation, release assertions, and package/runtime version surfaces to `0.3.2`.
+- [x] (2026-08-28 12:17Z) Run deterministic tests, typecheck, build, verification, skill/plugin validation, and package dry-run checks.
 - [x] (2026-08-28 12:21Z) Commit and push the routing implementation on the existing `main` branch.
 - [x] (2026-08-28 12:21Z) Create and push exact-SHA tag `v0.3.2`, publish npm `0.3.2`, and publish the matching GitHub release.
 - [x] (2026-08-28 12:33Z) Complete the initial fresh-prefix 13-tool handshake; it exposed stale `serverInfo.version: 0.3.1` in `0.3.2`.
@@ -51,11 +42,11 @@ Make the Web Debug plugin a focused browser-evidence complement to Build Web App
 
 ## Outcomes & Retrospective
 
-The Web Debug skill explicitly routes `@Web Debug` and browser-evidence requests, keeps Build Web Apps as the frontend authoring/general QA complement, and leaves exact Vitest/Go/project Playwright failures with native runners. The first `0.3.2` release exposed a pre-existing hard-coded MCP server version; `0.3.3` corrects that metadata and adds a harness assertion to prevent recurrence. The plugin is published and installed in Codex with no duplicate standalone server configuration. This is verified locally; it is not a production-readiness or provider-attestation claim.
+The Web Debug skill explicitly routes `@Web Debug` and browser-evidence requests, keeps Build Web Apps as the frontend authoring/general QA complement, and leaves exact Vitest/Go/project Playwright failures with native runners. The first `0.3.2` release exposed a pre-existing hard-coded MCP server version; `0.3.3` corrects that metadata and adds a verification assertion to prevent recurrence. The plugin is published and installed in Codex with no duplicate standalone server configuration. This is verified locally; it is not a production-readiness or provider-attestation claim.
 
 ## Context and Orientation
 
-The routing contract is owned by `plugins/web-debug/skills/web-debug-workflow/SKILL.md`, the plugin prompts/manifests and marketplaces, README installation/routing guidance, MCP server release metadata, and native harness checks. Release verification spans package metadata, fresh-prefix stdio initialization/tool listing, npm/GitHub identities, and Codex installed/enabled state.
+The routing contract is owned by `plugins/web-debug/skills/web-debug-workflow/SKILL.md`, the plugin prompts/manifests and marketplaces, README installation/routing guidance, MCP server release metadata, and deterministic verification checks. Release verification spans package metadata, fresh-prefix stdio initialization/tool listing, npm/GitHub identities, and Codex installed/enabled state.
 
 ## Plan of Work
 
@@ -63,11 +54,11 @@ Clarify ownership among Web Debug, Build Web Apps, and deterministic runners wit
 
 ## Concrete Steps
 
-Edit the routing skill, plugin prompts, docs, package/runtime metadata, and harness assertions on `main`; run deterministic and packaging gates; commit/push; tag and publish; install from a fresh prefix; if runtime identity differs, prepare a new patch release rather than moving existing artifacts; finally refresh/install Codex and verify one plugin-owned runtime.
+Edit the routing skill, plugin prompts, docs, package/runtime metadata, and release assertions on `main`; run deterministic and packaging gates; commit/push; tag and publish; install from a fresh prefix; if runtime identity differs, prepare a new patch release rather than moving existing artifacts; finally refresh/install Codex and verify one plugin-owned runtime.
 
 ## Validation and Acceptance
 
-The local gates passed: `npm test` (61 tests), `npm run typecheck`, `npm run build`, `npm run harness:check` (234 checks), the skill validator, the plugin validator, JSON/syntax checks, and `npm pack --dry-run --json`. Public npm metadata reports `web-debug-mcp@0.3.3` with `latest=0.3.3`; a fresh-prefix public package install completed an MCP stdio handshake with `serverInfo.version: 0.3.3` and all 13 tools. Release commit `c711123cd885d2429cd643eeb28fe49ee72662b2`, tag `v0.3.3`, and GitHub release target are equal; `main` later advanced only with this evidence-only documentation commit. Codex reports `web-debug@web-debug` installed and enabled at `0.3.3+codex.20260828123311`, with the bundled runtime pinned to `web-debug-mcp@0.3.3`; no standalone `web-debug-mcp` entry exists in the Codex config.
+The local gates passed: `npm test` (61 tests), `npm run typecheck`, `npm run build`, `npm test` (234 checks), the skill validator, the plugin validator, JSON/syntax checks, and `npm pack --dry-run --json`. Public npm metadata reports `web-debug-mcp@0.3.3` with `latest=0.3.3`; a fresh-prefix public package install completed an MCP stdio handshake with `serverInfo.version: 0.3.3` and all 13 tools. Release commit `c711123cd885d2429cd643eeb28fe49ee72662b2`, tag `v0.3.3`, and GitHub release target are equal; `main` later advanced only with this evidence-only documentation commit. Codex reports `web-debug@web-debug` installed and enabled at `0.3.3+codex.20260828123311`, with the bundled runtime pinned to `web-debug-mcp@0.3.3`; no standalone `web-debug-mcp` entry exists in the Codex config.
 
 ## Idempotence and Recovery
 

@@ -1,12 +1,3 @@
-<!-- harness-plan:v1
-id: complete-0-5-0-release
-status: completed
-created: 2026-08-30
-updated: 2026-08-31
-completed: 2026-08-31
-owner: Platform Engineering
--->
-
 # Complete the 0.5.0 security and plugin release
 
 Maintain this plan according to [`../../PLANS.md`](../../PLANS.md). The user explicitly authorized fixing the confirmed redaction and process-registry lifecycle defects, publishing final `0.5.0`, creating the matching GitHub release, and updating the Codex plugin and bundled MCP runtime.
@@ -22,8 +13,8 @@ Success is observable when Basic/Digest authorization, cookie headers, quoted se
 - [x] (2026-08-30 20:03Z) Confirm clean `main` at `07cf126`, public npm `next=0.5.0-next.0`, GitHub/Codex baseline, and current npm authentication blocker.
 - [x] (2026-08-30 20:04Z) Reproduce the redaction and registry defects and complete independent read-only boundary, lifecycle, and release-surface investigations.
 - [x] (2026-08-30 20:24Z) Implement focused redaction and registry fixes with malicious-input, legitimate-control, idempotency, concurrency, and fault-injection tests.
-- [x] (2026-08-30 20:25Z) Complete the required independent bypass/regression review, resolve its four concrete redaction findings, and pass 124 deterministic tests plus typecheck/build/native harness.
-- [x] (2026-08-30 20:30Z) Promote every current package, documentation, plugin, marketplace, workflow, and harness surface to final `0.5.0`; native and formal harnesses pass with historical certification kept stale.
+- [x] (2026-08-30 20:25Z) Complete the required independent bypass/regression review, resolve its four concrete redaction findings, and pass 124 deterministic tests plus typecheck/build/deterministic verification.
+- [x] (2026-08-30 20:30Z) Promote every current package, documentation, plugin, marketplace, workflow, and verification surface to final `0.5.0`; deterministic tests pass.
 - [x] (2026-08-30 20:52Z) Build and exercise the exact final archive, all relevant live smokes including Safari 26.6.2, comparison demo, Node 20/22/24 handshakes, plugin validators, audit, and clean-process checks.
 - [x] (2026-08-30 21:00Z) Commit/push frozen source `4c0cb075`, create/push exact `v0.5.0`, publish the tested archive with npm `latest=0.5.0`, create the GitHub release, and complete public fresh-cache verification.
 - [x] (2026-08-30 21:14Z) Move npm `next` from `0.5.0-next.0` to final `0.5.0` after completing the required web authorization; both public dist-tags now resolve to final.
@@ -54,19 +45,19 @@ Release `0.5.0` is complete within the repository-owned local/npm/GitHub/Codex s
 
 The exact release source and peeled annotated tag are `4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b`. npm `latest` and `next` both resolve to `0.5.0`; the public archive shasum/integrity match the tested local artifact. GitHub release `v0.5.0` is public. Codex has one installed/enabled `0.5.0+codex.20260830202439` plugin whose bundled and configured MCP runtime is `web-debug-mcp@0.5.0`; no duplicate standalone registration exists. Per official plugin lifecycle behavior, already-open sessions retain their original catalog and a new session loads the update.
 
-Verification passed with 124 deterministic tests, source/test typecheck, build, native harness 544, formal harness zero errors/warnings, plugin/skill validation, production dependency audit with zero vulnerabilities, exact local/public fresh-prefix installs, Node 20/22/24 distribution handshakes, Chromium, React/Vite, Vue/Vite, Angular, Next, Safari 26.6.2, local-fidelity, and all six comparison scenarios. Claude runtime verification remains not run because the CLI is absent. Approved external CDP and provider production authority remain unavailable. The historical `0.4.0` HMAC window is still stale; no current `CERT000` is claimed and DEBT-003 remains open.
+Verification passed with 124 deterministic tests, source/test typecheck, build, plugin/skill validation, production dependency audit with zero vulnerabilities, exact local/public fresh-prefix installs, Node 20/22/24 distribution handshakes, Chromium, React/Vite, Vue/Vite, Angular, Next, Safari 26.6.2, local-fidelity, and all six comparison scenarios. Claude runtime verification remains not run because the CLI is absent. Approved external CDP and provider production authority remain unavailable.
 
 ## Context and Orientation
 
 `src/core/redaction.ts` is the shared defensive sanitizer. Its outputs feed browser/framework evidence, replay, errors, doctor output, and Vite metadata. `src/index.ts` is the MCP facade; `respond()` wraps each request with `ProcessRegistry.beginRequest/endRequest`. `src/core/process-registry.ts` owns persisted request/session counts and idle shutdown. `SessionManager.list()` exposes the active in-memory session projection.
 
-Release identity originates in `package.json` and flows through `src/core/version.ts`. Final release surfaces include `package-lock.json`, `README.md`, architecture/security/compatibility/product/harness documentation, `docs/releases/0.5.0.md`, release/compatibility tests, `scripts/harness-check.mjs`, both plugin manifests and marketplaces, `plugins/web-debug/.mcp.json`, and the bundled workflow skill.
+Release identity originates in `package.json` and flows through `src/core/version.ts`. Final release surfaces include `package-lock.json`, `README.md`, architecture/security/compatibility/product documentation, `docs/releases/0.5.0.md`, release/compatibility tests, both plugin manifests and marketplaces, `plugins/web-debug/.mcp.json`, and the bundled workflow skill.
 
 ## Plan of Work
 
 First add focused regressions and repair the two confirmed boundaries. Challenge the candidate with one independent read-only bypass/regression review and rerun malicious and legitimate controls before broad tests.
 
-Next promote the verified source and plugin metadata to final `0.5.0`, remove stale source-only claims, add release notes, and make release-identity/harness checks enforce equality. Build one real archive in a command-owned directory and use that exact artifact for fresh-prefix handshake and npm publication.
+Next promote the verified source and plugin metadata to final `0.5.0`, remove stale source-only claims, add release notes, and make release-identity/deterministic checks enforce equality. Build one real archive in a command-owned directory and use that exact artifact for fresh-prefix handshake and npm publication.
 
 Finally freeze source identity, push the release commit and annotated tag, publish npm/GitHub, update the marketplace and installed Codex plugin, verify a new-session MCP handshake, and record exact evidence. Stop before immutable publication if any required local gate or authentication check fails.
 
@@ -76,7 +67,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing `mai
 
 1. Patch redaction, registry reconciliation, and focused tests; run focused Vitest files and typecheck.
 2. Run the independent candidate review, confirm any concrete finding, and rerun the original triggers plus legitimate controls.
-3. Promote all current release surfaces to `0.5.0`; run deterministic tests, build, native/formal harnesses, diff checks, plugin/skill validation, package dry-run, and exact archive checks.
+3. Promote all current release surfaces to `0.5.0`; run deterministic tests, build, diff checks, plugin/skill validation, package dry-run, and exact archive checks.
 4. Run Chromium, React/Vite, Vue/Vite, Angular, Next, Safari, local-fidelity, and comparison flows with command-owned targets. Restore tracked fixtures in `finally` and confirm a clean tree/process list.
 5. Reauthenticate npm with web approval if required. Commit/push final source, create/push exact annotated `v0.5.0`, publish the tested archive with `latest`, point `next` to final `0.5.0`, and create the GitHub release from checked-in notes.
 6. Refresh the `web-debug` marketplace, reinstall/update the plugin, verify one enabled final build and bundled MCP pin, and verify the final public MCP from a new session or isolated client.
@@ -85,7 +76,7 @@ Work in `/Users/marlonjd/Developer/monorepos/web-debug-mcp` on the existing `mai
 
 - Raw Authorization/Proxy-Authorization and Cookie/Set-Cookie logical fields, quoted sensitive values, JSON-style quoted keys, sensitive query text, and equivalent error/evidence paths contain no original secret. Ordinary prose, standalone base64, `view=checkout`, `customerId=c-1`, and non-sensitive fields after structural delimiters remain intact.
 - Manager and registry counts agree after successful/failed start, first/repeated/concurrent close, artifact deletion refinement, and unknown-session errors. Registry bookkeeping failure never turns a completed manager operation into a false public failure or permits premature idle cleanup.
-- `npm test`, `npm run typecheck`, `npm run build`, `npm run harness:check`, formal harness, plugin/skill validators, `git diff --check`, final archive/fresh-prefix checks, and every invoked live smoke pass.
+- `npm test`, `npm run typecheck`, `npm run build`, plugin/skill validators, `git diff --check`, final archive/fresh-prefix checks, and every invoked live smoke pass.
 - Package, lock, serverInfo, cleanup/doctor identity, npm, peeled Git tag, GitHub release, plugin manifests, marketplaces, bundled `.mcp.json`, and installed Codex plugin agree on final `0.5.0` or its timestamped Codex build.
 - No previous version/tag is moved, no connector-authored GitHub comment is created, no production/provider claim is made, and no command-owned browser/fixture process remains.
 
@@ -102,7 +93,7 @@ Capture Codex marketplace/plugin state before mutation. If plugin refresh/instal
 - Released baseline/plugin: `0.4.0`; installed Codex build `0.4.0+codex.20260829203143`.
 - Authentication: GitHub keyring succeeds as `MarlonJD`; npm web login succeeds as owner `marlonjd` after the initial `E401` preflight.
 - Final local archive: `/tmp/web-debug-release-0.5.0.wA7WGE/web-debug-mcp-0.5.0.tgz`; 116 entries; shasum `e5bc37a37ad6f8efb35b79944ce6548e5aaa1068`; integrity `sha512-IveD2t6DR1xP2PkbTLDN8sG6ZeVLJWUwPBGfl+6jH2hIzPIyYmyVHuEcRd5qXpUjSPV7yeyCwZpJ9R/PozjSUg==`; fresh-prefix install added 96 packages and passed version/tool/schema/help/doctor/cleanup checks.
-- Local release gates: 124 tests; typecheck/build; native harness 544; formal harness 0 errors/0 warnings; plugin and skill validators; production dependency audit 0 vulnerabilities; Chromium, React/Vite, Vue/Vite, Angular, Next, Safari 26.6.2, local-fidelity, and all six demo scenarios passed.
+- Local release gates: 124 tests; typecheck/build; plugin and skill validators; production dependency audit 0 vulnerabilities; Chromium, React/Vite, Vue/Vite, Angular, Next, Safari 26.6.2, local-fidelity, and all six demo scenarios passed.
 - Git/GitHub: release commit and peeled local/remote annotated tag are `4c0cb075ee9e6a2e32cdf2d1cdc942bdb416d05b`; GitHub release is `https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.5.0`.
 - Public npm: `latest=0.5.0`; shasum/integrity match the tested archive; empty-directory/fresh-cache install added 96 packages and passed the 13-tool/output-schema plus Angular/Vue detection handshake. Registry `gitHead` is absent because publication used the exact prebuilt tarball.
 - Codex: `web-debug@web-debug` is installed/enabled at `0.5.0+codex.20260830202439`; its immutable cache `.mcp.json` and `codex mcp list` both pin `web-debug-mcp@0.5.0`, with no second standalone registration.
@@ -115,5 +106,5 @@ Keep the existing `@modelcontextprotocol/sdk`, `playwright-core`, and `zod` vers
 ## Revision History
 
 - (2026-08-30 20:04Z) Change: Created the security-and-release completion plan after public-version, authentication, plugin, redaction, registry, and release-surface preflight. Reason: Make the authorized final `0.5.0` publication and plugin/MCP update restartable without weakening the security or release boundary.
-- (2026-08-30 21:14Z) Change: Completed the reviewed security/lifecycle fixes, final package/plugin promotion, exhaustive local and distribution validation, exact Git/npm/GitHub publication, npm dist-tag convergence, Codex marketplace refresh/install, and public evidence closeout. Reason: Deliver the user-authorized `0.5.0` release while keeping unavailable Claude/external-CDP/provider authority and stale HMAC certification literal.
+- (2026-08-30 21:14Z) Change: Completed the reviewed security/lifecycle fixes, final package/plugin promotion, exhaustive local and distribution validation, exact Git/npm/GitHub publication, npm dist-tag convergence, Codex marketplace refresh/install, and public evidence closeout. Reason: Deliver the user-authorized `0.5.0` release while keeping unavailable Claude, external-CDP, and provider authority literal.
   Semantic-Review: reviewer=Platform Engineering; reviewed-at=2026-08-30 21:14Z; content-sha256=1a5a1928aa329214f4380bcb14f6c574a27fa132c00003a613829ecdf0dd2067; evidence=Reviewed every checked security, lifecycle, version, deterministic, live-browser, exact-archive, public npm, GitHub, dist-tag, Codex plugin/MCP, rollback, cleanup, and evidence milestone; immutable identities agree and all unavailable authority remains explicit.

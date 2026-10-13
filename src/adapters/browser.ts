@@ -1,6 +1,6 @@
 import type {
   ActionResult,
-  BrowserAction,
+  DirectBrowserAction,
   BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
@@ -13,6 +13,7 @@ import type {
   LocatorProbeResult,
   LocatorProperty,
   PlaywrightStorageState,
+  CaptureSurface,
   ViewportSize,
 } from "../domain/types.js";
 
@@ -38,6 +39,8 @@ export interface SnapshotOptions {
   sourceMaps?: boolean;
   artifactDir: string;
   captureScreenshot: boolean;
+  /** Optional enrichment requested by a manual capture; omission means full evidence. */
+  surfaces?: readonly CaptureSurface[];
   /** Checks-only snapshots never request screenshots or optional framework enrichment. */
   checksOnly?: boolean;
   /** Manual replay frames may retain observer data for the following full capture. */
@@ -56,7 +59,7 @@ export interface EvaluationResult {
 export interface BrowserAdapter {
   start(options: BrowserStartOptions, context?: OperationContext): Promise<BrowserTarget>;
   close(context?: OperationContext): Promise<void>;
-  act(action: BrowserAction, context?: OperationContext): Promise<ActionResult>;
+  act(action: DirectBrowserAction, context?: OperationContext): Promise<ActionResult>;
   probe(locator: BrowserLocator, properties: LocatorProperty[], context?: OperationContext): Promise<LocatorProbeResult>;
   snapshot(options: SnapshotOptions, context?: OperationContext): Promise<BrowserSnapshot>;
   /** Clear only observers owned by this adapter before an attached retry. */

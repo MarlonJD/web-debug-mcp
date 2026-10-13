@@ -3,8 +3,8 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import type { CDPSession } from "playwright-core";
 import { ChromiumSources } from "../src/adapters/chromium-sources.js";
 import { observeExecution } from "../src/adapters/chromium-execution.js";
-import { redactExecutionDiagnostics } from "../src/core/diagnostic-redaction.js";
-import { executionDiagnosticsSchema } from "../src/domain/diagnostic-schemas.js";
+import { redactExecutionDiagnostics, scrubDiagnosticValue } from "../src/core/diagnostic-redaction.js";
+import { executionDiagnosticsSchema, sourceInventorySchema } from "../src/domain/diagnostic-schemas.js";
 
 const origin = "http://127.0.0.1:4173";
 const inline = (map: unknown) => `data:application/json;base64,${Buffer.from(JSON.stringify(map)).toString("base64")}`;
@@ -96,13 +96,27 @@ describe("bounded original source correlation", () => {
 });
 
 describe("execution observation lifecycle", () => {
+  it("keeps diagnostic schemas valid after short private inputs expand redaction markers", async () => {
+    const inventory = scrubDiagnosticValue({ schemaVersion: 1 as const, scope: "main-frame-default-world" as const, scripts: [{ scriptId: "10", url: `${origin}/0.js`, hash: "0".repeat(64), sources: [`${origin}/${"0".repeat(500)}.ts`], mapping: "available" as const }], truncated: false }, ["0"]);
+    expect(sourceInventorySchema.safeParse(inventory).success).toBe(true);
+    expect(inventory.scripts[0]?.hash).toBeNull();
+    expect(inventory.scripts[0]?.scriptId).toBe("10");
+    const { cdp, sources } = fixture();
+    const result = await observeExecution(cdp, sources, "main", origin, async () => ({ schemaVersion: 1, kind: "click", url: origin, title: "fixture" }), { coverage: true, settleMs: 0 }, {});
+    const safe = redactExecutionDiagnostics(result.diagnostics!, ["0", "collected", "complete"]);
+    expect(executionDiagnosticsSchema.safeParse(safe).success).toBe(true);
+    expect(safe.actionId).toBe(result.diagnostics!.actionId);
+    expect(safe.coverage.state).toBe("collected");
+    expect(safe.cleanup).toBe("complete");
+  });
+
   it("joins executed/zero-count ranges and request initiators, then stops every enabled domain", async () => {
     const { cdp, sources, events, commands } = fixture();
     const result = await observeExecution(cdp, sources, "main", origin, async () => {
       events.emit("Network.requestWillBeSent", { requestId: "r1", frameId: "main", request: { method: "GET", url: `${origin}/api` }, initiator: { type: "script", stack: { callFrames: [{ scriptId: "s1", lineNumber: 1, columnNumber: 0 }] } } });
       events.emit("Network.responseReceived", { requestId: "r1", response: { status: 200 } });
       events.emit("Network.loadingFinished", { requestId: "r1" });
-      return { kind: "click", url: origin, title: "fixture" };
+      return { schemaVersion: 1 as const, kind: "click", url: origin, title: "fixture" };
     }, { coverage: true, settleMs: 0 }, {});
     expect(executionDiagnosticsSchema.safeParse(result.diagnostics).success).toBe(true);
     expect(executionDiagnosticsSchema.safeParse(redactExecutionDiagnostics(result.diagnostics!)).success).toBe(true);
@@ -116,7 +130,7 @@ describe("execution observation lifecycle", () => {
   });
   it("keeps coverage off unless requested", async () => {
     const { cdp, sources, commands } = fixture();
-    const result = await observeExecution(cdp, sources, "main", origin, async () => ({ kind: "click", url: origin, title: "fixture" }), { settleMs: 0 }, {});
+    const result = await observeExecution(cdp, sources, "main", origin, async () => ({ schemaVersion: 1 as const, kind: "click", url: origin, title: "fixture" }), { settleMs: 0 }, {});
     expect(result.diagnostics?.coverage.state).toBe("not-requested");
     expect(commands.some((command) => command.startsWith("Profiler."))).toBe(false);
   });
@@ -125,18 +139,18 @@ describe("execution observation lifecycle", () => {
     const controller = new AbortController();
     await expect(observeExecution(cdp, sources, "main", origin, async () => {
       if (mode === "throw") throw new Error("action failure");
-      controller.abort(); return { kind: "click", url: origin, title: "fixture" };
+      controller.abort(); return { schemaVersion: 1 as const, kind: "click", url: origin, title: "fixture" };
     }, { coverage: true, settleMs: 0 }, { signal: controller.signal })).rejects.toThrow();
     expect(commands).toEqual(expect.arrayContaining(["Profiler.stopPreciseCoverage", "Profiler.disable", "Network.disable"]));
   });
   it("does not claim cleanup success when a stop command fails", async () => {
     const { cdp, sources, send } = fixture();
     send.mockImplementation(async (method) => { if (method === "Profiler.stopPreciseCoverage") throw new Error("gone"); return {}; });
-    await expect(observeExecution(cdp, sources, "main", origin, async () => ({ kind: "click", url: origin, title: "fixture" }), { coverage: true, settleMs: 0 }, {})).rejects.toMatchObject({ code: "DIAGNOSTIC_CLEANUP_FAILED" });
+    await expect(observeExecution(cdp, sources, "main", origin, async () => ({ schemaVersion: 1 as const, kind: "click", url: origin, title: "fixture" }), { coverage: true, settleMs: 0 }, {})).rejects.toMatchObject({ code: "DIAGNOSTIC_CLEANUP_FAILED" });
   });
   it("marks coverage unavailable after document replacement", async () => {
     const { cdp, sources, events } = fixture();
-    const result = await observeExecution(cdp, sources, "main", origin, async () => { events.emit("Runtime.executionContextsCleared"); return { kind: "reload", url: origin, title: "fixture" }; }, { coverage: true, settleMs: 0 }, {});
+    const result = await observeExecution(cdp, sources, "main", origin, async () => { events.emit("Runtime.executionContextsCleared"); return { schemaVersion: 1 as const, kind: "reload", url: origin, title: "fixture" }; }, { coverage: true, settleMs: 0 }, {});
     expect(result.diagnostics?.coverage).toMatchObject({ state: "unavailable", scripts: [] });
   });
 });

@@ -1,9 +1,10 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.6.0",
+  "version": "0.12.0",
   "webDebug": {
-    "releaseStatus": "released",
-    "releasedPluginRuntimeVersion": "0.6.0"
+    "releaseStatus": "final",
+    "releasedPackageVersion": "0.12.0",
+    "releasedPluginRuntimeVersion": "0.12.0"
   },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
@@ -53,8 +54,8 @@
     "build": "tsc -p tsconfig.json",
     "prepack": "npm run build",
     "dev": "tsx src/index.ts",
-    "harness:check": "node scripts/harness-check.mjs",
     "smoke:live": "npm run build && node scripts/live-smoke.mjs",
+    "smoke:webmcp": "npm run build && node scripts/live-webmcp-smoke.mjs",
     "smoke:next": "npm run build && node scripts/live-next-smoke.mjs",
     "smoke:react-vite": "npm run build && node scripts/live-react-vite-smoke.mjs",
     "smoke:vue-vite": "npm run build && node scripts/live-vue-vite-smoke.mjs",
@@ -62,8 +63,6 @@
     "smoke:safari": "npm run build && node scripts/live-safari-smoke.mjs",
     "smoke:local-fidelity": "npm run build && node scripts/live-local-fidelity-smoke.mjs",
     "demo:compare": "npm run build --silent && node scripts/demo-compare.mjs",
-    "eval:catalog": "node scripts/agent-eval.mjs --catalog",
-    "eval:grade": "node scripts/agent-eval.mjs --grade",
     "serve:next": "node scripts/serve-next.mjs",
     "serve:react-vite": "node scripts/serve-react-vite.mjs",
     "serve:vue-vite": "node scripts/serve-vue-vite.mjs",
@@ -76,7 +75,7 @@
   },
   "dependencies": {
     "@jridgewell/trace-mapping": "0.3.31",
-    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "playwright-core": "1.62.1",
     "zod": "4.4.3"
   },

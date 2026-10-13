@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import type {
   AttemptSummary,
-  BrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BuildReference,
   CheckObservation,
@@ -53,7 +53,7 @@ export interface RecordScenarioInput {
   sessionId: string;
   name: string;
   url: string;
-  actions: BrowserAction[];
+  actions: ReplayableBrowserAction[];
   failureSignature: FailureSignatureEntry[];
   acceptanceChecks: ScenarioCheck[];
   regressionChecks?: ScenarioCheck[];
@@ -73,15 +73,15 @@ export interface VerifyScenarioInput {
   buildReference?: BuildReference;
 }
 
-export function createPrivateScenario(input: Omit<PrivateReproScenario, "actions" | "baseline" | "persistence" | "privateUrl"> & { privateActions: BrowserAction[]; serverStateReset?: ServerStateResetContract }): PrivateReproScenario {
+export function createPrivateScenario(input: Omit<PrivateReproScenario, "actions" | "baseline" | "persistence" | "privateUrl"> & { privateActions: ReplayableBrowserAction[]; serverStateReset?: ServerStateResetContract }): PrivateReproScenario {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     id: input.id,
     sessionId: input.sessionId,
     name: input.name,
     url: publicScenarioUrl(input.url),
     privateUrl: input.url,
-    actions: input.privateActions.map(sanitizeReplayAction) as BrowserAction[],
+    actions: input.privateActions.map(sanitizeReplayAction) as ReplayableBrowserAction[],
     privateActions: input.privateActions,
     failureSignature: input.failureSignature,
     acceptanceChecks: input.acceptanceChecks,
@@ -129,8 +129,8 @@ export function publicScenario(scenario: PrivateReproScenario): PublicReproScena
   return sanitized;
 }
 
-export function normalizeAction(action: BrowserAction): BrowserAction {
-  return { ...action } as BrowserAction;
+export function normalizeAction(action: ReplayableBrowserAction): ReplayableBrowserAction {
+  return { ...action } as ReplayableBrowserAction;
 }
 
 export function normalizeFailureEntry(entry: FailureSignatureEntry): FailureSignatureEntry {
@@ -205,8 +205,9 @@ export function validateScenarioInput(input: RecordScenarioInput): void {
   if (decisiveObservationCount > MAX_DECISIVE_OBSERVATIONS) throw new WebDebugError("DECISIVE_OBSERVATION_LIMIT", `The scenario exceeded the ${MAX_DECISIVE_OBSERVATIONS}-observation contract before execution.`);
 }
 
-export function validateAction(action: BrowserAction): void {
+export function validateAction(action: ReplayableBrowserAction): void {
   const normalized = normalizeAction(action);
+  if ((normalized as { kind?: string }).kind === "webmcp") throw new WebDebugError("WEBMCP_ACTION_NOT_REPLAYABLE", "WebMCP direct actions cannot be recorded or replayed as scenario actions.");
   if ("locator" in normalized) validateLocatorCore(normalized.locator);
   if (normalized.kind === "wait" && (!normalized.locator || !normalized.property || normalized.expected === undefined)) throw new WebDebugError("WAIT_CONDITION_REQUIRED", "A wait must name a locator, property, and expected value.");
   if (normalized.kind === "fill" && (typeof normalized.value !== "string" || normalized.value.length > 10_000)) throw new WebDebugError("FILL_VALUE_INVALID", "Fill values are limited to 10,000 characters.");
@@ -216,7 +217,7 @@ export function validateAction(action: BrowserAction): void {
 
 export function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset"> & { checkpoints?: ScenarioCheckpoint[]; viewports?: ViewportContract[]; failureViewports?: string[]; tls: "strict" | "allow-insecure-loopback"; authFixture: "seeded-disposable" | "none" }): string {
   const canonical = {
-    schemaVersion: 5,
+    schemaVersion: 6,
     url: canonicalUrl(input.url),
     actions: input.actions.map((action) => sanitizeReplayAction(action)),
     failureSignature: cloneSignature(input.failureSignature),
@@ -267,26 +268,27 @@ export function normalizeBuildReference(value?: BuildReference): BuildReference 
   return { source: "unavailable" };
 }
 
-export function cloneActions(actions: BrowserAction[]): BrowserAction[] { return actions.map((action) => ({ ...action } as BrowserAction)); }
+export function cloneActions(actions: ReplayableBrowserAction[]): ReplayableBrowserAction[] { return actions.map((action) => ({ ...action } as ReplayableBrowserAction)); }
 export function cloneChecks(checks: ScenarioCheck[]): ScenarioCheck[] { return checks.map((check) => ({ ...check })); }
 export function cloneSignature(signature: FailureSignatureEntry[]): FailureSignatureEntry[] { return signature.map((entry) => ({ ...entry })); }
 
-export function sanitizeReplayAction(action: BrowserAction | null): BrowserAction | null {
+export function sanitizeReplayAction(action: ReplayableBrowserAction | null): ReplayableBrowserAction | null {
   if (!action) return null;
+  if ((action as { kind?: string }).kind === "webmcp") throw new WebDebugError("WEBMCP_ACTION_NOT_REPLAYABLE", "WebMCP direct actions cannot be recorded or replayed as scenario actions.");
   if (isSensitiveInputAction(action)) {
     const marker = "[REDACTED_REPLAY_INPUT]";
-    return { ...action, value: marker.includes(action.value) ? redactionMarker(action.value, [action.value]) : marker } as BrowserAction;
+    return { ...action, value: marker.includes(action.value) ? redactionMarker(action.value, [action.value]) : marker } as ReplayableBrowserAction;
   }
   if (action.kind === "navigate") return { ...action, url: safeUrl(action.url) };
   return { ...action };
 }
 
-export function scrubPublicScenario(scenario: PublicReproScenario, actions: BrowserAction[]): PublicReproScenario {
+export function scrubPublicScenario(scenario: PublicReproScenario, actions: ReplayableBrowserAction[]): PublicReproScenario {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return scenario;
   const sanitized = cloneJson(scenario);
   sanitized.name = scrubText(sanitized.name, secrets);
-  sanitized.actions = sanitized.actions.map((action) => replaceSecrets(action, secrets) as BrowserAction);
+  sanitized.actions = sanitized.actions.map((action) => replaceSecrets(action, secrets) as ReplayableBrowserAction);
   sanitized.failureSignature = sanitized.failureSignature.map((entry) => replaceSecrets(entry, secrets) as FailureSignatureEntry);
   sanitized.acceptanceChecks = sanitized.acceptanceChecks.map((check) => replaceSecrets(check, secrets) as ScenarioCheck);
   sanitized.regressionChecks = sanitized.regressionChecks.map((check) => replaceSecrets(check, secrets) as ScenarioCheck);

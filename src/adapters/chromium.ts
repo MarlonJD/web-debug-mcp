@@ -16,7 +16,8 @@ import type {
 
 import type {
   ActionResult,
-  BrowserAction,
+  DirectBrowserAction,
+  ReplayableBrowserAction,
   BrowserLocator,
   BrowserSnapshot,
   BrowserTarget,
@@ -35,11 +36,13 @@ import type {
   AccessibilityDiagnostics,
   AccessibilityNode,
   LocatorSuggestion,
+  InteractiveElements,
   PlaywrightStorageState,
   BreakpointInput,
   ExecutionDiagnostics,
 } from "../domain/types.js";
 import {
+  CAPTURE_SURFACES,
   MAX_AX_NODES,
   MAX_LOCATOR_SUGGESTIONS,
   MAX_LOCATOR_CHARS,
@@ -56,6 +59,12 @@ import { AngularAdapter } from "./angular.js";
 import { ANGULAR_DEBUG_BRIDGE_SCRIPT } from "./angular-bridge.js";
 import { VueAdapter } from "./vue.js";
 import { VUE_DEBUG_BRIDGE_SCRIPT } from "./vue-bridge.js";
+import {
+  chromiumInteractiveLocator,
+  discoverInteractiveElements,
+  normalizeInteractiveElement,
+  parseRawInteractiveElements,
+} from "./interactive-elements.js";
 import type {
   BrowserAdapter,
   BrowserStartOptions,
@@ -66,6 +75,7 @@ import { chromiumRuntimeCapabilities } from "./runtime-capabilities.js";
 import { ChromiumSources, cdpCommand } from "./chromium-sources.js";
 import { observeExecution } from "./chromium-execution.js";
 import { boundedContext } from "../core/operation-context.js";
+import { WebMcpPageApi } from "./webmcp.js";
 
 interface RemoteObject {
   type?: string;
@@ -155,6 +165,8 @@ export class ChromiumAdapter implements BrowserAdapter {
   private sources: ChromiumSources | null = null;
   private lastExecution: ExecutionDiagnostics | null = null;
   private diagnosticCleanupFailed = false;
+  private webmcp: WebMcpPageApi | null = null;
+  private webmcpAvailable: boolean | undefined;
 
   async start(options: BrowserStartOptions, context: OperationContext = {}): Promise<BrowserTarget> {
     assertContext(context);
@@ -226,6 +238,7 @@ export class ChromiumAdapter implements BrowserAdapter {
       this.browser = await chromium.launch({
         executablePath,
         headless: options.headless ?? true,
+        ...(process.env.WEB_DEBUG_ENABLE_WEBMCP_TESTING === "1" ? { args: ["--enable-features=WebMCP"] } : {}),
       });
       this.context = await this.browser.newContext({
         viewport: options.viewport ?? { width: 1440, height: 900 },
@@ -238,6 +251,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
 
     this.installObservers(this.page);
+    this.webmcp = new WebMcpPageApi(this.page);
     this.cdp = await this.context.newCDPSession(this.page);
     await this.cdp.send("Page.enable");
     try {
@@ -289,6 +303,10 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
     if (this.navigationViolation) throw this.consumeNavigationViolation();
     this.assertFinalOrigin(this.page.url());
+    this.webmcpAvailable = await this.page.evaluate(() => {
+      const modelContext = (document as Document & { modelContext?: unknown }).modelContext as { getTools?: unknown; executeTool?: unknown } | undefined;
+      return Boolean(modelContext && typeof modelContext.getTools === "function" && typeof modelContext.executeTool === "function");
+    }).catch(() => false);
     this.lastKnownTitle = boundText(await this.page.title(), 300);
     this.lastKnownDom = await this.readDom(this.page).catch(() => this.lastKnownDom);
     const [react, angular, vue] = await Promise.all([
@@ -382,6 +400,8 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.frameworks.clear();
     this.lastKnownAngular = null;
     this.lastKnownVue = null;
+    this.webmcp = null;
+    this.webmcpAvailable = undefined;
     this.mainFrameId = null;
   }
 
@@ -398,9 +418,9 @@ export class ChromiumAdapter implements BrowserAdapter {
 
   targetIdentity(): string | null { return this.targetId; }
   browserVersion(): string | null { return this.version; }
-  runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser); }
+  runtimeCapabilities() { return chromiumRuntimeCapabilities(this.externalBrowser, this.webmcpAvailable); }
 
-  async act(action: BrowserAction, context: OperationContext = {}): Promise<ActionResult> {
+  async act(action: DirectBrowserAction, context: OperationContext = {}): Promise<ActionResult> {
     if (this.diagnosticCleanupFailed) throw new WebDebugError("DIAGNOSTIC_CLEANUP_FAILED", "Close the session after unconfirmed instrumentation cleanup.");
     this.lastExecution = null;
     if (context.diagnostics) {
@@ -424,7 +444,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     return this.performAction(action, context);
   }
 
-  private async performAction(action: BrowserAction, context: OperationContext): Promise<ActionResult> {
+  private async performAction(action: DirectBrowserAction, context: OperationContext): Promise<ActionResult> {
     assertContext(context);
     const page = this.requirePage();
     if (this.pausedEvent) {
@@ -433,6 +453,17 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.assertSelectedTopLevelState();
     try {
       switch (action.kind) {
+        case "webmcp": {
+          if (!this.webmcp) throw new WebDebugError("WEBMCP_UNAVAILABLE", "The selected page does not expose a callable WebMCP API.");
+          const toolResult = await this.webmcp.execute(action, context);
+          return {
+            schemaVersion: 1,
+            kind: "webmcp",
+            url: safeUrl(page.url()),
+            title: this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page),
+            toolResult,
+          };
+        }
         case "navigate":
           assertAllowedUrl(action.url, this.allowRemote);
           if (this.baseOrigin) assertTopLevelOrigin(action.url, this.baseOrigin);
@@ -476,7 +507,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (this.navigationViolation) throw this.consumeNavigationViolation();
     this.assertFinalOrigin(page.url());
     const title = this.pausedEvent ? this.lastKnownTitle : await this.readTitle(page);
-    return { kind: action.kind, url: safeUrl(page.url()), title };
+    return { schemaVersion: 1, kind: action.kind, url: safeUrl(page.url()), title };
   }
 
   async snapshot(options: SnapshotOptions, context: OperationContext = {}): Promise<BrowserSnapshot> {
@@ -485,9 +516,12 @@ export class ChromiumAdapter implements BrowserAdapter {
     this.assertSelectedTopLevelState();
     const warnings: string[] = [];
     let dom = this.lastKnownDom;
-    let react = options.checksOnly ? null : this.lastKnownReact;
-    let angular = options.checksOnly ? null : this.lastKnownAngular;
-    let vue = options.checksOnly ? null : this.lastKnownVue;
+    let domReadFailed = false;
+    const wants = (surface: typeof CAPTURE_SURFACES[number]) => !options.checksOnly && (options.surfaces ?? CAPTURE_SURFACES).includes(surface);
+    // Cached framework data is returned only while execution is explicitly paused.
+    let react = wants("react") && this.pausedEvent ? this.lastKnownReact : null;
+    let angular = wants("angular") && this.pausedEvent ? this.lastKnownAngular : null;
+    let vue = wants("vue") && this.pausedEvent ? this.lastKnownVue : null;
 
     if (this.pausedEvent) {
       warnings.push("JavaScript is paused; DOM text is the last known unpaused snapshot.");
@@ -499,14 +533,15 @@ export class ChromiumAdapter implements BrowserAdapter {
         dom = await this.readDom(page);
         this.lastKnownDom = dom;
       } catch (error) {
+        domReadFailed = true;
         warnings.push(`DOM snapshot unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
       if (!options.checksOnly) {
         const optionalBudget = optionalBudgetMs(context, 1_000);
         const selected = [
-          ...(this.frameworks.has("react") ? [{ name: "React", capture: () => this.reactAdapter.snapshot(page) }] : []),
-          ...(this.frameworks.has("angular") ? [{ name: "Angular", capture: () => this.angularAdapter.snapshot(page) }] : []),
-          ...(this.frameworks.has("vue") ? [{ name: "Vue", capture: () => this.vueAdapter.snapshot(page) }] : []),
+          ...(wants("react") && this.frameworks.has("react") ? [{ name: "React", capture: () => this.reactAdapter.snapshot(page) }] : []),
+          ...(wants("angular") && this.frameworks.has("angular") ? [{ name: "Angular", capture: () => this.angularAdapter.snapshot(page) }] : []),
+          ...(wants("vue") && this.frameworks.has("vue") ? [{ name: "Vue", capture: () => this.vueAdapter.snapshot(page) }] : []),
         ];
         if (optionalBudget === 0 && selected.length > 0) {
           warnings.push("Framework snapshots skipped because the shared deadline left no optional-enrichment budget.");
@@ -598,9 +633,24 @@ export class ChromiumAdapter implements BrowserAdapter {
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
 
-    const accessibility = !this.pausedEvent && !options.checksOnly && options.accessibility === true
+    const accessibility = !this.pausedEvent && wants("accessibility") && options.accessibility === true
       ? await this.collectAccessibility(context, warnings)
       : null;
+    const interactiveElements = !this.pausedEvent && wants("interactiveElements")
+      ? await this.collectInteractiveElements(context, warnings)
+      : null;
+    if (this.pausedEvent && wants("interactiveElements")) warnings.push("Interactive element map unavailable while JavaScript is paused.");
+    let webmcp = null;
+    if (wants("webmcp") && this.webmcp && this.webmcpAvailable === true && !this.pausedEvent) {
+      const optionalBudget = optionalBudgetMs(context, 1_000);
+      if (optionalBudget > 0) {
+        const inspected = await withTimeout(trackPending(this.webmcp.inspect(context), context), optionalBudget);
+        if (inspected) webmcp = inspected;
+        else warnings.push("WebMCP page metadata unavailable: optional discovery timed out.");
+      } else {
+        warnings.push("WebMCP page metadata unavailable: optional enrichment timed out.");
+      }
+    }
     const snapshot: BrowserSnapshot = {
       sources: !options.checksOnly && options.sourceMaps && this.sources ? await this.sources.inventory(boundedContext(context, performance.now() + 2000)) : null,
       execution: options.checksOnly ? null : this.lastExecution,
@@ -622,12 +672,15 @@ export class ChromiumAdapter implements BrowserAdapter {
       vue,
       next: null,
       vite: null,
+      webmcp,
       accessibility,
+      interactiveElements,
       warnings,
       observations: {
         url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
-        dom: { state: "pass", freshness: this.pausedEvent ? "stale" : "fresh", provenance: this.pausedEvent ? "cached" : "browser" },
+        dom: { state: domReadFailed ? "unavailable" : "pass", freshness: this.pausedEvent || domReadFailed ? "stale" : "fresh", provenance: this.pausedEvent || domReadFailed ? "cached" : "browser" },
         console: { state: "pass", freshness: "fresh", provenance: "browser" },
+        network: options.checksOnly ? { state: "unavailable", freshness: "unknown", provenance: "unknown" } : { state: "pass", freshness: "fresh", provenance: "browser" },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
@@ -753,7 +806,7 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
   }
 
-  private async waitForProbe(action: Extract<BrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
+  private async waitForProbe(action: Extract<ReplayableBrowserAction, { kind: "wait" }>, context: OperationContext): Promise<void> {
     const timeout = boundedTimeout(action.timeoutMs);
     const deadline = Math.min(performance.now() + timeout, context.deadline ?? Number.POSITIVE_INFINITY);
     while (performance.now() <= deadline) {
@@ -804,6 +857,50 @@ export class ChromiumAdapter implements BrowserAdapter {
     }
   }
 
+  private async collectInteractiveElements(context: OperationContext, warnings: string[]): Promise<InteractiveElements | null> {
+    try {
+      const rawValue = await withTimeout(
+        trackPending(this.requirePage().evaluate(discoverInteractiveElements), context),
+        optionalBudgetMs(context, 750),
+      );
+      const raw = parseRawInteractiveElements(rawValue);
+      if (!raw) {
+        warnings.push("Interactive element map unavailable: optional DOM discovery failed.");
+        return null;
+      }
+      const candidates = raw.elements.flatMap((candidate) => {
+        const locator = chromiumInteractiveLocator(candidate);
+        return locator ? [{ candidate, locator }] : [];
+      });
+      const validated = await withTimeout(
+        trackPending(Promise.all(candidates.map(async ({ candidate, locator }) => {
+          try {
+            const probe = await this.probe(locator, ["count", "visible", "enabled", "checked"], context);
+            return normalizeInteractiveElement(candidate, locator, probe);
+          } catch {
+            return null;
+          }
+        })), context),
+        optionalBudgetMs(context, 750),
+      );
+      if (!validated) {
+        warnings.push("Interactive element map unavailable: locator validation timed out.");
+        return null;
+      }
+      const elements = validated.filter((element): element is NonNullable<typeof element> => element !== null);
+      const detailWarnings: string[] = [];
+      const omitted = raw.elements.length - candidates.length;
+      const failed = validated.length - elements.length;
+      if (omitted > 0) detailWarnings.push(`${omitted} interactive candidates were omitted because no bounded locator was available.`);
+      if (failed > 0) detailWarnings.push(`${failed} interactive locators could not be live-validated.`);
+      if (raw.truncated) detailWarnings.push("Interactive element candidates were truncated to the bounded capture limit.");
+      return { elements, truncated: raw.truncated, warnings: detailWarnings };
+    } catch (error) {
+      warnings.push(`Interactive element map unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
+      return null;
+    }
+  }
+
   async setBreakpoint(input: BreakpointInput, context: OperationContext = {}): Promise<DebuggerBreakpoint> {
     assertContext(context);
     this.assertSelectedTopLevelState();
@@ -841,6 +938,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   async control(action: "resume" | "stepOver" | "stepInto" | "stepOut", context: OperationContext = {}): Promise<DebuggerSnapshot> {
+    context = boundedContext(context, performance.now() + 5_000);
     assertContext(context);
     this.assertSelectedTopLevelState();
     if (!this.cdp) throw new WebDebugError("DEBUGGER_UNAVAILABLE", "The JavaScript debugger is not connected.");
@@ -1041,6 +1139,7 @@ export class ChromiumAdapter implements BrowserAdapter {
   private async target(): Promise<BrowserTarget> {
     const page = this.requirePage();
     return {
+      schemaVersion: 1,
       browser: "chromium",
       remote: this.remoteTarget,
       url: safeUrl(page.url()),
@@ -1063,12 +1162,15 @@ export class ChromiumAdapter implements BrowserAdapter {
   }
 
   private async readTitle(page: Page): Promise<string> {
-    this.lastKnownTitle = boundText(await page.title(), 300);
+    if (this.pausedEvent) return this.lastKnownTitle;
+    const title = await this.runUntilCompleteOrPaused(() => page.title(), { deadline: performance.now() + 2_000 });
+    if (title !== undefined) this.lastKnownTitle = boundText(title, 300);
     return this.lastKnownTitle;
   }
 
   private async readDom(page: Page): Promise<BrowserSnapshot["dom"]> {
-    return page.evaluate(() => {
+    if (this.pausedEvent) return this.lastKnownDom;
+    const dom = await this.runUntilCompleteOrPaused(() => page.evaluate(() => {
       const body = document.body;
       const elements = Array.from(body?.querySelectorAll("*") ?? [])
         .slice(0, 50)
@@ -1082,7 +1184,8 @@ export class ChromiumAdapter implements BrowserAdapter {
         bodyText: (body?.innerText ?? "").slice(0, 4_000),
         elements,
       };
-    });
+    }), { deadline: performance.now() + 2_000 });
+    return dom ?? this.lastKnownDom;
   }
 
   private requirePage(): Page {
@@ -1090,24 +1193,25 @@ export class ChromiumAdapter implements BrowserAdapter {
     return this.page;
   }
 
-  private async runUntilCompleteOrPaused(operation: () => Promise<void>, context: OperationContext = {}): Promise<void> {
+  private async runUntilCompleteOrPaused<T>(operation: () => Promise<T>, context: OperationContext = {}): Promise<T | undefined> {
     assertContext(context);
+    if (this.pausedEvent) return undefined;
     let resolvePause: (() => void) | undefined;
-    const pausePromise = new Promise<"paused">((resolve) => {
-      resolvePause = () => resolve("paused");
+    const pausePromise = new Promise<{ paused: true }>((resolve) => {
+      resolvePause = () => resolve({ paused: true });
       this.pauseWaiters.add(resolvePause);
     });
-    const operationPromise = operation();
-    const result = await withContext(Promise.race([
-      operationPromise.then(() => "complete" as const),
-      pausePromise,
-    ]), context);
-    if (resolvePause) this.pauseWaiters.delete(resolvePause);
-    if (result === "paused") {
+    const operationPromise = Promise.resolve().then(operation);
+    try {
+      const result = await withContext(Promise.race([
+        operationPromise.then(value => ({ paused: false as const, value })),
+        pausePromise,
+      ]), context);
+      return result.paused ? undefined : result.value;
+    } finally {
+      if (resolvePause) this.pauseWaiters.delete(resolvePause);
       operationPromise.catch(() => undefined);
-      return;
     }
-    await operationPromise;
   }
 }
 
