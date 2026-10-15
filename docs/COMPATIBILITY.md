@@ -4,7 +4,7 @@ This matrix records the 0.13.0 release fixtures. Current check and publication s
 
 | Surface | Declared | Verified locally | Candidate or unavailable |
 | --- | --- | --- | --- |
-| Node.js | `>=20` from `package.json` | `24.18.0` deterministic/build/live checks passed; exact 0.13.0 archive handshakes for `20.20.2`, `22.23.3` and `24.18.0` pending | Per-runtime archive/public verification is recorded in the release evidence; browser matrices run on Node 24 |
+| Node.js | `>=20` from `package.json` | `24.18.0` deterministic/build/live checks; exact 0.13.0 archive handshakes passed under `20.20.2`, `22.23.3` and `24.18.0` | Per-runtime archive/public verification is recorded in the release evidence; browser matrices run on Node 24 |
 | MCP SDK | Package lock | `@modelcontextprotocol/sdk 1.32.1` with output schemas, structured content, progress, resources, cancellation, and in-memory transport | Other MCP client implementations require their own handshake |
 | Chromium | Explicit executable or CDP endpoint | Chrome for Testing `151.0.7922.34` local launch; exact live result is recorded by the Chromium smokes | Approved external CDP remains authority-gated |
 | Chrome WebMCP | Explicit `--enable-features=WebMCP` local-development opt-in | Chrome for Testing `151.0.7922.34` headless command-owned session; `document.modelContext`, registration/discovery, exact JSON-string execution, opaque result, replay/screenshot safety, and independent fixture oracle pass | Origin-trial/native provenance, cross-origin exposure, and remote browsers remain candidate-only |

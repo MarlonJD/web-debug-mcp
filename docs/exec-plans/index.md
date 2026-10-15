@@ -4,7 +4,7 @@
 
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
-| [Release Web Debug 0.13.0](active/release-0-13-0.md) | Platform Engineering | active | 2026-10-15 | Promote six verified improvements, pass final release gates, and publish one exact npm/GitHub release; npm web login pending |
+| [Release Web Debug 0.13.0](active/release-0-13-0.md) | Platform Engineering | active | 2026-10-15 | Source/tag pushed; 262 tests, ten live checks and Node 20/22/24 exact-archive handshakes pass; GitHub draft prepared; npm owner authentication required |
 | [Release Web Debug 0.11.0 and update Codex](active/release-0-11-0.md) | Platform Engineering | active | 2026-09-09 | Promote interactive UI capture to 0.11.0, publish npm, and update Codex; npm login is the current external blocker |
 | [Release Web Debug 0.10.0 and update Codex](active/release-0-10-0.md) | Platform Engineering | active | 2026-09-08 | Published and installed; Node 20/22 archive handshakes and current-task MCP rebinding remain explicit follow-ups |
 | [Release Web Debug 0.8.0 and update Codex](active/release-0-8-0.md) | Platform Engineering | active | 2026-09-02 | Restore npm auth, promote final identities, publish one exact archive/tag/release, and replace the installed Codex plugin |

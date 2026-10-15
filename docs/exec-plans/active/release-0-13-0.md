@@ -11,8 +11,8 @@ The user explicitly authorized committing and pushing all Web Debug changes and 
 - [x] Inspect the worktree, upstream main and npm baseline; preserve the complete tracked/untracked source snapshot. GitHub keyring authentication succeeds; npm whoami returns E401 and the first official web login expired while local checks ran; a fresh login is required for publication.
 - [x] Aligned package/lock/plugin/marketplace identities and current documentation for 0.13.0; reviewed the source changes and checked for accidental credential material.
 - [x] Passed 262 tests/40 files, typecheck/build, zero production audit findings, three skill validators, ten live browser/framework/workflow smokes and six comparison scenarios. All observed owned processes exited; no new test-browser/crashpad processes remain.
-- [ ] Commit all authorized source on existing main; pack and verify one exact archive under Node 20/22/24 with 13 concrete tools and project detection.
-- [ ] Push the source, publish the exact npm archive, publish the matching immutable Git tag/GitHub release, and verify public identities and fresh public installation.
+- [x] Committed all 69 authorized files as 882a023 and pushed existing main. Packed one exact 212-file archive; Node 20.20.2/22.23.3/24.18.0 stdio handshakes passed with 13 concrete tools/schemas/examples, schema-3 detection and safe argument guidance. Pushed immutable v0.13.0; created a GitHub draft with the tested archive and downloaded it to confirm byte equality.
+- [ ] Publish the exact npm archive after owner authentication, publish the prepared GitHub draft, and verify public identities and fresh public installation. Source/tag push and GitHub draft/asset preparation are complete.
 - [ ] Verify owned-process cleanup, record final evidence, update the registry and close this plan.
 
 ## Surprises & Discoveries
@@ -55,7 +55,9 @@ Keep older tags/releases and the npm next channel unchanged. Query public regist
 
 ## Outcomes & Retrospective
 
-In progress. Record exact source/archive/publication identities and verification limits before closing.
+Source and tag are pushed: `882a023281e00085abe0f0113a0c8a8672e9cb1c` / `v0.13.0`. The exact 212-file, 307180-byte archive has SHA-1 `2184dbc2179cfc0e3a6dad6ffaa4d8a7f74d856a` and SHA-512 `sha512-F2z3mP7KNZpllgKhuTvozuLb2AUSqSaXCH6Cq0oe7ZGcDeIHuj77G7vPsrVfoaT2Qq8BADSJUVpOk2jhTGGQdg==`. All local release gates and three exact-archive runtime handshakes passed. The GitHub draft asset was downloaded and matched the tested bytes (SHA256 `24d8f60eebe4d0cbe86795928dfdbde1ece37923c374cbda339b4ca6185ba897`).
+
+Publication remains incomplete: npm whoami returns E401. The second official web login and a visible sign-in tab were opened for the user after the first session expired. GitHub release is deliberately still a draft until the immutable npm package exists. [Prepared GitHub draft](https://github.com/MarlonJD/web-debug-mcp/releases/tag/untagged-44c11d72b36e5036e94a). Preserve the exact tested archive; after the user completes official npm authentication, publish it, verify registry integrity/fresh install, publish this same draft, and finish the plan. No installed plugin/client configuration was changed.
 
 ## Artifacts and Notes
 
