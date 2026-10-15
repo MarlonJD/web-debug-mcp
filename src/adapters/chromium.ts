@@ -1,6 +1,7 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { readLocatorLayout } from "./locator-layout.js";
 
 import { chromium } from "playwright-core";
 import type {
@@ -321,6 +322,13 @@ export class ChromiumAdapter implements BrowserAdapter {
     return this.target();
   }
 
+  async layout(locator: BrowserLocator, context: OperationContext = {}) {
+    assertContext(context);
+    if (this.pausedEvent) throw new WebDebugError("LAYOUT_UNAVAILABLE", "Live layout is unavailable while JavaScript is paused.");
+    this.assertSelectedTopLevelState();
+    return withContext(this.resolveLocator(locator).evaluateAll(readLocatorLayout), context);
+  }
+
   async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {
     assertContext(context);
     validateLocator(locator);
@@ -629,7 +637,8 @@ export class ChromiumAdapter implements BrowserAdapter {
         }
       }
     }
-    const networkBound = options.checksOnly ? { items: [] as NetworkEntry[], truncated: false } : boundItems([...this.networkEntries.values()], 100);
+    const includeNetwork = !options.checksOnly || options.includeNetwork === true;
+    const networkBound = includeNetwork ? boundItems([...this.networkEntries.values()], 100) : { items: [] as NetworkEntry[], truncated: false };
     if (consoleBound.truncated) warnings.push("Console entries were truncated to 100 items.");
     if (networkBound.truncated) warnings.push("Network entries were truncated to 100 items.");
 
@@ -680,7 +689,7 @@ export class ChromiumAdapter implements BrowserAdapter {
         url: { state: "pass", freshness: "fresh", provenance: "browser", observed: safeUrl(page.url()) },
         dom: { state: domReadFailed ? "unavailable" : "pass", freshness: this.pausedEvent || domReadFailed ? "stale" : "fresh", provenance: this.pausedEvent || domReadFailed ? "cached" : "browser" },
         console: { state: "pass", freshness: "fresh", provenance: "browser" },
-        network: options.checksOnly ? { state: "unavailable", freshness: "unknown", provenance: "unknown" } : { state: "pass", freshness: "fresh", provenance: "browser" },
+        network: includeNetwork ? { state: "pass", freshness: "fresh", provenance: "browser" } : { state: "unavailable", freshness: "unknown", provenance: "unknown" },
       },
     };
     if (options.checksOnly && !options.retainNetwork) this.networkEntries.clear();
@@ -1088,16 +1097,23 @@ export class ChromiumAdapter implements BrowserAdapter {
         resourceType: request.resourceType(),
         status: null,
         ok: null,
+        completed: false,
         ...(nextActionId ? { nextActionId } : {}),
       });
       this.trimNetwork();
     });
     page.on("response", (response) => this.recordResponse(response));
+    page.on("requestfinished", (request) => {
+      const id = this.requestIds.get(request);
+      const entry = id ? this.networkEntries.get(id) : undefined;
+      if (entry) entry.completed = true;
+    });
     page.on("requestfailed", (request) => {
       const requestId = this.requestIds.get(request);
       if (!requestId) return;
       const entry = this.networkEntries.get(requestId);
       if (entry) {
+        entry.completed = true;
         entry.failure = boundText(request.failure()?.errorText ?? "request failed", 500);
         entry.ok = false;
       }

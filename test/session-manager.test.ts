@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { access, readdir, writeFile } from "node:fs/promises";
+import { access, readdir, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type {
   ActionResult,
@@ -280,6 +282,69 @@ async function record(manager: SessionManager, sessionId: string, overrides: Par
 }
 
 describe("session manager adaptive contract", () => {
+  it("applies earlier session inputs to new recorded and verified observations", async () => {
+    const secret = "earlier-session-private-value";
+    const { manager } = managerFor([snapshotFor(`Bug ${secret}`), snapshotFor(`Bug ${secret}`), snapshotFor(`Bug ${secret}`), snapshotFor(`Fixed ${secret}`), snapshotFor(`Fixed ${secret}`)], { mode: "attach", targetId: "earlier-secret" });
+    const session = await start(manager);
+    try {
+      await manager.act(session.id, { kind: "fill", locator: { kind: "css", value: "#input" }, value: secret });
+      const scenario = await record(manager, session.id, { name: `Check ${secret}` });
+      expect(scenario.baseline.status).toBe("reproduced");
+      expect(JSON.stringify(scenario)).not.toContain(secret);
+      expect(JSON.stringify(manager.listScenarios(session.id))).not.toContain(secret);
+      const verified = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
+      expect(verified.outcome).toBe("verified");
+      expect(JSON.stringify(verified)).not.toContain(secret);
+    } finally { await manager.close(session.id, "delete"); }
+  });
+
+  it("scrubs seeded auth values from recorded metadata and verification without fill actions", async () => {
+    const root = await mkdtemp(join(tmpdir(), "scenario-auth-"));
+    const secret = "auth-scenario-private-value";
+    await writeFile(join(root, "index.html"), "<title>Fixture</title>");
+    await writeFile(join(root, "auth.json"), JSON.stringify({ cookies: [{ name: "fixture", value: secret, domain: "127.0.0.1", path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Lax" }], origins: [] }));
+    const { manager } = managerFor([snapshotFor(`Bug ${secret}`), snapshotFor(`Bug ${secret}`), snapshotFor(`Fixed ${secret}`), snapshotFor(`Fixed ${secret}`)], { isolated: true, targetId: "auth-scenario" });
+    let sessionId: string | undefined;
+    try {
+      sessionId = (await start(manager, { projectRoot: root, authFixture: { kind: "playwrightStorageState", path: "auth.json" } })).id;
+      const scenario = await record(manager, sessionId, { name: `Check ${secret}` });
+      expect(JSON.stringify(scenario)).not.toContain(secret);
+      const verified = await manager.verifyScenario({ sessionId, scenarioId: scenario.id });
+      expect(verified.outcome).toBe("verified");
+      expect(JSON.stringify(verified)).not.toContain(secret);
+    } finally {
+      if (sessionId) await manager.close(sessionId, "delete");
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps semantic interactive locators and bounded names valid after a short input", async () => {
+    const map = { elements: [{ tag: "button", role: "button", name: "Reset", text: "Reset", locator: { kind: "role" as const, role: "button", name: "Reset" }, matchCount: 1, uniqueAtCapture: true, visible: true, enabled: true, checked: null, bounds: null }], truncated: false, warnings: [] };
+    const { manager } = managerFor(Array.from({ length: 6 }, () => snapshotFor("Bug", { interactiveElements: structuredClone(map) })), { mode: "attach", targetId: "interactive-secret" });
+    const session = await start(manager);
+    try {
+      await manager.act(session.id, { kind: "fill", locator: { kind: "css", value: "#input" }, value: "e" });
+      const capture = await manager.capture(session.id, { profile: "include", surfaces: ["interactiveElements"] });
+      expect(capture.details?.interactiveElements?.elements[0]?.locator.kind).toBe("role");
+      expect(issueCaptureResultSchema.safeParse(capture).success).toBe(true);
+      const scenario = await record(manager, session.id, { name: "e".repeat(200) });
+      expect(scenario.baseline.status).toBe("reproduced");
+      expect(scenario.name.length).toBeLessThanOrEqual(200);
+      expect(scenario.baseline.evidence?.browser.interactiveElements?.elements[0]?.locator.kind).toBe("role");
+    } finally { await manager.close(session.id, "delete"); }
+  });
+
+  it("honors a three-attempt minimum for a decisively failing candidate", async () => {
+    const { manager } = managerFor(Array.from({ length: 20 }, () => snapshotFor("Bug")), { mode: "attach", targetId: "minimum-tab" });
+    const session = await start(manager);
+    try {
+      const scenario = await record(manager, session.id, { minimumPostFixAttempts: 3 });
+      const result = await manager.verifyScenario({ sessionId: session.id, scenarioId: scenario.id });
+      expect(result.outcome).toBe("failed");
+      expect(result.postFix.attempts).toHaveLength(3);
+      expect(result.postFix.attempts.every(attempt => attempt.passed === false)).toBe(true);
+    } finally { await manager.close(session.id); }
+  });
   it.each([
     { secret: "stale", state: "pass", freshness: "stale", provenance: "cached", collection: "stale" },
     { secret: "unavailable", state: "unavailable", freshness: "fresh", provenance: "browser", collection: "unavailable" },
@@ -463,11 +528,11 @@ describe("session manager adaptive contract", () => {
     const session = await start(manager);
     const baseline = await manager.capture(session.id);
     const unchanged = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor });
-    expect(unchanged.changedSurfaces).toEqual(["sources", "execution", "accessibility", "interactiveElements", "webmcp"]);
+    expect(unchanged.changedSurfaces).toEqual(["sources", "execution", "accessibility", "interactiveElements", "webmcp", "serverLogs"]);
     expect(unchanged.unchangedSurfaces).toContain("dom");
     expect(unchanged.unchangedSurfaces).not.toContain("replay");
     expect(unchanged.unchangedSurfaces).not.toContain("screenshot");
-    expect(unchanged.details).toEqual({ sources: null, execution: null, accessibility: null, interactiveElements: null, webmcp: null });
+    expect(unchanged.details).toEqual({ sources: null, execution: null, accessibility: null, interactiveElements: null, webmcp: null, serverLogs: null });
     expect(unchanged.differences).toMatchObject({ diagnosticOnly: true, state: "compared" });
 
     const changed = await manager.capture(session.id, { profile: "delta", cursor: baseline.cursor, surfaces: ["dom", "console"] });

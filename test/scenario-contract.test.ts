@@ -19,6 +19,17 @@ function scenario(): RecordScenarioInput {
 }
 
 describe("scenario contract helpers", () => {
+  it("bounds completion and repetition and includes them in the immutable scenario hash", () => {
+    const input = scenario();
+    input.completion = { checks: [{ kind: "networkComplete", path: "/result", method: "GET" }], timeoutMs: 500, stableForMs: 50 };
+    input.minimumPostFixAttempts = 3;
+    expect(() => validateScenarioInput(input)).not.toThrow();
+    const base = { ...input, tls: "strict" as const, authFixture: "none" as const };
+    expect(scenarioContractHash(base)).not.toBe(scenarioContractHash({ ...base, minimumPostFixAttempts: 1 }));
+    expect(scenarioContractHash(base)).not.toBe(scenarioContractHash({ ...base, completion: { ...input.completion, stableForMs: 100 } }));
+    expect(() => validateScenarioInput({ ...input, minimumPostFixAttempts: 6 })).toThrow(/integer from 1 to 5/);
+    expect(() => validateScenarioInput({ ...input, completion: { ...input.completion!, timeoutMs: 10 } })).toThrow(/Completion requires/);
+  });
   it("validates bounded inputs and hashes the sanitized canonical contract deterministically", () => {
     const input = scenario();
     expect(() => validateScenarioInput(input)).not.toThrow();

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { readProjectLog, validateLogFile } from "./project-logs.js";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 
 import { ChromiumAdapter } from "../adapters/chromium.js";
@@ -9,6 +10,7 @@ import type { BrowserAdapter, BrowserAdapterFactory, BrowserStartOptions } from 
 import { NextAdapter } from "../adapters/next.js";
 import { SafariAdapter } from "../adapters/safari.js";
 import { ViteAdapter } from "../adapters/vite.js";
+import { awaitScenarioCompletion } from "./scenario-observations.js";
 import type {
   ActionResult,
   AttemptSummary,
@@ -21,6 +23,7 @@ import type {
   BuildReference,
   CheckExpectation,
   CheckObservation,
+  CompletionObservation,
   DebugSessionSummary,
   EnvironmentFingerprint,
   EvidenceBundle,
@@ -74,9 +77,13 @@ import {
 } from "./session-evidence.js";
 import {
   actionSecret,
+  cloneJson,
   actionSecrets,
   isSensitiveInputAction,
   replaceSecrets,
+  scrubOpaqueValue,
+  scrubSelectedUrl,
+  scrubText,
 } from "./private-values.js";
 import {
   cloneActions,
@@ -145,6 +152,8 @@ import {
 export type { RecordScenarioInput, VerifyScenarioInput } from "./scenario-contract.js";
 
 export interface StartSessionInput {
+  host?: import("../domain/types.js").RuntimeHost;
+  logFile?: string;
   projectRoot: string;
   url: string;
   targetId?: string;
@@ -170,6 +179,7 @@ interface Lease {
 }
 
 interface ManagedSession {
+  logFile?: string;
   descriptor: ProjectDescriptor;
   summary: DebugSessionSummary;
   adapter: BrowserAdapter;
@@ -224,13 +234,16 @@ export class SessionManager {
     this.cleanupTimeoutMs = Math.min(Math.max(options.cleanupTimeoutMs ?? CLEANUP_TIMEOUT_MS, 0), CLEANUP_TIMEOUT_MS);
   }
 
-  detect(projectRoot: string): ProjectDescriptor { return detectProject(projectRoot); }
+  detect(projectRoot: string, host?: import("../domain/types.js").RuntimeHost): ProjectDescriptor { return detectProject(projectRoot, host); }
 
   async start(input: StartSessionInput, context: OperationContext = {}): Promise<DebugSessionSummary> {
     if (this.activeSessionCount() >= MAX_SESSIONS) throw new WebDebugError("SESSION_LIMIT_REACHED", `At most ${MAX_SESSIONS} sessions may be active.`);
     throwIfCancelled(context);
     assertAllowedTargetUrl(input.url, input.allowRemote ?? false);
-    const descriptor = detectProject(input.projectRoot);
+    const descriptor = detectProject(input.projectRoot, input.host);
+    if (input.logFile) {
+      try { validateLogFile(input.logFile); } catch { throw new WebDebugError("LOG_FILE_INVALID", "Configure one project-relative .log file with no parent traversal."); }
+    }
     const id = randomUUID();
     const browser = input.browser ?? "chromium";
     const tls = input.tls ?? "strict";
@@ -270,6 +283,7 @@ export class SessionManager {
       artifactState: "retained",
     };
     const managed: ManagedSession = {
+      ...(input.logFile ? { logFile: input.logFile } : {}),
       descriptor,
       summary,
       adapter,
@@ -317,13 +331,13 @@ export class SessionManager {
       managed.summary.url = managed.summary.target.url;
       managed.selectedTargetId = managed.summary.target.targetId ?? adapter.targetIdentity?.() ?? null;
       if (!managed.summary.target.isolated) managed.summary.warnings.push("The session uses an attached or visible browser profile; profile isolation is unavailable.");
-      return cloneSummary(managed.summary);
+      return cloneSummary(managed.summary, sessionSecrets(managed));
     } catch (error) {
       managed.summary.status = "failed";
       await this.closeAdapterBounded(adapter, this.cleanupTimeoutMs);
       await rm(artifactDir, { recursive: true, force: true }).catch(() => undefined);
       this.sessions.delete(id);
-      throw sanitizeError(error);
+      throw sanitizeError(error, sessionSecrets(managed));
     }
   }
 
@@ -343,6 +357,8 @@ export class SessionManager {
     try {
       const result = await this.withLease(session, context, (operation) => this.actInternal(session, action, { ...operation, ...(diagnostics ? { diagnostics } : {}) }, true));
       const sanitized = replaceSecrets(result, sessionSecrets(session)) as ActionResult;
+      sanitized.kind = action.kind;
+      sanitized.url = scrubSelectedUrl(result.url, session.startOptions.approvedOrigin!, sessionSecrets(session));
       if (result.diagnostics) sanitized.diagnostics = redactExecutionDiagnostics(result.diagnostics, sessionSecrets(session));
       return sanitized;
     } catch (error) {
@@ -377,10 +393,10 @@ export class SessionManager {
     if (session.unusable) throw new WebDebugError("SESSION_UNUSABLE", `Debug session is unusable after an unsettled adapter operation: ${session.summary.id}`);
     if (!session.nextAdapter) throw new WebDebugError("NEXT_UNAVAILABLE", "The selected project does not expose a Next.js runtime adapter.");
     try {
-      return await this.withLease(session, context, (operation) => this.callAdapter(
-        () => session.nextAdapter!.inspect(session.summary.url, inspection, operation),
-        operation,
+      const result = await this.withLease(session, context, (operation) => this.callAdapter(
+        () => session.nextAdapter!.inspect(session.summary.url, inspection, operation), operation,
       ));
+      return { ...result, result: scrubOpaqueValue(result.result, sessionSecrets(session)), warnings: result.warnings.map(value => boundText(scrubText(value, sessionSecrets(session)), 500)) };
     } catch (error) {
       throw sanitizeError(error, sessionSecrets(session));
     }
@@ -414,7 +430,10 @@ export class SessionManager {
 
   async evaluate(sessionId: string, expression: string, allowSideEffects: boolean, context: OperationContext = {}) {
     const session = this.requireSession(sessionId);
-    return this.withLease(session, context, (operation) => this.callAdapter(() => session.adapter.evaluate(expression, allowSideEffects, operation), operation));
+    try {
+      const result = await this.withLease(session, context, (operation) => this.callAdapter(() => session.adapter.evaluate(expression, allowSideEffects, operation), operation));
+      return { ...result, value: scrubOpaqueValue(redactValue(result.value), sessionSecrets(session)), description: result.description ? boundText(scrubText(result.description, sessionSecrets(session)), 2_000) : null };
+    } catch (error) { throw sanitizeError(error, sessionSecrets(session)); }
   }
 
   async recordScenario(input: RecordScenarioInput, context: OperationContext = {}): Promise<PublicReproScenario> {
@@ -435,8 +454,9 @@ export class SessionManager {
         throw new WebDebugError("SINGLE_VIEWPORT_MISMATCH", "A single explicit viewport must match the live session; use a viewport matrix to run a different size through fresh candidates.");
       }
       if (viewports.length > 1 && session.summary.runtimeCapabilities?.viewportMatrix.state !== "supported") throw new WebDebugError("VIEWPORT_MATRIX_UNAVAILABLE", session.summary.runtimeCapabilities?.viewportMatrix.reason ?? "The selected runtime does not support isolated viewport matrices.");
-      const risks = mergeRisks(input.risks);
-      const requestedLevel = effectiveRequestedLevel(input.requestedLevel, risks);
+      const risks = mergeRisks({ ...input.risks, ...(input.completion ? { async: true } : {}) });
+      const minimumPostFixAttempts = input.minimumPostFixAttempts ?? 1;
+      const requestedLevel = maxLevel(effectiveRequestedLevel(input.requestedLevel, risks), minimumPostFixAttempts > 3 ? "strict" : minimumPostFixAttempts > 1 ? "standard" : "quick");
       const scenario = createPrivateScenario({
         schemaVersion: 6,
         id: randomUUID(),
@@ -444,6 +464,8 @@ export class SessionManager {
         name: input.name.trim(),
         url: input.url,
         privateActions: cloneActions(actions),
+        ...(input.completion ? { completion: cloneJson(input.completion) } : {}),
+        minimumPostFixAttempts,
         failureSignature: cloneSignature(failureSignature),
         acceptanceChecks: cloneChecks(acceptanceChecks),
         regressionChecks: cloneChecks(regressionChecks),
@@ -457,7 +479,7 @@ export class SessionManager {
         requestedLevel,
         buildReference: normalizeBuildReference(input.buildReference),
         environmentFingerprint: this.environmentFingerprint(session, input.url),
-        contractHash: scenarioContractHash({ ...input, actions, failureSignature, acceptanceChecks, regressionChecks, checkpoints, viewports, failureViewports: input.failureViewports, tls: session.tls, authFixture: session.authFixture }),
+        contractHash: scenarioContractHash({ ...input, risks, minimumPostFixAttempts, actions, failureSignature, acceptanceChecks, regressionChecks, checkpoints, viewports, failureViewports: input.failureViewports, tls: session.tls, authFixture: session.authFixture }),
         createdAt: this.timestamp(),
       });
       const baseline = await this.runBaselinePhase(session, scenario, operation);
@@ -473,13 +495,16 @@ export class SessionManager {
         ...(baseline.viewportConsensus ? { viewportConsensus: baseline.viewportConsensus } : {}),
         termination: baseline.termination,
       };
-      if (operation.signal?.aborted || session.closing) return publicScenario(scenario);
+      if (operation.signal?.aborted || session.closing) return publicScenario(scenario, sessionActions(session));
       session.scenarios.set(scenario.id, scenario);
-      return publicScenario(scenario);
+      return publicScenario(scenario, sessionActions(session));
     });
   }
 
-  listScenarios(sessionId: string): PublicReproScenario[] { return [...this.requireSession(sessionId).scenarios.values()].map(publicScenario); }
+  listScenarios(sessionId: string): PublicReproScenario[] {
+    const session = this.requireSession(sessionId);
+    return [...session.scenarios.values()].map(scenario => publicScenario(scenario, sessionActions(session)));
+  }
 
   async verifyScenario(input: VerifyScenarioInput, context: OperationContext = {}): Promise<VerificationResult> {
     const operationContext = context;
@@ -505,7 +530,7 @@ export class SessionManager {
       let outcome: VerificationOutcome = postFix.termination === "all-required-passes" ? "verified" : postFix.termination === "failure-quorum" ? "failed" : "inconclusive";
       const flaky = scenario.baseline.flaky || scenario.baseline.attempts.some((attempt) => attempt.conflict) || postFix.flaky;
       if (flaky && outcome === "verified") outcome = "inconclusive";
-      return boundVerificationResult(scrubVerificationResult(this.createVerificationResult(scenario, currentFingerprint, postBuildReference, postFix, outcome, flaky, postFix.level), scenario.privateActions));
+      return boundVerificationResult(scrubVerificationResult(this.createVerificationResult(scenario, currentFingerprint, postBuildReference, postFix, outcome, flaky, postFix.level), sessionActions(session)));
     });
   }
 
@@ -705,7 +730,7 @@ export class SessionManager {
             break;
           }
         }
-        if (effectiveLevel === "quick" || failureCount >= 2) { termination = "failure-quorum"; break; }
+        if ((effectiveLevel === "quick" || failureCount >= 2) && passCount + failureCount >= (scenario.minimumPostFixAttempts ?? 1)) { termination = "failure-quorum"; break; }
         if (passCount > 0) { flaky = true; termination = "post-fix-conflict"; break; }
       } else {
         if (attempt.summary.retryable && effectiveLevel === "quick") {
@@ -748,6 +773,7 @@ export class SessionManager {
     let match: boolean | undefined;
     let passed: boolean | undefined;
     let checks: CheckObservation[] = [];
+    let completion: CompletionObservation | undefined;
     const checkpointResults: NonNullable<AttemptSummary["checkpoints"]> = [];
     let termination: AttemptTermination = "permanent";
     let error: string | undefined;
@@ -767,12 +793,16 @@ export class SessionManager {
         await this.captureCheckpointBoundary(session.adapter, scenario, actionIndex + 1, attemptContext, checkpointResults);
       }
       if (scenario.risks.serverStateLeakage && scenario.serverStateReset?.readyCheck) {
-        const resetBrowser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, attemptContext), attemptContext);
-        const resetObservation = await evaluateCheckLive(session.adapter, scenario.serverStateReset.readyCheck, resetBrowser, attemptContext);
+        const readyCheck = scenario.serverStateReset.readyCheck;
+        const resetBrowser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true, includeNetwork: readyCheck.kind.startsWith("network") }, attemptContext), attemptContext);
+        const resetObservation = await evaluateCheckLive(session.adapter, readyCheck, resetBrowser, attemptContext);
         if (resetObservation.state !== "pass") throw new WebDebugError("SERVER_STATE_RESET_UNAVAILABLE", "The explicit server-state reset condition was not observed.");
         reset = { ...reset, serverState: "reset-by-scenario" };
       }
-      browser = await this.callAdapter(() => session.adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, attemptContext), attemptContext);
+      const observed = await this.observeScenario(session.adapter, session, scenario, attemptContext);
+      browser = observed.browser;
+      completion = observed.completion;
+      this.assertScenarioCompletion(completion);
       const acceptanceChecks = await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks].map((check) => evaluateCheckLive(session.adapter, check, browser!, attemptContext)));
       const failureChecks = await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(session.adapter, entry, browser!, attemptContext, entry.expected)));
       checks = phase === "baseline" ? failureChecks : [...acceptanceChecks, ...failureChecks];
@@ -806,6 +836,7 @@ export class SessionManager {
       ...(match === undefined ? {} : { match }),
       ...(passed === undefined ? {} : { passed }),
       checks,
+      ...(completion ? { completion } : {}),
       availableChecks: checks.filter((check) => check.state !== "unavailable").length,
       decisiveChecks: checks.filter((check) => check.state !== "unavailable" && check.freshness === "fresh").length,
       retryable: termination === "retryable",
@@ -818,6 +849,18 @@ export class SessionManager {
       await this.recordReplayFrame(session, "capture", null, browser, attemptContext, scenario.privateActions);
     }
     return { summary, browser, evidence, match, passed };
+  }
+
+  private async observeScenario(adapter: BrowserAdapter, session: ManagedSession, scenario: PrivateReproScenario, context: OperationContext): Promise<{ browser: BrowserSnapshot; completion?: CompletionObservation }> {
+    const checks = [...scenario.acceptanceChecks, ...scenario.regressionChecks, ...scenario.failureSignature, ...(scenario.completion?.checks ?? []), ...(scenario.serverStateReset?.readyCheck ? [scenario.serverStateReset.readyCheck] : [])];
+    const includeNetwork = checks.some(check => check.kind === "networkComplete" || check.kind === "networkResponse");
+    const observe = () => this.callAdapter(() => adapter.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true, ...(includeNetwork ? { includeNetwork: true } : {}) }, context), context);
+    if (!scenario.completion) return { browser: await observe() };
+    return awaitScenarioCompletion(scenario.completion, observe, (check, browser) => this.callAdapter(() => evaluateCheckLive(adapter, check, browser, context), context), context);
+  }
+
+  private assertScenarioCompletion(completion?: CompletionObservation): void {
+    if (completion && completion.state !== "ready") throw new WebDebugError(completion.state === "timed-out" ? "WAIT_TIMEOUT" : "REQUIRED_OBSERVATION_UNAVAILABLE", `Declared scenario completion was ${completion.state}; no settled-state verdict is claimed.`);
   }
 
   private async captureCheckpointBoundary(adapter: BrowserAdapter, scenario: PrivateReproScenario, offset: number, context: OperationContext, output: NonNullable<AttemptSummary["checkpoints"]>): Promise<void> {
@@ -865,6 +908,7 @@ export class SessionManager {
       checkpoints: NonNullable<AttemptSummary["checkpoints"]>;
       verdict: "pass" | "fail" | "unavailable" | "inconclusive";
       warning?: string;
+      completion?: CompletionObservation;
     }> = [];
     let representativeEvidence: EvidenceBundle | null = null;
     let representativeViewportName: string | null = null;
@@ -875,6 +919,7 @@ export class SessionManager {
       if (remaining(context) <= 0) break;
       const candidate = this.adapterFactory({ allowRemote: session.startOptions.allowRemote, browser: session.summary.target?.browser ?? "chromium" });
       let checks: CheckObservation[] = [];
+      let completion: CompletionObservation | undefined;
       let match: boolean | undefined;
       let passed: boolean | undefined;
       const candidateCheckpoints: NonNullable<AttemptSummary["checkpoints"]> = [];
@@ -892,7 +937,10 @@ export class SessionManager {
           await this.callAdapter(() => candidate.act(scenario.privateActions[actionIndex]!, { ...context, attemptId }), context);
           await this.captureCheckpointBoundary(candidate, scenario, actionIndex + 1, { ...context, attemptId }, candidateCheckpoints);
         }
-        const browser = await this.callAdapter(() => candidate.snapshot({ artifactDir: session.summary.artifactDir, captureScreenshot: false, checksOnly: true, retainNetwork: true }, { ...context, attemptId }), context);
+        const observed = await this.observeScenario(candidate, session, scenario, { ...context, attemptId });
+        const browser = observed.browser;
+        completion = observed.completion;
+        this.assertScenarioCompletion(completion);
         const acceptance = await Promise.all([...scenario.acceptanceChecks, ...scenario.regressionChecks].map((check) => evaluateCheckLive(candidate, check, browser, { ...context, attemptId })));
         const failures = await Promise.all(scenario.failureSignature.map((entry) => evaluateCheckLive(candidate, entry, browser, { ...context, attemptId }, entry.expected)));
         checks = phase === "baseline" ? failures : [...acceptance, ...failures];
@@ -953,7 +1001,7 @@ export class SessionManager {
       } finally {
         await this.closeAdapterBounded(candidate, Math.min(this.cleanupTimeoutMs, 5_000));
       }
-      viewportResults.push({ viewport, observation: checks, match, passed, checkpoints: candidateCheckpoints, verdict, ...(warning ? { warning } : {}) });
+      viewportResults.push({ viewport, observation: checks, match, passed, checkpoints: candidateCheckpoints, verdict, ...(warning ? { warning } : {}), ...(completion ? { completion } : {}) });
     }
     const expectedFailureViewports = scenario.failureViewports;
     const byViewport = new Map(viewportResults.map((item) => [item.viewport.name, item]));
@@ -995,6 +1043,7 @@ export class SessionManager {
       ...(item.checkpoints.length ? { checkpointDigest: observationDigest(item.checkpoints.flatMap((checkpoint) => checkpoint.observations).map((observation, index) => ({ key: `${index}:${observation.kind}`, state: observation.state, freshness: observation.freshness, provenance: observation.provenance, observed: observation.observed }))) } : {}),
       elapsedMs: 0,
       warnings: item.warning ? [boundText(item.warning, MAX_OBSERVED_CHARS)] : [],
+      ...(item.completion ? { completion: item.completion } : {}),
     }));
     const summary: AttemptSummary = {
       phase,
@@ -1089,7 +1138,7 @@ export class SessionManager {
     let next = null;
     if (session.nextAdapter && surfaces.includes("next")) {
       const optional = optionalContext(context);
-      try { next = await this.callAdapter(() => session.nextAdapter!.snapshot(browser.url, session.descriptor.projectRoot, browser.network, optional.context), optional.context); }
+      try { next = await this.callAdapter(() => session.nextAdapter!.snapshot(browser.url, session.descriptor.projectRoot, browser.network, optional.context, sessionSecrets(session)), optional.context); }
       catch (error) {
         if (context.signal?.aborted) throw error;
         session.summary.warnings = mergeWarnings(session.summary.warnings, [`Next runtime snapshot unavailable: ${boundText(errorMessage(error), 500)}`]);
@@ -1112,7 +1161,8 @@ export class SessionManager {
         optional.dispose();
       }
     }
-    const combined: BrowserSnapshot = { ...browser, next, vite };
+    const serverLogs = surfaces.includes("serverLogs") && session.logFile ? await this.callAdapter(() => readProjectLog(session.descriptor.projectRoot, session.logFile!, sessionSecrets(session)), context) : null;
+    const combined: BrowserSnapshot = { ...browser, next, vite, serverLogs };
     session.summary.url = safeUrl(browser.url);
     session.summary.status = browser.debugger.paused ? "paused" : "ready";
     if (session.summary.target) session.summary.target = { ...session.summary.target, url: safeUrl(browser.url), title: browser.title, viewport: browser.viewport };
@@ -1150,6 +1200,8 @@ export class SessionManager {
         if (session.summary.target) session.summary.target = { ...session.summary.target, url: safeUrl(result.url), title: boundText(result.title, 300) };
         const { diagnostics, ...base } = result;
         const sanitized = replaceSecrets(redactValue(base), sessionSecrets(session)) as ActionResult;
+        sanitized.kind = action.kind;
+        sanitized.url = scrubSelectedUrl(result.url, session.startOptions.approvedOrigin!, sessionSecrets(session));
         if (diagnostics) sanitized.diagnostics = redactExecutionDiagnostics(diagnostics, sessionSecrets(session));
         return sanitized;
       } finally {
@@ -1173,6 +1225,8 @@ export class SessionManager {
     if (recordReplay) await this.recordReplayFrame(session, "action", action, undefined, context).catch((error) => { session.summary.warnings = mergeWarnings(session.summary.warnings, [`Replay frame unavailable: ${boundText(errorMessage(error), 500)}`]); });
     const { diagnostics, ...actionResult } = result;
     const safe = replaceSecrets(redactValue(actionResult), sessionSecrets(session)) as ActionResult;
+    safe.kind = action.kind;
+    safe.url = scrubSelectedUrl(result.url, session.startOptions.approvedOrigin!, sessionSecrets(session));
     if (diagnostics) safe.diagnostics = redactExecutionDiagnostics(diagnostics, sessionSecrets(session));
     return safe;
   }
@@ -1353,7 +1407,7 @@ export class SessionManager {
       requestedLevel: scenario.requestedLevel,
       escalations: scenario.baseline.warnings,
       flaky: false,
-      scenario: publicScenario(scenario),
+      scenario: publicScenario(scenario, sessionActions(this.requireSession(scenario.sessionId))),
       baseline: { status: scenario.baseline.status, flaky: scenario.baseline.flaky, attempts: scenario.baseline.attempts, observedRate: scenario.baseline.observedRate },
       postFix: { attempts: [], observedRate: emptyRate },
       observedRates: { baseline: scenario.baseline.observedRate, postFix: emptyRate },
@@ -1368,7 +1422,7 @@ export class SessionManager {
       warnings: mergeWarnings([...this.requireSession(scenario.sessionId).summary.warnings, ...scenario.baseline.warnings], [warning]),
       termination,
       truncation: { result: false, attempts: false, evidence: false, warnings: false },
-    }, scenario.privateActions));
+    }, sessionActions(this.requireSession(scenario.sessionId))));
   }
 
   private createVerificationResult(scenario: PrivateReproScenario, fingerprint: EnvironmentFingerprint, buildReference: BuildReference, postFix: PhaseResult, outcome: VerificationOutcome, flaky: boolean, level: VerificationLevel): VerificationResult {
@@ -1380,7 +1434,7 @@ export class SessionManager {
       requestedLevel: scenario.requestedLevel,
       escalations: mergeWarnings(scenario.baseline.warnings, postFix.warnings),
       flaky,
-      scenario: publicScenario(scenario),
+      scenario: publicScenario(scenario, sessionActions(this.requireSession(scenario.sessionId))),
       baseline: { status: scenario.baseline.status, flaky: scenario.baseline.flaky, attempts: scenario.baseline.attempts, observedRate: scenario.baseline.observedRate },
       postFix: { attempts: postFix.attempts, observedRate: postFix.observedRate },
       observedRates: { baseline: scenario.baseline.observedRate, postFix: postFix.observedRate },

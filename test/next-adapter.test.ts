@@ -44,7 +44,7 @@ describe("Next MCP adapter", () => {
           ? "Authorization: Basic dXNlcjpwYXNz"
           : index === 238 ? 'password="hello world"' : `server line ${index}`,
       }),
-    ).join("\n"));
+    ).join("\n") + "\n");
 
     try {
       stubNextFetch(logFilePath);
@@ -72,7 +72,7 @@ describe("Next MCP adapter", () => {
       stubNextFetch(outsideLogFilePath);
       const snapshot = await new NextAdapter().snapshot("http://127.0.0.1:4175/", root);
       expect(snapshot?.logTail).toBeNull();
-      expect(snapshot?.warnings).toContain("Next development log tail was skipped because the returned log file is outside the project boundary.");
+      expect(snapshot?.warnings).toContainEqual(expect.stringContaining("outside the project"));
     } finally {
       vi.unstubAllGlobals();
       await rm(parent, { recursive: true, force: true });

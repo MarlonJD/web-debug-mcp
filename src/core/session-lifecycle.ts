@@ -1,7 +1,7 @@
 import type { BrowserStartOptions } from "../adapters/browser.js";
 import type { BrowserTarget, DebugSessionSummary } from "../domain/types.js";
 import { WebDebugError, errorMessage } from "./errors.js";
-import { cloneJson, replaceSecrets, scrubText } from "./private-values.js";
+import { cloneJson, replaceSecrets, scrubText, scrubSelectedUrl } from "./private-values.js";
 import { boundText, redactText, redactValue, safeUrl } from "./redaction.js";
 
 export function assertAllowedTargetUrl(raw: string, allowRemote: boolean): void {
@@ -27,11 +27,11 @@ export function normalizeTarget(target: BrowserTarget, browser: "chromium" | "sa
 export function cloneSummary(summary: DebugSessionSummary, secrets: string[] = []): DebugSessionSummary {
   const cloned = cloneJson({ ...summary, warnings: [...summary.warnings], target: summary.target ? { ...summary.target, isolation: summary.target.isolation ? { ...summary.target.isolation } : undefined } : null });
   if (secrets.length === 0) return cloned;
-  cloned.url = scrubText(cloned.url, secrets);
-  cloned.warnings = cloned.warnings.map((warning) => scrubText(warning, secrets));
+  cloned.url = boundText(scrubSelectedUrl(cloned.url, summary.url, secrets), 2_560);
+  cloned.warnings = cloned.warnings.map((warning) => boundText(scrubText(warning, secrets), 500));
   if (cloned.target) {
-    cloned.target.url = scrubText(cloned.target.url, secrets);
-    cloned.target.title = scrubText(cloned.target.title, secrets);
+    cloned.target.url = scrubSelectedUrl(cloned.target.url, summary.url, secrets);
+    cloned.target.title = boundText(scrubText(cloned.target.title, secrets), 300);
   }
   return cloned;
 }

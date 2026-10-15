@@ -120,4 +120,34 @@ describe("project capability detection", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("offers grounded host recovery while retaining conflicting provenance", async () => {
+    const root = await mkdtemp(join(tmpdir(), "explicit-host-"));
+    try {
+      await mkdir(join(root, "app"));
+      await writeFile(join(root, "app/page.js"), "export default function Page() { return null; }");
+      await writeFile(join(root, "package.json"), JSON.stringify({ dependencies: { next: "16.3.3", react: "19.2.8" }, scripts: { dev: "next dev" } }));
+      await writeFile(join(root, "index.html"), "<main>vite entry</main>");
+      await writeFile(join(root, "next.config.mjs"), "export default {};");
+      await writeFile(join(root, "vite.config.mjs"), "export default {};");
+      expect(detectProject(root)).toMatchObject({ ambiguous: true, frameworks: [], selection: { mode: "unresolved", host: null }, recovery: { hosts: ["next", "vite", "vanilla"] } });
+      for (const host of ["next", "vite"] as const) {
+        const detected = detectProject(root, host);
+        expect(detected).toMatchObject({ ambiguous: true, selection: { mode: "explicit", host }, frameworks: [host, "react"] });
+        expect(detected.frameworkDetections.map(value => value.framework)).toEqual(expect.arrayContaining(["next", "vite"]));
+        expect(detected.markers).toEqual(expect.arrayContaining(["next.config.mjs", "vite.config.mjs"]));
+      }
+      expect(() => detectProject(root, "angular")).toThrowError("not backed by application markers");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  it("does not turn weak library dependencies into an explicitly chosen application", async () => {
+    const root = await mkdtemp(join(tmpdir(), "weak-host-"));
+    try {
+      await writeFile(join(root, "package.json"), JSON.stringify({ devDependencies: { next: "16.3.3", vite: "8.0.0" } }));
+      expect(detectProject(root).recovery.hosts).toEqual([]);
+      expect(() => detectProject(root, "next")).toThrowError("not backed by application markers");
+      expect(() => detectProject(root, "vite")).toThrowError("not backed by application markers");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
 });

@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
-import { SessionManager } from "../dist/core/session-manager.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { stopOwnedProcess, waitForHttpReady } from "./lib/managed-process.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -24,12 +25,31 @@ const next = spawn(process.execPath, [serverScript], {
   stdio: ["ignore", "inherit", "inherit"],
   detached: process.platform !== "win32",
 });
-const manager = new SessionManager();
+const transport = new StdioClientTransport({ command: process.execPath, args: [join(repositoryRoot, "bin/web-debug-mcp.mjs")], cwd: repositoryRoot, stderr: "pipe" });
+const client = new Client({ name: "next-public-mcp-smoke", version: "1.0.0" });
+const rawCalls = [];
+let ownedSessionId;
+const call = async (name, args) => {
+  const result = await client.callTool({ name, arguments: args }, undefined, { timeout: 150_000 });
+  rawCalls.push({ name, result });
+  if (result.isError || !result.structuredContent?.ok) throw new Error(JSON.stringify(result.structuredContent?.error ?? result));
+  return result.structuredContent.data;
+};
+const manager = {
+  start: async (args) => { const value = await call("web_session_start", args); ownedSessionId = value.id; return value; },
+  capture: (sessionId, view) => call("web_issue_capture", { sessionId, ...(view ? { view } : {}) }),
+  act: (sessionId, action) => call("web_browser_action", { sessionId, action }),
+  inspectNext: (sessionId, inspection) => call("web_next_inspect", { sessionId, inspection }),
+  closeAll: async () => { if (ownedSessionId) await call("web_session_close", { sessionId: ownedSessionId, artifactPolicy: "delete" }); },
+};
 let session;
 
 try {
   await waitForHttpReady(url, next, { label: "Next fixture", timeoutMs: 20_000, pollMs: 200 });
-  session = await manager.start({ projectRoot: fixtureRoot, url, executablePath: browserPath, headless: true });
+  await client.connect(transport);
+  const project = await call("web_project_detect", { projectRoot: fixtureRoot, host: "next" });
+  if (project.ambiguous || project.selection.host !== "next") throw new Error("The qualification fixture must be a correctly configured exact Next root.");
+  session = await manager.start({ projectRoot: fixtureRoot, host: "next", url, executablePath: browserPath, headless: true });
   const summary = await manager.capture(session.id);
   // Inspect small project metadata before the full action trace can reach the
   // evidence bound and legitimately prune optional metadata.
@@ -80,24 +100,18 @@ try {
     clientRenderedText: verificationEvidence.dom.bodyText.includes("Healthy"),
     consoleClean: verificationEvidence.console.every((entry) => entry.level !== "error" && entry.level !== "pageerror"),
   };
+  assertions.exactNextHost = project.selection.mode === "explicit" && project.frameworks.includes("next") && !project.frameworks.includes("vite");
   const passed = Object.values(assertions).every(Boolean);
-  process.stdout.write(`${JSON.stringify({
-    passed,
-    assertions,
-    tools: nextEvidence?.tools ?? [],
-    warnings: nextEvidence?.warnings ?? [],
-    routeInspection,
-    actionInspection,
-    actionExecution,
-    requestTraces,
-    actionNextEvidence,
-    logTail,
-    bodyText: verificationEvidence.dom.bodyText,
-    console: verificationEvidence.console,
-  }, null, 2)}\n`);
+  if (process.env.WEB_DEBUG_EVIDENCE_OUTPUT) await writeFile(process.env.WEB_DEBUG_EVIDENCE_OUTPUT, JSON.stringify({ passed, assertions, project, rawCalls }, null, 2));
+  process.stdout.write(`${JSON.stringify({ passed, transport: "public-stdio-mcp", assertions, tools: nextEvidence?.tools ?? [], warnings: nextEvidence?.warnings ?? [] }, null, 2)}\n`);
   if (!passed) process.exitCode = 1;
+} catch (error) {
+  if (process.env.WEB_DEBUG_EVIDENCE_OUTPUT) await writeFile(process.env.WEB_DEBUG_EVIDENCE_OUTPUT, JSON.stringify({ passed: false, error: error.message, rawCalls }, null, 2));
+  throw error;
 } finally {
-  await manager.closeAll("delete");
+  await manager.closeAll().catch(() => undefined);
+  await client.close().catch(() => undefined);
+  await transport.close().catch(() => undefined);
   await stopOwnedProcess(next, { label: "Next fixture", processGroup: true });
 }
 

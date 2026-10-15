@@ -47,7 +47,7 @@ describe("declared compatibility matrix", () => {
     expect(vueVite.dependencies.vue).toBe(root.devDependencies.vue);
     expect(vueVite.devDependencies["@vitejs/plugin-vue"]).toBe(root.devDependencies["@vitejs/plugin-vue"]);
     expect(vueVite.devDependencies.vite).toBe(root.devDependencies.vite);
-    expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.12.0-release", releaseBaseline: { version: "0.11.0" } });
+    expect(evidence).toMatchObject({ schemaVersion: 2, scope: "0.13.0-release", releaseBaseline: { version: "0.12.0" } });
     expect(evidence.sourceVersion).toBe(root.webDebug.releasedPackageVersion);
     expect(evidence.releaseBaseline.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(evidence.runtime.mcpSdk).toBe(root.dependencies["@modelcontextprotocol/sdk"]);

@@ -49,7 +49,9 @@ export async function successToolResult(
   const validation = dataSchema.safeParse(canonical);
   if (!validation.success) {
     throw new WebDebugError("RESULT_SCHEMA_VIOLATION", "The tool result did not match its advertised data schema.", {
-      issues: validation.error.issues.slice(0, 10).map((issue) => ({ code: issue.code, path: issue.path.slice(0, 12).map(String) })),
+      issues: validation.error.issues.flatMap(function leaves(issue): z.core.$ZodIssue[] {
+        return issue.code === "invalid_union" ? issue.errors.flatMap(group => group.flatMap(leaves)) : [issue];
+      }).slice(0, 10).map((issue) => ({ code: issue.code, path: issue.path.slice(0, 12).map(String) })),
     });
   }
   const artifacts = await artifactStore.prepare(screenshots, Math.max(0, MAX_RESULT_BYTES - dataBytes - MAX_TEXT_PREVIEW_BYTES));
@@ -61,7 +63,9 @@ export async function successToolResult(
       warnings: artifacts.warnings,
     };
     const pretty = JSON.stringify(canonical, null, 2);
-    const preview = Buffer.byteLength(pretty) <= MAX_TEXT_PREVIEW_BYTES
+    const compactVerification = canonical !== null && typeof canonical === "object" && !Array.isArray(canonical) && canonical.schemaVersion === 7 && canonical.profile === "summary";
+    const preview = compactVerification ? "Recorded flow result: check outcomes, repetition facts and evidence references are in structuredContent. Read a referenced observation with web_issue_capture view.profile=recorded; no actions are rerun."
+      : Buffer.byteLength(pretty) <= MAX_TEXT_PREVIEW_BYTES
       ? pretty
       : `Structured result available (${dataBytes} bytes).`;
     let result: CallToolResult = {

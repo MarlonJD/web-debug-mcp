@@ -5,7 +5,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { resolve } from "node:path";
 import { transformWithEsbuild } from "vite";
 import { SessionManager } from "../dist/core/session-manager.js";
-import { toolDataSchemas } from "../dist/domain/wire-schemas.js";
+import { toolDataSchemas, verificationResultSchema } from "../dist/domain/wire-schemas.js";
 
 const browserPath = process.env.WEB_DEBUG_CHROME_EXECUTABLE_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const fixtureSource = (fixed) => `function h(tag: string, props: unknown, ...children: unknown[]) { return children.join(""); }
@@ -88,7 +88,7 @@ try {
   assert.equal(scenario.baseline.status, "reproduced");
   fixed = true;
   const verified = await manager.verifyScenario({ sessionId: verificationSession.id, scenarioId: scenario.id });
-  toolDataSchemas.web_fix_verify.parse(verified);
+  verificationResultSchema.parse(verified);
   assert.equal(verified.outcome, "verified");
   assert.equal(verified.evidence.postFix.browser.execution, null, "verification runs without coverage");
   assert.ok(verified.differences.console.removed.some((text) => text.includes("fixture bug")), "fix explanation records removed error");

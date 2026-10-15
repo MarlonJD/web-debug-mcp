@@ -19,7 +19,7 @@ import type {
 import { CAPTURE_SURFACES, MAX_EVIDENCE_BUNDLE_BYTES, MAX_INTERACTIVE_ELEMENTS, MAX_INTERACTIVE_TEXT_CHARS, MAX_WEBMCP_DETAIL_BYTES } from "../domain/types.js";
 import { WebDebugError } from "./errors.js";
 import { boundText } from "./redaction.js";
-import { actionSecrets, cloneJson, replaceSecrets, scrubReplayFrame } from "./private-values.js";
+import { actionSecrets, cloneJson, replaceSecrets, scrubReplayFrame, scrubSelectedUrl, scrubText, scrubLocator, isHostRequestId } from "./private-values.js";
 import { cloneSummary } from "./session-lifecycle.js";
 import { summarizeBehavior, compareBehavior } from "./behavior-difference.js";
 import type { BehaviorSummary } from "../domain/types.js";
@@ -182,6 +182,7 @@ export function selectedSurfaces(view: CaptureView): CaptureSurface[] {
 
 function captureSurfaces(evidence: EvidenceBundle, screenshotStatus: NonNullable<CaptureDetails["screenshot"]>["status"]): Required<CaptureDetails> {
   return {
+    serverLogs: evidence.browser.serverLogs ?? null,
     sources: evidence.browser.sources ?? null,
     execution: evidence.browser.execution ?? null,
     dom: evidence.browser.dom,
@@ -210,6 +211,7 @@ function captureCollection(evidence: EvidenceBundle, view: CaptureView, screensh
   const browser = evidence.browser;
   const runtime = evidence.session.runtimeCapabilities;
   const state = (surface: CaptureSurface): CaptureCollectionState => {
+    if (surface === "serverLogs") return !selected.has(surface) ? "not-collected" : browser.serverLogs?.state ?? "unavailable";
     if (surface === "dom" || surface === "console" || surface === "network") {
       if (surface === "network" && (!runtime || runtime.network.state === "unsupported")) return "unavailable";
       const observation = browser.observations?.[surface];
@@ -459,10 +461,15 @@ export function scrubEvidence(evidence: EvidenceBundle, actions: ReplayableBrows
   // echoes. Redacting a short numeric input inside their strings breaks the wire
   // contract; keep the existing field-aware summary redaction for page text.
   sanitized.session = cloneSummary(evidence.session, secrets);
+  sanitized.project = { ...cloneJson(evidence.project), warnings: evidence.project.warnings.map(value => scrubText(value, secrets)) };
   sanitized.capturedAt = evidence.capturedAt;
+  sanitized.attemptId = evidence.attemptId;
+  sanitized.phase = evidence.phase;
+  sanitized.redaction = { ...evidence.redaction };
   sanitized.replay.frames = evidence.replay.frames.map((frame) => scrubReplayFrame(frame, secrets));
   preserveObservationMetadata(sanitized.browser, evidence.browser);
   preserveDiagnosticMetadata(sanitized.browser, evidence.browser, secrets);
+  preserveBrowserMetadata(sanitized.browser, evidence.browser, evidence.session.url, secrets);
   if (sanitized.browser.webmcp && evidence.browser.webmcp) sanitized.browser.webmcp.observedAt = evidence.browser.webmcp.observedAt;
   const rawScreenshotPath = evidence.browser.screenshotPath;
   const safeScreenshotPath = sanitized.browser.screenshotPath;
@@ -479,8 +486,31 @@ export function scrubBrowserSnapshot(browser: BrowserSnapshot, actions: Replayab
   const sanitized = replaceSecrets(browser, secrets) as BrowserSnapshot;
   preserveObservationMetadata(sanitized, browser);
   preserveDiagnosticMetadata(sanitized, browser, secrets);
+  preserveBrowserMetadata(sanitized, browser, browser.url, secrets);
   if (sanitized.webmcp && browser.webmcp) sanitized.webmcp.observedAt = browser.webmcp.observedAt;
   return sanitized;
+}
+
+function preserveBrowserMetadata(sanitized: BrowserSnapshot, original: BrowserSnapshot, selected: string, secrets: string[]): void {
+  sanitized.url = boundText(scrubSelectedUrl(original.url, selected, secrets), 2_560);
+  sanitized.dom.bodyText = boundText(sanitized.dom.bodyText, 4_000);
+  sanitized.warnings = sanitized.warnings.map(value => boundText(value, 500));
+  original.network.forEach((entry, index) => {
+    const target = sanitized.network[index];
+    if (target) Object.assign(target, { ...(isHostRequestId(entry.requestId, secrets) ? { requestId: entry.requestId } : {}), method: entry.method, resourceType: entry.resourceType, url: boundText(scrubSelectedUrl(entry.url, selected, secrets), 2_560), ...(target.failure ? { failure: boundText(target.failure, 500) } : {}) });
+  });
+  original.console.forEach((entry, index) => {
+    const target = sanitized.console[index];
+    if (target) Object.assign(target, { level: entry.level, text: boundText(target.text, 2_000), ...(entry.url ? { url: boundText(scrubSelectedUrl(entry.url, selected, secrets), 2_560) } : {}) });
+  });
+  if (original.webmcp && sanitized.webmcp) sanitized.webmcp.provenance = original.webmcp.provenance;
+  if (original.serverLogs && sanitized.serverLogs) sanitized.serverLogs.state = original.serverLogs.state;
+  if (original.interactiveElements && sanitized.interactiveElements) {
+    sanitized.interactiveElements.elements = original.interactiveElements.elements.map(element => ({
+      ...replaceSecrets(element, secrets) as InteractiveElement,
+      locator: scrubLocator(element.locator, secrets),
+    }));
+  }
 }
 
 function preserveDiagnosticMetadata(sanitized: BrowserSnapshot, original: BrowserSnapshot, secrets: string[]): void {

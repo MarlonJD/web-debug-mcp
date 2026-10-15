@@ -12,6 +12,7 @@ import type {
   PublicReproScenario,
   RateSummary,
   ScenarioCheck,
+  ScenarioCompletion,
   ScenarioCheckpoint,
   ScenarioRiskSignals,
   ServerStateResetContract,
@@ -39,7 +40,7 @@ import {
 } from "../domain/types.js";
 import { WebDebugError } from "./errors.js";
 import { boundText, redactText, safeUrl } from "./redaction.js";
-import { boundEvidence, serializedBytes } from "./session-evidence.js";
+import { boundEvidence, scrubEvidence, serializedBytes } from "./session-evidence.js";
 import {
   actionSecrets,
   cloneJson,
@@ -47,6 +48,9 @@ import {
   redactionMarker,
   replaceSecrets,
   scrubText,
+  scrubCheck,
+  scrubAction,
+  scrubSelectedUrl,
 } from "./private-values.js";
 
 export interface RecordScenarioInput {
@@ -57,6 +61,8 @@ export interface RecordScenarioInput {
   failureSignature: FailureSignatureEntry[];
   acceptanceChecks: ScenarioCheck[];
   regressionChecks?: ScenarioCheck[];
+  completion?: ScenarioCompletion;
+  minimumPostFixAttempts?: number;
   risks?: ScenarioRiskSignals;
   requestedLevel?: VerificationLevel;
   buildReference?: BuildReference;
@@ -82,6 +88,8 @@ export function createPrivateScenario(input: Omit<PrivateReproScenario, "actions
     url: publicScenarioUrl(input.url),
     privateUrl: input.url,
     actions: input.privateActions.map(sanitizeReplayAction) as ReplayableBrowserAction[],
+    ...(input.completion ? { completion: cloneJson(input.completion) } : {}),
+    minimumPostFixAttempts: input.minimumPostFixAttempts ?? 1,
     privateActions: input.privateActions,
     failureSignature: input.failureSignature,
     acceptanceChecks: input.acceptanceChecks,
@@ -103,7 +111,7 @@ export function createPrivateScenario(input: Omit<PrivateReproScenario, "actions
   };
 }
 
-export function publicScenario(scenario: PrivateReproScenario): PublicReproScenario {
+export function publicScenario(scenario: PrivateReproScenario, privacyActions: ReplayableBrowserAction[]): PublicReproScenario {
   const { privateActions: _privateActions, privateUrl: _privateUrl, ...publicValue } = scenario;
   const result = cloneJson({
     ...publicValue,
@@ -119,7 +127,7 @@ export function publicScenario(scenario: PrivateReproScenario): PublicReproScena
     } : {}),
     baseline: { ...scenario.baseline, attempts: scenario.baseline.attempts.slice(0, MAX_ATTEMPTS_PER_PHASE), evidence: scenario.baseline.evidence ? boundEvidence(scenario.baseline.evidence) : null },
   }) as PublicReproScenario;
-  const sanitized = scrubPublicScenario(result, scenario.privateActions);
+  const sanitized = scrubPublicScenario(result, [...scenario.privateActions, ...privacyActions]);
   if (serializedBytes(sanitized) > MAX_RESULT_BYTES) {
     sanitized.baseline.evidence = null;
     sanitized.baseline.truncation = { evidence: true, attempts: sanitized.baseline.attempts.length > 2, result: true };
@@ -193,6 +201,12 @@ export function validateScenarioInput(input: RecordScenarioInput): void {
   if (input.regressionChecks !== undefined && !Array.isArray(input.regressionChecks)) throw new WebDebugError("REGRESSION_CHECKS_INVALID", "regressionChecks must be an array.");
   for (const action of input.actions) validateAction(action);
   for (const check of [...input.failureSignature, ...input.acceptanceChecks, ...(input.regressionChecks ?? [])]) validateCheck(check);
+  if (input.minimumPostFixAttempts !== undefined && (!Number.isInteger(input.minimumPostFixAttempts) || input.minimumPostFixAttempts < 1 || input.minimumPostFixAttempts > 5)) throw new WebDebugError("ATTEMPT_MINIMUM_INVALID", "minimumPostFixAttempts must be an integer from 1 to 5.");
+  if (input.completion) {
+    const { checks, timeoutMs, stableForMs = 50 } = input.completion;
+    if (!Array.isArray(checks) || checks.length < 1 || checks.length > 8 || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000 || !Number.isInteger(stableForMs) || stableForMs < 0 || stableForMs > 2_000 || stableForMs > timeoutMs) throw new WebDebugError("COMPLETION_INVALID", "Completion requires 1..8 observable checks, a 1..30,000 ms deadline and a stability window within that deadline.");
+    checks.forEach(validateCheck);
+  }
   normalizeCheckpoints(input.checkpoints ?? [], input.actions.length);
   normalizeViewports(input.viewports);
   if (input.failureViewports && input.failureViewports.length > MAX_VIEWPORTS) throw new WebDebugError("VIEWPORT_LIMIT", `At most ${MAX_VIEWPORTS} failure viewports may be named.`);
@@ -201,7 +215,7 @@ export function validateScenarioInput(input: RecordScenarioInput): void {
     if (new Set(input.failureViewports).size !== input.failureViewports.length || input.failureViewports.some((name) => !names.has(name))) throw new WebDebugError("FAILURE_VIEWPORT_INVALID", "failureViewports must name unique declared viewport entries.");
   }
   const checkpointObservationCount = (input.checkpoints ?? []).reduce((total, checkpoint) => total + (checkpoint.probes?.length ?? 0) + (checkpoint.route ? 1 : 0), 0);
-  const decisiveObservationCount = input.failureSignature.length + input.acceptanceChecks.length + (input.regressionChecks?.length ?? 0) + checkpointObservationCount + (input.serverStateReset?.readyCheck ? 1 : 0);
+  const decisiveObservationCount = input.failureSignature.length + input.acceptanceChecks.length + (input.regressionChecks?.length ?? 0) + checkpointObservationCount + (input.serverStateReset?.readyCheck ? 1 : 0) + (input.completion?.checks.length ?? 0);
   if (decisiveObservationCount > MAX_DECISIVE_OBSERVATIONS) throw new WebDebugError("DECISIVE_OBSERVATION_LIMIT", `The scenario exceeded the ${MAX_DECISIVE_OBSERVATIONS}-observation contract before execution.`);
 }
 
@@ -215,7 +229,7 @@ export function validateAction(action: ReplayableBrowserAction): void {
   if (normalized.kind === "press" && !BROWSER_PRESS_KEYS.includes(normalized.key)) throw new WebDebugError("PRESS_KEY_INVALID", "The key is outside the bounded browser press allowlist.");
 }
 
-export function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset"> & { checkpoints?: ScenarioCheckpoint[]; viewports?: ViewportContract[]; failureViewports?: string[]; tls: "strict" | "allow-insecure-loopback"; authFixture: "seeded-disposable" | "none" }): string {
+export function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "actions" | "failureSignature" | "acceptanceChecks" | "regressionChecks" | "risks" | "serverStateReset" | "completion" | "minimumPostFixAttempts"> & { checkpoints?: ScenarioCheckpoint[]; viewports?: ViewportContract[]; failureViewports?: string[]; tls: "strict" | "allow-insecure-loopback"; authFixture: "seeded-disposable" | "none" }): string {
   const canonical = {
     schemaVersion: 6,
     url: canonicalUrl(input.url),
@@ -223,6 +237,8 @@ export function scenarioContractHash(input: Pick<RecordScenarioInput, "url" | "a
     failureSignature: cloneSignature(input.failureSignature),
     acceptanceChecks: cloneChecks(input.acceptanceChecks),
     regressionChecks: cloneChecks(input.regressionChecks ?? []),
+    completion: input.completion ?? null,
+    minimumPostFixAttempts: input.minimumPostFixAttempts ?? 1,
     checkpoints: cloneJson(input.checkpoints ?? []),
     viewports: cloneJson(input.viewports ?? []),
     failureViewports: [...(input.failureViewports ?? [])],
@@ -287,14 +303,18 @@ export function scrubPublicScenario(scenario: PublicReproScenario, actions: Repl
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return scenario;
   const sanitized = cloneJson(scenario);
-  sanitized.name = scrubText(sanitized.name, secrets);
-  sanitized.actions = sanitized.actions.map((action) => replaceSecrets(action, secrets) as ReplayableBrowserAction);
-  sanitized.failureSignature = sanitized.failureSignature.map((entry) => replaceSecrets(entry, secrets) as FailureSignatureEntry);
-  sanitized.acceptanceChecks = sanitized.acceptanceChecks.map((check) => replaceSecrets(check, secrets) as ScenarioCheck);
-  sanitized.regressionChecks = sanitized.regressionChecks.map((check) => replaceSecrets(check, secrets) as ScenarioCheck);
-  if (sanitized.serverStateReset) sanitized.serverStateReset = replaceSecrets(sanitized.serverStateReset, secrets) as ServerStateResetContract;
+  sanitized.name = boundText(scrubText(sanitized.name, secrets), MAX_SCENARIO_NAME_CHARS);
+  sanitized.url = scrubSelectedUrl(scenario.url, scenario.url, secrets);
+  sanitized.environmentFingerprint.path = scrubText(scenario.environmentFingerprint.path, secrets);
+  sanitized.actions = sanitized.actions.map((action) => scrubAction(action, secrets));
+  sanitized.failureSignature = sanitized.failureSignature.map((entry) => scrubCheck(entry, secrets));
+  sanitized.acceptanceChecks = sanitized.acceptanceChecks.map((check) => scrubCheck(check, secrets));
+  sanitized.regressionChecks = sanitized.regressionChecks.map((check) => scrubCheck(check, secrets));
+  if (sanitized.completion) sanitized.completion.checks = sanitized.completion.checks.map(check => scrubCheck(check, secrets));
+  if (sanitized.serverStateReset?.action) sanitized.serverStateReset.action = scrubAction(sanitized.serverStateReset.action, secrets);
+  if (sanitized.serverStateReset?.readyCheck) sanitized.serverStateReset.readyCheck = scrubCheck(sanitized.serverStateReset.readyCheck, secrets);
   sanitized.baseline.attempts = sanitized.baseline.attempts.map((attempt) => scrubAttemptSummary(attempt, secrets));
-  sanitized.baseline.evidence = sanitized.baseline.evidence ? replaceSecrets(sanitized.baseline.evidence, secrets) as typeof sanitized.baseline.evidence : null;
+  sanitized.baseline.evidence = scenario.baseline.evidence ? scrubEvidence(scenario.baseline.evidence, actions) : null;
   sanitized.baseline.warnings = sanitized.baseline.warnings.map((warning) => scrubText(warning, secrets));
   sanitized.buildReference = scrubBuildReference(sanitized.buildReference, secrets);
   return sanitized;
@@ -310,6 +330,11 @@ function validateCheck(check: ScenarioCheck): void {
   if (normalized.kind === "route" && (!normalized.path || !normalized.path.startsWith("/"))) throw new WebDebugError("CHECK_VALUE_REQUIRED", "A route check requires an absolute path.");
   if (normalized.kind === "locatorText" && (!normalized.text || !normalized.text.trim())) throw new WebDebugError("CHECK_VALUE_REQUIRED", "A locator text check requires non-empty text.");
   if (normalized.kind === "locatorCount" && (!Number.isInteger(normalized.count) || normalized.count < 0)) throw new WebDebugError("CHECK_VALUE_INVALID", "A locator count check requires a non-negative integer.");
+  if (normalized.kind === "locatorNumber" && (!Number.isFinite(normalized.value) || !Number.isFinite(normalized.tolerance ?? 0) || (normalized.tolerance ?? 0) < 0)) throw new WebDebugError("CHECK_VALUE_INVALID", "Numeric values and non-negative tolerances must be finite.");
+  if (normalized.kind === "networkResponse" || normalized.kind === "networkComplete") {
+    if (!normalized.path?.startsWith("/") || normalized.path.length > 2_048 || /[?#]/.test(normalized.path) || !["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(normalized.method) || !Number.isInteger(normalized.minimumCount ?? 1) || (normalized.minimumCount ?? 1) < 1 || (normalized.minimumCount ?? 1) > 100) throw new WebDebugError("CHECK_VALUE_INVALID", "Network checks require an exact path without query/fragment, a supported method and 1..100 observations.");
+    if (normalized.kind === "networkResponse" && (!Number.isInteger(normalized.status) || normalized.status < 100 || normalized.status > 599)) throw new WebDebugError("CHECK_VALUE_INVALID", "Response status must be an integer from 100 to 599.");
+  }
 }
 
 function validateLocatorCore(locator: BrowserLocator): void {
@@ -344,7 +369,16 @@ function publicScenarioUrl(url: string): string {
 
 export function scrubAttemptSummary(attempt: AttemptSummary, secrets: string[]): AttemptSummary {
   const sanitized = cloneJson(attempt);
-  sanitized.checks = sanitized.checks.map((check) => replaceSecrets(check, secrets) as CheckObservation);
+  sanitized.checks = sanitized.checks.map((check) => scrubCheck(check, secrets));
+  if (sanitized.completion) sanitized.completion.checks = sanitized.completion.checks.map(check => scrubCheck(check, secrets));
+  sanitized.checkpoints?.forEach(checkpoint => { checkpoint.name = scrubText(checkpoint.name, secrets); checkpoint.observations = checkpoint.observations.map(check => scrubCheck(check, secrets)); });
+  for (const viewport of [...(sanitized.viewports ?? []), ...(sanitized.viewport ? [sanitized.viewport] : [])]) {
+    viewport.name = scrubText(viewport.name, secrets);
+    viewport.failingObservations = viewport.failingObservations.map(value => scrubText(value, secrets));
+    viewport.unavailableObservations = viewport.unavailableObservations.map(value => scrubText(value, secrets));
+    viewport.warnings = viewport.warnings.map(value => scrubText(value, secrets));
+    if (viewport.completion) viewport.completion.checks = viewport.completion.checks.map(check => scrubCheck(check, secrets));
+  }
   if (sanitized.error) sanitized.error = scrubText(sanitized.error, secrets);
   return sanitized;
 }

@@ -1,4 +1,5 @@
 import type {
+  LocatorLayout,
   ActionResult,
   DirectBrowserAction,
   BrowserLocator,
@@ -45,6 +46,8 @@ export interface SnapshotOptions {
   checksOnly?: boolean;
   /** Manual replay frames may retain observer data for the following full capture. */
   retainNetwork?: boolean;
+  /** Include bounded network metadata when an explicit check/condition requires it. */
+  includeNetwork?: boolean;
   /** Auth-seeded contexts never produce pixels. */
   suppressScreenshot?: boolean;
   accessibility?: boolean;
@@ -61,6 +64,7 @@ export interface BrowserAdapter {
   close(context?: OperationContext): Promise<void>;
   act(action: DirectBrowserAction, context?: OperationContext): Promise<ActionResult>;
   probe(locator: BrowserLocator, properties: LocatorProperty[], context?: OperationContext): Promise<LocatorProbeResult>;
+  layout?(locator: BrowserLocator, context?: OperationContext): Promise<LocatorLayout>;
   snapshot(options: SnapshotOptions, context?: OperationContext): Promise<BrowserSnapshot>;
   /** Clear only observers owned by this adapter before an attached retry. */
   resetObservers?(context?: OperationContext): Promise<void>;

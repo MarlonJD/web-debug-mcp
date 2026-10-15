@@ -1,6 +1,7 @@
 import { mkdir, lstat, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { readLocatorLayout } from "./locator-layout.js";
 
 import type {
   ActionResult,
@@ -176,6 +177,12 @@ export class SafariAdapter implements BrowserAdapter {
     const url = await this.enforceOwnedTopLevelState(context);
     const title = await this.readTitle(context);
     return { schemaVersion: 1, kind: action.kind, url: safeUrl(url), title };
+  }
+
+  async layout(locator: BrowserLocator, context: OperationContext = {}) {
+    if (locator.kind !== "css" || !locator.value || locator.value.length > MAX_LOCATOR_CHARS) throw new WebDebugError("LAYOUT_UNAVAILABLE", "Safari layout requires one bounded CSS locator.");
+    await this.enforceOwnedTopLevelState(context);
+    return this.executeSync<import("../domain/types.js").LocatorLayout>(`return (${readLocatorLayout.toString()})(Array.from(document.querySelectorAll(arguments[0])));`, [locator.value], context);
   }
 
   async probe(locator: BrowserLocator, properties: LocatorProperty[], context: OperationContext = {}): Promise<LocatorProbeResult> {

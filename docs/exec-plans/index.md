@@ -4,6 +4,7 @@
 
 | Plan | Owner | State | Updated (UTC) | Current milestone or blocker |
 | --- | --- | --- | --- | --- |
+| [Release Web Debug 0.13.0](active/release-0-13-0.md) | Platform Engineering | active | 2026-10-15 | Promote six verified improvements, pass final release gates, and publish one exact npm/GitHub release; npm web login pending |
 | [Release Web Debug 0.11.0 and update Codex](active/release-0-11-0.md) | Platform Engineering | active | 2026-09-09 | Promote interactive UI capture to 0.11.0, publish npm, and update Codex; npm login is the current external blocker |
 | [Release Web Debug 0.10.0 and update Codex](active/release-0-10-0.md) | Platform Engineering | active | 2026-09-08 | Published and installed; Node 20/22 archive handshakes and current-task MCP rebinding remain explicit follow-ups |
 | [Release Web Debug 0.8.0 and update Codex](active/release-0-8-0.md) | Platform Engineering | active | 2026-09-02 | Restore npm auth, promote final identities, publish one exact archive/tag/release, and replace the installed Codex plugin |
@@ -12,6 +13,7 @@
 
 | Plan | Completed (UTC) | Outcome | Verification |
 | --- | --- | --- | --- |
+| [Improve agent debugging efficiency and evidence quality](completed/agent-workflow-efficiency.md) | 2026-10-14 | Six local improvements; 54 audited Max-model comparisons across native/released/candidate arms; measured/final source preserved separately; Turkish PDF delivered through Drive; release pending | 262 tests/40 files; typecheck/build; 13-flow public-stdio smoke; four live review controls; 565 unchanged frozen inputs; 54 oracle passes/54 complete required evidence/45 normal completions; owned-process/database cleanup; 11-page PDF visual inspection and upload metadata readback |
 | [Release Web Debug 0.12.0 and update the local plugin](completed/release-0-12-0.md) | 2026-10-13 | npm/GitHub 0.12.0 published; one enabled plugin and immutable bundled MCP; all upstream work preserved | 228 tests; nine live smokes; six scenarios; audit zero; Node 20/22/24 exact-archive and public-install handshakes; clean teardown |
 | [Restore Safari console delivery through native MCP](completed/safari-bidi-console.md) | 2026-10-13 | Official Safari 27+ MCP transport replaces experimental BiDi; real console evidence and normal-Safari coexistence verified; release pending | 183 tests; typecheck/build; 585 harness checks; full Safari smoke 17/17; 10 native keys; real app.js:8 error/reset; all five personal tabs preserved |
 | [Recover Safari 27 automation startup](completed/safari-session-recovery.md) | 2026-10-13 | Restored driver-owned startup, actionable errors and truthful console availability; personal windows restored | 181 tests; typecheck/build; native harness; HTTP 200 startup plus actions/DOM/screenshot/network live proof; historical BiDi blocker resolved by the native-console plan above |

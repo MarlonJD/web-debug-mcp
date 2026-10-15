@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ActionResult, BrowserAction, BrowserLocator, BrowserSnapshot, BrowserTarget, DebuggerBreakpoint, DebuggerSnapshot, OperationContext, LocatorProperty, LocatorProbeResult } from "../src/domain/types.js";
 import type { BrowserAdapter, BrowserStartOptions, EvaluationResult, SnapshotOptions } from "../src/adapters/browser.js";
@@ -63,8 +63,8 @@ class McpScriptedAdapter implements BrowserAdapter {
       title: this.target.title,
       viewport: this.target.viewport,
       dom: { bodyText, elements: [] },
-      console: [],
-      network: [],
+      console: [{ level: "error", text: "scripted diagnostic" }],
+      network: [{ requestId: "1700030000000-1", method: "GET", url: this.target.url, resourceType: "document", status: 200, ok: true, completed: true }],
       screenshotPath: null,
       debugger: { paused: false, reason: null, callFrames: [], breakpoints: [] },
       react: null,
@@ -95,7 +95,7 @@ class McpScriptedAdapter implements BrowserAdapter {
   }
   async setBreakpoint(input: { sourceUrl: string; line: number; column?: number }): Promise<DebuggerBreakpoint> { return { id: "mcp", sourceUrl: input.sourceUrl, line: input.line, column: input.column ?? null }; }
   async control(): Promise<DebuggerSnapshot> { return { paused: false, reason: null, callFrames: [], breakpoints: [] }; }
-  async evaluate(): Promise<EvaluationResult> { return { value: null, type: "object", description: null }; }
+  async evaluate(): Promise<EvaluationResult> { return { value: { "mcp-secret-value": "mcp-secret-value" }, type: "object", description: "mcp-secret-value" }; }
 }
 
 describe("MCP server contract", () => {
@@ -111,6 +111,7 @@ describe("MCP server contract", () => {
     expect(listed.tools.reduce((sum, tool) => sum + bytes(tool.inputSchema), 0)).toBeLessThan(30_000);
     expect(listed.tools.reduce((sum, tool) => sum + bytes(tool.outputSchema), 0)).toBeLessThan(115_000);
     for (const tool of listed.tools) {
+      expect(tool.inputSchema.examples, tool.name).toEqual([expect.any(Object)]);
       for (const schema of [tool.inputSchema, tool.outputSchema]) {
         const walk = (value: unknown): void => {
           if (!value || typeof value !== "object") return;
@@ -179,29 +180,57 @@ describe("MCP server contract", () => {
       arguments: { name: "legacy", url: "http://127.0.0.1:4173/", actions: [], checks: [] },
     }));
     expect(legacy.isError).toBe(true);
-    expect(legacy.structuredContent).toBeUndefined();
-    expect(legacy.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.includes("Unrecognized key: \"checks\""))).toBeTruthy();
+    expect(legacy.structuredContent).toMatchObject({ ok: false, error: { code: "INVALID_TOOL_ARGUMENTS", details: { example: expect.any(Object), fields: expect.arrayContaining(["failureSignature", "acceptanceChecks"]) } } });
+
 
     const bareWait = asCallResult(await client.callTool({
       name: "web_browser_action",
       arguments: { sessionId: "00000000-0000-0000-0000-000000000000", action: { kind: "wait", timeoutMs: 10 } },
     }));
     expect(bareWait.isError).toBe(true);
-    expect(bareWait.structuredContent).toBeUndefined();
-    expect(bareWait.content.find((item) => item.type === "text" && typeof item.text === "string" && item.text.includes("Invalid arguments"))).toBeTruthy();
+    expect(bareWait.structuredContent).toMatchObject({ error: { code: "INVALID_TOOL_ARGUMENTS", details: { issues: expect.any(Array) } } });
 
     const obsoleteCaptureInput = asCallResult(await client.callTool({
       name: "web_issue_capture",
       arguments: { sessionId: "00000000-0000-0000-0000-000000000000", captureScreenshot: true },
     }));
     expect(obsoleteCaptureInput.isError).toBe(true);
-    expect(obsoleteCaptureInput.structuredContent).toBeUndefined();
+    expect(obsoleteCaptureInput.structuredContent).toMatchObject({ error: { code: "INVALID_TOOL_ARGUMENTS" } });
 
     await client.close();
     await server.close();
   });
 
-  it("executes both scenario tools through in-memory MCP, preserves the canonical wire shape, and forwards cancellation", async () => {
+  it("guides rejected calls without reflecting private values or executing actions", async () => {
+    const adapter = new McpScriptedAdapter();
+    const act = vi.spyOn(adapter, "act");
+    const manager = new SessionManager(() => adapter, { cleanupTimeoutMs: 0 });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager);
+    const client = new Client({ name: "guided-input-client", version: "1.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const secret = "opaque-rejected-private-value";
+      const invalid = asCallResult(await client.callTool({ name: "web_browser_action", arguments: {
+        sessionId: secret, action: { kind: secret, [secret]: secret },
+      } }));
+      expect(invalid.isError).toBe(true);
+      expect(invalid.structuredContent).toMatchObject({ error: { code: "INVALID_TOOL_ARGUMENTS", details: {
+        fields: expect.arrayContaining(["sessionId", "action"]),
+        issues: expect.arrayContaining([expect.objectContaining({ path: "arguments.action.kind", choices: expect.arrayContaining(["fill", "click"]) })]),
+        example: { sessionId: expect.any(String), action: expect.any(Object) },
+      } } });
+      expect(JSON.stringify(invalid)).not.toContain(secret);
+      expect(act).not.toHaveBeenCalled();
+      expect(manager.list()).toEqual([]);
+      const misspelled = await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/", [secret]: "next" } });
+      expect(misspelled.structuredContent).toMatchObject({ error: { code: "INVALID_TOOL_ARGUMENTS" } });
+      expect(JSON.stringify(misspelled)).not.toContain(secret);
+      expect(manager.list()).toEqual([]);
+    } finally { await client.close(); await server.close(); }
+  });
+
+  it("executes compact scenario tools, preserves authoritative checks, and forwards cancellation", async () => {
     const adapter = new McpScriptedAdapter();
     const manager = new SessionManager(() => adapter, { cleanupTimeoutMs: 0 });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -243,9 +272,13 @@ describe("MCP server contract", () => {
     }, undefined, { onprogress: (event) => { recordProgress.push(event); } }));
     expect(recordResult.isError).not.toBe(true);
     const scenario = structuredData(recordResult) as Record<string, any>;
-    expect(scenario.schemaVersion).toBe(6);
+    expect(scenario.schemaVersion).toBe(7);
     expect(scenario.baseline.status).toBe("reproduced");
-    expect(scenario.url).toBe("http://127.0.0.1:4173/");
+    const network = structuredData(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view: { profile: "include", surfaces: ["network"] } } })) as Record<string, any>;
+    expect(network.details.network[0].completed).toBe(true);
+    const evaluated = await client.callTool({ name: "web_debug_evaluate", arguments: { sessionId: session.id, expression: "({})" } });
+    expect(JSON.stringify(evaluated)).not.toContain(secret);
+    expect(scenario).not.toHaveProperty("actions");
     expect(scenario).not.toHaveProperty("riskSignals");
     expect(scenario).not.toHaveProperty("representativeEvidence");
     expect(JSON.stringify(scenario)).not.toContain(secret);
@@ -260,7 +293,7 @@ describe("MCP server contract", () => {
     ));
     expect(verifyResult.isError).not.toBe(true);
     const verification = structuredData(verifyResult) as Record<string, any>;
-    expect(verification.schemaVersion).toBe(6);
+    expect(verification.schemaVersion).toBe(7);
     expect(verification.outcome).toBe("verified");
     expect(verification.level).toBe("quick");
     expect(verification).not.toHaveProperty("passed");
@@ -268,7 +301,23 @@ describe("MCP server contract", () => {
     expect(verification).not.toHaveProperty("representativeEvidence");
     expect(verification).not.toHaveProperty("escalationReasons");
     expect(verification).not.toHaveProperty("terminationReason");
-    expect((verification.scenario as Record<string, unknown>).baseline).not.toHaveProperty("terminationReason");
+    {
+      expect(verification).not.toHaveProperty("scenario");
+      const evidenceRef = verification.evidence.postFix.uri;
+      const beforeRead = JSON.stringify(manager.list());
+      const resource = await client.readResource({ uri: evidenceRef });
+      const recorded = JSON.parse((resource.contents[0] as { text: string }).text);
+      expect(recorded).toMatchObject({ profile: "recorded", sessionId: session.id, reference: { uri: evidenceRef } });
+      expect(recorded.evidence.browser.dom.bodyText).toBe("Fixed");
+      expect(JSON.stringify(recorded)).not.toContain(secret);
+      const retained = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view: { profile: "recorded", evidenceRef } } }));
+      expect(structuredData(retained)).toEqual(recorded);
+      expect(JSON.stringify(manager.list())).toBe(beforeRead);
+      await client.callTool({ name: "web_browser_action", arguments: { sessionId: session.id, action: { kind: "fill", locator: { kind: "css", value: "#private" }, value: "another-private-value" } } });
+      const expired = asCallResult(await client.callTool({ name: "web_issue_capture", arguments: { sessionId: session.id, view: { profile: "recorded", evidenceRef } } }));
+      expect(expired.isError).toBe(true);
+      expect(expired.structuredContent).toMatchObject({ error: { code: "EVIDENCE_NOT_FOUND" } });
+    }
     expect(JSON.stringify(verification)).not.toContain(secret);
     expect(verifyProgress.map((event) => event.progress)).toEqual([0, 1, 2, 11]);
 
@@ -335,6 +384,60 @@ describe("MCP server contract", () => {
     await client.close();
     await server.close();
   });
+
+  it.each(["3", "pass", "unavailable", "e", "css", "fill"])("retains readable evidence and structural verdicts after private input %s", async (value) => {
+    const manager = new SessionManager(() => new McpScriptedAdapter(), { cleanupTimeoutMs: 0 });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager);
+    const client = new Client({ name: "short-input-client", version: "1.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    let sessionId: string | undefined;
+    try {
+      const session = structuredData(await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/" } })) as { id: string };
+      sessionId = session.id;
+      const scenario = structuredData(await client.callTool({ name: "web_repro_record", arguments: {
+        sessionId, name: "Private input flow", url: "http://127.0.0.1:4173/", requestedLevel: "quick",
+        actions: [{ kind: "fill", locator: { kind: "css", value: "#private" }, value }],
+        failureSignature: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Bug", expected: "pass" }],
+        acceptanceChecks: [{ kind: "locatorText", locator: { kind: "css", value: "body" }, text: "Fixed" }],
+      } })) as Record<string, any>;
+      expect(scenario.baseline.status).toBe("reproduced");
+      const action = structuredData(await client.callTool({ name: "web_browser_action", arguments: { sessionId, action: { kind: "fill", locator: { kind: "css", value: "#private" }, value } } })) as Record<string, any>;
+      expect(action.kind).toBe("fill");
+      expect(action.url).toBe("http://127.0.0.1:4173/");
+      const current = structuredData(await client.callTool({ name: "web_issue_capture", arguments: { sessionId, view: { profile: "include", surfaces: ["console", "replay"] } } })) as Record<string, any>;
+      expect(current.details.console[0].level).toBe("error");
+      expect(current.details.replay.frames.every((frame: any) => frame.console.every((entry: any) => entry.level === "error"))).toBe(true);
+      const result = structuredData(await client.callTool({ name: "web_fix_verify", arguments: { sessionId, scenarioId: scenario.id } })) as Record<string, any>;
+      expect(result.outcome).toBe("verified");
+      expect(result.postFix.attempts[0].checks[0].state).toBe("pass");
+      const captured = structuredData(await client.callTool({ name: "web_issue_capture", arguments: { sessionId, view: { profile: "recorded", evidenceRef: result.evidence.postFix.uri } } })) as Record<string, any>;
+      expect(captured.evidence.session.id).toBe(sessionId);
+      expect(captured.evidence.browser.url).toBe("http://127.0.0.1:4173/");
+      expect(captured.evidence.browser.network[0].requestId).toBe("1700030000000-1");
+    } finally { if (sessionId) await manager.close(sessionId, "delete"); await client.close(); await server.close(); }
+  });
+
+  it("keeps masked near-limit page text within the public wire bounds", async () => {
+    const adapter = new McpScriptedAdapter();
+    const snapshot = adapter.snapshot.bind(adapter);
+    vi.spyOn(adapter, "snapshot").mockImplementation(async options => ({ ...await snapshot(options), dom: { bodyText: "e".repeat(4_000), elements: [] }, console: [{ level: "error", text: "e".repeat(2_000) }] }));
+    const manager = new SessionManager(() => adapter, { cleanupTimeoutMs: 0 });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const server = createServer(manager);
+    const client = new Client({ name: "bounded-private-client", version: "1.0.0" });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    let sessionId: string | undefined;
+    try {
+      const session = structuredData(await client.callTool({ name: "web_session_start", arguments: { projectRoot: resolve("fixtures/vanilla"), url: "http://127.0.0.1:4173/" } })) as { id: string };
+      sessionId = session.id;
+      structuredData(await client.callTool({ name: "web_browser_action", arguments: { sessionId, action: { kind: "fill", locator: { kind: "css", value: "#private" }, value: "e" } } }));
+      const captured = structuredData(await client.callTool({ name: "web_issue_capture", arguments: { sessionId, view: { profile: "include", surfaces: ["dom", "console", "replay"] } } })) as Record<string, any>;
+      expect(captured.details.dom.bodyText.length).toBeLessThanOrEqual(4_000);
+      expect(captured.details.console[0].text.length).toBeLessThanOrEqual(2_000);
+      expect(captured.details.console[0].text).not.toContain("e");
+    } finally { if (sessionId) await manager.close(sessionId, "delete"); await client.close(); await server.close(); }
+  });
 });
 
 interface McpCallResult {
@@ -350,6 +453,6 @@ function asCallResult(result: unknown): McpCallResult {
 
 function structuredData(result: unknown): unknown {
   const callResult = asCallResult(result);
-  expect(callResult.structuredContent).toMatchObject({ ok: true, artifacts: expect.any(Array), warnings: expect.any(Array) });
+  expect(callResult.structuredContent, JSON.stringify(callResult.structuredContent?.error)).toMatchObject({ ok: true, artifacts: expect.any(Array), warnings: expect.any(Array) });
   return callResult.structuredContent?.data;
 }

@@ -22,10 +22,11 @@ import type {
 } from "../domain/types.js";
 import { MAX_ATTEMPTS_PER_PHASE, MAX_RESULT_BYTES } from "../domain/types.js";
 import { WebDebugError, errorMessage } from "./errors.js";
-import { actionSecrets, cloneJson, replaceSecrets, scrubText } from "./private-values.js";
+import { actionSecrets, cloneJson, replaceSecrets, scrubText, scrubCheck } from "./private-values.js";
 import { boundText, redactText } from "./redaction.js";
 import { emptyRateSummary, normalizeCheck, scrubAttemptSummary, scrubBuildReference, scrubPublicScenario } from "./scenario-contract.js";
-import { pruneEvidence, serializedBytes } from "./session-evidence.js";
+import { pruneEvidence, serializedBytes, scrubEvidence } from "./session-evidence.js";
+import { evaluateExtendedCheck } from "./scenario-observations.js";
 
 const MAX_OBSERVED_CHARS = 500;
 
@@ -68,6 +69,12 @@ export function evaluateCheck(check: ScenarioCheck, browser: BrowserSnapshot, ex
 
 export async function evaluateCheckLive(adapter: BrowserAdapter, check: ScenarioCheck, browser: BrowserSnapshot, context: OperationContext, expected?: CheckExpectation): Promise<CheckObservation> {
   const normalized = normalizeCheck(check);
+  try {
+    const extended = await evaluateExtendedCheck(adapter, normalized, browser, context);
+    if (extended) return { ...extended, ...(expected ? { expected } : {}) };
+  } catch (error) {
+    return { ...normalized, ...(expected ? { expected } : {}), state: "unavailable", freshness: "unknown", provenance: "unknown", warning: boundText(errorMessage(error), MAX_OBSERVED_CHARS) };
+  }
   if (!["locatorText", "locatorCount", "locatorVisible", "locatorEnabled", "locatorDisabled", "locatorChecked"].includes(normalized.kind)) return evaluateCheck(normalized, browser, expected);
   const property: LocatorProperty = normalized.kind === "locatorText" ? "text" : normalized.kind === "locatorCount" ? "count" : normalized.kind === "locatorVisible" ? "visible" : normalized.kind === "locatorEnabled" || normalized.kind === "locatorDisabled" ? "enabled" : "checked";
   try {
@@ -150,20 +157,23 @@ export function isolationResult(target: BrowserTarget | null, reset: "fresh" | "
 export function scrubChecks(checks: CheckObservation[], actions: ReplayableBrowserAction[]): CheckObservation[] {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return checks;
-  return checks.map((check) => replaceSecrets(check, secrets) as CheckObservation);
+  return checks.map((check) => scrubCheck(check, secrets));
 }
 
 export function scrubVerificationResult(result: VerificationResult, actions: ReplayableBrowserAction[]): VerificationResult {
   const secrets = actionSecrets(actions);
   if (secrets.length === 0) return result;
   const sanitized = cloneJson(result);
-  if (sanitized.differences) sanitized.differences = replaceSecrets(sanitized.differences, secrets) as typeof sanitized.differences;
+  if (sanitized.differences && result.differences) {
+    sanitized.differences = replaceSecrets(sanitized.differences, secrets) as typeof sanitized.differences;
+    sanitized.differences.state = result.differences.state;
+  }
   sanitized.scenario = scrubPublicScenario(sanitized.scenario, actions);
   sanitized.baseline.attempts = sanitized.baseline.attempts.map((attempt) => scrubAttemptSummary(attempt, secrets));
   sanitized.postFix.attempts = sanitized.postFix.attempts.map((attempt) => scrubAttemptSummary(attempt, secrets));
   sanitized.evidence = {
-    baseline: sanitized.evidence.baseline ? replaceSecrets(sanitized.evidence.baseline, secrets) as EvidenceBundle : null,
-    postFix: sanitized.evidence.postFix ? replaceSecrets(sanitized.evidence.postFix, secrets) as EvidenceBundle : null,
+    baseline: result.evidence.baseline ? scrubEvidence(result.evidence.baseline, actions) : null,
+    postFix: result.evidence.postFix ? scrubEvidence(result.evidence.postFix, actions) : null,
   };
   sanitized.escalations = sanitized.escalations.map((warning) => scrubText(warning, secrets));
   sanitized.warnings = sanitized.warnings.map((warning) => scrubText(warning, secrets));

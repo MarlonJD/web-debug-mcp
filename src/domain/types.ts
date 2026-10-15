@@ -2,6 +2,9 @@ import type { SourceReference, SourceInventory, ExecutionDiagnostics, Diagnostic
 export type * from "./diagnostics.js";
 
 export type Framework = "vanilla" | "react" | "angular" | "vue" | "vite" | "next";
+export const RUNTIME_HOSTS = ["next", "vite", "angular", "vanilla"] as const;
+export type RuntimeHost = typeof RUNTIME_HOSTS[number];
+export interface HostSelection { mode: "automatic" | "explicit" | "unresolved"; host: RuntimeHost | null }
 
 export type BrowserEngine = "chromium" | "safari";
 
@@ -174,7 +177,9 @@ export interface WorkspaceDiscovery {
 }
 
 export interface ProjectDescriptor {
-  schemaVersion: 2;
+  schemaVersion: 3;
+  selection: HostSelection;
+  recovery: { hosts: RuntimeHost[]; instruction: string };
   projectRoot: string;
   packageManager: "npm" | "pnpm" | "yarn" | "bun" | null;
   kind: "application" | "workspace" | "library" | "unknown";
@@ -369,6 +374,8 @@ export interface NetworkEntry {
   resourceType: string;
   status: number | null;
   ok: boolean | null;
+  /** True after observed request completion/failure, not merely response headers. */
+  completed?: boolean;
   nextActionId?: string;
   failure?: string;
 }
@@ -690,7 +697,16 @@ export interface WebMcpCaptureDetail {
   tools: WebMcpCaptureTool[];
 }
 
+export interface ProjectLogSnapshot {
+  state: "fresh" | "unavailable";
+  file: string;
+  text: string | null;
+  truncated: boolean;
+  warnings: string[];
+}
+
 export interface BrowserSnapshot {
+  serverLogs?: ProjectLogSnapshot | null;
   sources?: SourceInventory | null;
   execution?: ExecutionDiagnostics | null;
   url: string;
@@ -765,6 +781,7 @@ export const CAPTURE_SURFACES = [
   "replay",
   "screenshot",
   "webmcp",
+  "serverLogs",
 ] as const;
 export type CaptureSurface = typeof CAPTURE_SURFACES[number];
 export type CaptureCollectionState = "fresh" | "stale" | "not-collected" | "not-detected" | "unavailable" | "suppressed";
@@ -817,6 +834,7 @@ export interface CaptureSummary {
 }
 
 export interface CaptureDetails {
+  serverLogs?: ProjectLogSnapshot | null;
   sources?: SourceInventory | null;
   execution?: ExecutionDiagnostics | null;
   dom?: DomSnapshot;
@@ -881,7 +899,33 @@ export type ScenarioCheck =
   | { kind: "locatorEnabled"; locator: BrowserLocator; enabled: boolean }
   | { kind: "locatorDisabled"; locator: BrowserLocator; disabled: boolean }
   | { kind: "locatorChecked"; locator: BrowserLocator; checked: boolean }
+  | { kind: "locatorInViewport"; locator: BrowserLocator; inViewport: boolean }
+  | { kind: "locatorUnobstructed"; locator: BrowserLocator; unobstructed: boolean }
+  | { kind: "locatorNumber"; locator: BrowserLocator; value: number; tolerance?: number }
+  | { kind: "networkResponse"; path: string; method: string; status: number; minimumCount?: number }
+  | { kind: "networkComplete"; path: string; method: string; minimumCount?: number }
   | { kind: "noConsoleErrors" };
+
+export interface LocatorLayout {
+  count: number;
+  rect: { x: number; y: number; width: number; height: number } | null;
+  viewport: ViewportSize;
+  inViewport: boolean;
+  unobstructed: boolean;
+}
+
+export interface ScenarioCompletion {
+  checks: ScenarioCheck[];
+  timeoutMs: number;
+  stableForMs?: number;
+}
+
+export interface CompletionObservation {
+  state: "ready" | "timed-out" | "unavailable";
+  checks: CheckObservation[];
+  elapsedMs: number;
+  stableForMs: number;
+}
 
 export type CheckExpectation = "pass" | "fail";
 
@@ -937,6 +981,7 @@ export interface ViewportObservation {
   checkpointDigest?: string;
   elapsedMs: number;
   warnings: string[];
+  completion?: CompletionObservation;
 }
 
 export interface MatrixAttemptSummary {
@@ -1027,6 +1072,8 @@ export interface PublicReproScenario {
   name: string;
   url: string;
   actions: ReplayableBrowserAction[];
+  completion?: ScenarioCompletion;
+  minimumPostFixAttempts?: number;
   failureSignature: FailureSignatureEntry[];
   acceptanceChecks: ScenarioCheck[];
   regressionChecks: ScenarioCheck[];
@@ -1093,6 +1140,7 @@ export interface AttemptSummary {
   match?: boolean;
   passed?: boolean;
   checks: CheckObservation[];
+  completion?: CompletionObservation;
   checkpoints?: Array<{
     name: string;
     offset: number;

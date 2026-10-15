@@ -32,8 +32,11 @@ If the bundled tool is absent, report `MCP_CLIENT_BINDING_UNAVAILABLE`; if the s
    - Failed or reordered requests: network and console, plus the final UI state.
    - JavaScript execution: request `sources` for original-source coordinates, use `web_breakpoint_set` with `coordinateSpace: "original"` only for a resolved mapping, and opt into action `diagnostics` for a bounded request/coverage window. Coverage changes timing and stays off during verification; associations and differences are explanatory only. Use debugger controls or read-only evaluation when needed.
    - Next route compilation or Server Action lookup: `web_next_inspect`; never invoke arbitrary actions.
+   - Server log symptoms: configure one project-relative `.log` file with `web_session_start.logFile`, then request `include` with `serverLogs`. This returns a bounded redacted tail with explicit availability/truncation. Private fill/select values and recognized URL/JSON representations are masked. Arbitrary terminal output is outside this privacy boundary; prefer this collector when logs can echo input. Missing files, linked paths and incomplete lines provide no returned content for those records.
 5. For a repeatable regression, use `web_repro_record` before changing code, with a complete polarity-aware `failureSignature` and acceptance checks. Only a `reproduced` baseline can be checked with `web_fix_verify`. Keep requested durable regression coverage in repository-native tests.
 6. Close with `web_session_close` in task teardown, including failed work. Retain bounded artifacts when review needs them; otherwise delete only this session's artifacts.
+
+Detection schema3 reports `selection` and grounded `recovery.hosts`. Conflicting markers remain visible and default to no framework enrichment. If the exact running app host is known, pass one listed `host` to detection and the same value to session start. Weak dependencies cannot justify an override. Workspace roots offer exact `workspace.candidates`; select and detect one child explicitly. Selection identifies eligible adapters; it does not establish that a compatible development endpoint is running.
 
 For `web_repro_record`, failure entries are flat checks with an extra `expected: "pass" | "fail"` polarity. Acceptance entries omit `expected`. For example, after replacing the session, URL, and selectors with observed values:
 
@@ -49,7 +52,11 @@ For `web_repro_record`, failure entries are flat checks with an extra `expected:
 }
 ```
 
-An input-validation error executes no scenario. Read its field path and the tool schema before correcting the request; do not repeatedly guess alternative wrapper shapes.
+An `INVALID_TOOL_ARGUMENTS` response executes no operation. Its bounded details identify canonical field paths, choices and a schema-valid example; tool input schemas also contain one static example. Correct the reported field and replace the example's session, URL and selectors with observed values. Failure entries are flat checks; do not add a nested `check` wrapper. Count every rejected request when reporting tool-call failures, regardless of whether rejection came from the facade or SDK.
+
+Recorded flows return compact schema7 checks/attempts and immutable evidence references. Read a specific ref using `web_issue_capture` with `view:{"profile":"recorded","evidenceRef":"<returned-uri>"}` only when its observations are needed; reading does not replay the flow. Refs expire after private-input changes or close, and oldest refs may be evicted. Read needed screenshot resources promptly; only four images per session are retained. Pixels remain suppressed after private input/auth/WebMCP.
+
+Use typed `locatorInViewport`, `locatorUnobstructed`, `locatorNumber`, `networkResponse` and `networkComplete` checks when they match the requirement. Network checks use an exact path/method; completion requires response-body completion, not just HTTP headers. For async work, declare `completion:{checks:[...],timeoutMs:5000,stableForMs:50}`. Elapsed time alone cannot satisfy completion. `minimumPostFixAttempts` (1..5) sets a minimum for conclusive candidate decisions; unsupported observations or deadlines can still end inconclusively.
 
 ## Authority, stopping, and concurrency
 

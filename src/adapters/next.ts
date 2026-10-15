@@ -1,7 +1,7 @@
-import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { open, realpath } from "node:fs/promises";
+import { basename, relative, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 
+import { readProjectLog } from "../core/project-logs.js";
 import { boundText, redactValue, safeUrl } from "../core/redaction.js";
 import { MAX_FRAMEWORK_RESPONSE_BYTES, readResponseTextBounded } from "../core/http.js";
 import type { NetworkEntry, NextInspection, NextInspectionResult, NextRequestTrace, NextSnapshot, OperationContext } from "../domain/types.js";
@@ -26,9 +26,6 @@ const OPTIONAL_TOOLS = [
   "get_request_insights",
 ] as const;
 
-const MAX_LOG_BYTES = 64 * 1024;
-const MAX_LOG_LINES = 200;
-const MAX_LOG_CHARS = 32_000;
 
 export class NextAdapter {
   async listTools(baseUrl: string, context: OperationContext = {}): Promise<string[]> {
@@ -38,7 +35,7 @@ export class NextAdapter {
     return extractToolNames(listed.result);
   }
 
-  async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = [], context: OperationContext = {}): Promise<NextSnapshot | null> {
+  async snapshot(baseUrl: string, projectRoot?: string, network: NetworkEntry[] = [], context: OperationContext = {}, secrets: string[] = []): Promise<NextSnapshot | null> {
     const endpoint = new URL("/_next/mcp", baseUrl).toString();
     const client = new NextMcpClient(endpoint);
     const listed = await client.request("tools/list", {}, context);
@@ -59,7 +56,7 @@ export class NextAdapter {
     }
 
     const logTail = projectRoot
-      ? await readLogTail(values.get("get_logs"), projectRoot, warnings)
+      ? await readLogTail(values.get("get_logs"), projectRoot, warnings, secrets)
       : null;
     const requestTraces = extractRequestTraces(values.get("get_request_insights"));
     const serverActionExecutions = await resolveExecutedServerActions(client, tools, network, requestTraces, warnings, context);
@@ -234,51 +231,16 @@ function actionRequest(entry: NetworkEntry) {
   };
 }
 
-async function readLogTail(
-  value: unknown,
-  projectRoot: string,
-  warnings: string[],
-): Promise<NonNullable<NextSnapshot["logTail"]> | null> {
+async function readLogTail(value: unknown, projectRoot: string, warnings: string[], secrets: string[]): Promise<NonNullable<NextSnapshot["logTail"]> | null> {
   if (!isRecord(value) || typeof value.logFilePath !== "string") return null;
-
-  let rootPath: string;
-  let logPath: string;
-  try {
-    rootPath = await realpath(resolve(projectRoot));
-    logPath = await realpath(resolve(value.logFilePath));
-  } catch {
-    warnings.push("Next development log tail is unavailable because the returned log file could not be resolved.");
+  const file = relative(resolve(projectRoot), resolve(value.logFilePath));
+  if (basename(file) !== "next-development.log") {
+    warnings.push("Next development log tail was skipped because the returned file is not the expected project log.");
     return null;
   }
-
-  const relativePath = relative(rootPath, logPath);
-  if (!relativePath || isAbsolute(relativePath) || relativePath.startsWith(`..${sep}`) || basename(logPath) !== "next-development.log") {
-    warnings.push("Next development log tail was skipped because the returned log file is outside the project boundary.");
-    return null;
-  }
-
-  let handle;
-  try {
-    handle = await open(logPath, "r");
-    const size = (await handle.stat()).size;
-    const length = Math.min(size, MAX_LOG_BYTES);
-    const buffer = Buffer.alloc(length);
-    if (length > 0) await handle.read(buffer, 0, length, Math.max(0, size - length));
-    const rawText = buffer.toString("utf8");
-    const lines = rawText.split(/\r?\n/);
-    const truncated = size > MAX_LOG_BYTES || lines.length > MAX_LOG_LINES;
-    const text = boundText(lines.slice(-MAX_LOG_LINES).join("\n"), MAX_LOG_CHARS);
-    return {
-      file: relativePath.split(sep).join("/"),
-      text,
-      truncated,
-    };
-  } catch (error) {
-    warnings.push(`Next development log tail unavailable: ${boundText(error instanceof Error ? error.message : String(error), 500)}`);
-    return null;
-  } finally {
-    await handle?.close().catch(() => undefined);
-  }
+  const tail = await readProjectLog(projectRoot, file, secrets);
+  warnings.push(...tail.warnings);
+  return tail.state === "fresh" && tail.text !== null ? { file: tail.file, text: tail.text, truncated: tail.truncated } : null;
 }
 
 class NextMcpClient {

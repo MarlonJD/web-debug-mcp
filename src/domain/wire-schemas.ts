@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CAPTURE_SURFACES } from "./types.js";
+import { CAPTURE_SURFACES, RUNTIME_HOSTS } from "./types.js";
 import { behaviorDifferenceSchema, sourceLocationSchema, sourceReferenceSchema, sourceInventorySchema, executionDiagnosticsSchema } from "./diagnostic-schemas.js";
 import { validateWebMcpArguments } from "../adapters/webmcp.js";
 
@@ -85,7 +85,9 @@ const detectionSignalSchema = z.object({
 const confidenceSchema = z.enum(["high", "medium", "low", "none"]);
 
 export const projectDescriptorSchema: z.ZodType = z.object({
-  schemaVersion: z.literal(2),
+  schemaVersion: z.literal(3),
+  selection: z.object({ mode: z.enum(["automatic", "explicit", "unresolved"]), host: z.enum(RUNTIME_HOSTS).nullable() }).strict(),
+  recovery: z.object({ hosts: z.array(z.enum(RUNTIME_HOSTS)).max(4), instruction: z.string().max(500) }).strict(),
   projectRoot: z.string().max(4_096),
   packageManager: z.enum(["npm", "pnpm", "yarn", "bun"]).nullable(),
   kind: z.enum(["application", "workspace", "library", "unknown"]),
@@ -201,6 +203,7 @@ const networkEntrySchema = z.object({
   resourceType: z.string().max(100),
   status: z.number().int().nullable(),
   ok: z.boolean().nullable(),
+  completed: z.boolean().optional(),
   nextActionId: z.string().max(200).optional(),
   failure: z.string().max(500).optional(),
 }).strict().meta({ id: "NetworkEntryOutput" });
@@ -310,6 +313,7 @@ const interactiveElementsSchema = z.object({
 
 const captureSurfaceSchema = z.enum(CAPTURE_SURFACES);
 const captureDetailsSchema = z.object({
+  serverLogs: z.object({ state: z.enum(["fresh", "unavailable"]), file: z.string().max(2_048), text: z.string().max(16_000).nullable(), truncated: z.boolean(), warnings: z.array(warningSchema).max(10) }).strict().nullable().optional(),
   sources: sourceInventorySchema.nullable().optional(),
   execution: executionDiagnosticsSchema.nullable().optional(),
   dom: domSchema.optional(),
@@ -457,6 +461,8 @@ export const publicReproScenarioSchema: z.ZodType = z.object({
   name: z.string().max(200),
   url: z.string().max(2_560),
   actions: z.array(replayableActionSchema).max(100),
+  completion: sharedJsonSchema.optional(),
+  minimumPostFixAttempts: z.number().int().min(1).max(5).optional(),
   failureSignature: z.array(sharedJsonSchema).max(64),
   acceptanceChecks: z.array(sharedJsonSchema).max(64),
   regressionChecks: z.array(sharedJsonSchema).max(64),
@@ -513,6 +519,40 @@ export const verificationResultSchema: z.ZodType = z.object({
   truncation: sharedJsonSchema,
 }).strict();
 
+const evidenceReferenceSchema = z.object({
+  uri: z.string().regex(/^web-debug:\/\/evidence\/[a-f0-9-]{36}$/),
+  mimeType: z.literal("application/json"), bytes: z.number().int().nonnegative().max(98_304),
+  sha256: z.string().length(64), capturedAt: z.string().max(100), attemptId: z.string().max(100).nullable(),
+}).strict().meta({ id: "RecordedEvidenceReference" });
+
+export const recordedEvidenceSchema: z.ZodType = z.object({
+  schemaVersion: z.literal(1), profile: z.literal("recorded"), sessionId: z.string().uuid(),
+  reference: evidenceReferenceSchema, evidence: sharedJsonSchema,
+}).strict();
+
+const recordedFlowSummarySchema = z.object({
+  schemaVersion: z.literal(7), profile: z.literal("summary"), id: z.string().uuid(), sessionId: z.string().uuid(),
+  name: z.string().max(200), contractHash: z.string().length(64), persistence: z.literal("in-memory"), createdAt: z.string().max(100),
+  completion: sharedJsonSchema.optional(), minimumPostFixAttempts: z.number().int().min(1).max(5),
+  baseline: z.object({
+    status: z.enum(["reproduced", "not_reproduced", "inconclusive"]), level: z.enum(["quick", "standard", "strict"]),
+    flaky: z.boolean(), budget: sharedJsonSchema, attempts: z.array(sharedJsonSchema).max(5), observedRate: sharedJsonSchema,
+    evidence: evidenceReferenceSchema.nullable(), warnings: z.array(warningSchema).max(100),
+    viewportConsensus: z.record(z.string(), z.string()).optional(), termination: z.string().max(500), truncation: sharedJsonSchema.optional(),
+  }).strict(),
+}).strict();
+
+const verificationSummarySchema = z.object({
+  schemaVersion: z.literal(7), profile: z.literal("summary"), sessionId: z.string().uuid(), scenarioId: z.string().uuid(),
+  minimumPostFixAttempts: z.number().int().min(1).max(5),
+  outcome: z.enum(["verified", "failed", "inconclusive"]), level: z.enum(["quick", "standard", "strict"]),
+  requestedLevel: z.enum(["quick", "standard", "strict"]), escalations: z.array(warningSchema).max(100), flaky: z.boolean(),
+  baseline: sharedJsonSchema, postFix: sharedJsonSchema, observedRates: sharedJsonSchema, budget: sharedJsonSchema, cleanup: sharedJsonSchema,
+  differences: behaviorDifferenceSchema.optional(), evidence: z.object({ baseline: evidenceReferenceSchema.nullable(), postFix: evidenceReferenceSchema.nullable() }).strict(),
+  contractHash: z.string().length(64), buildReference: sharedJsonSchema, isolation: sharedJsonSchema,
+  persistence: z.literal("in-memory"), warnings: z.array(warningSchema).max(100), termination: z.string().max(500), truncation: sharedJsonSchema,
+}).strict();
+
 export const sessionStatusResultSchema: z.ZodType = z.union([debugSessionSummarySchema, z.array(debugSessionSummarySchema).max(8)]);
 
 export type WebDebugToolName =
@@ -535,13 +575,13 @@ export const toolDataSchemas: Record<WebDebugToolName, z.ZodType> = {
   web_session_start: debugSessionSummarySchema,
   web_session_status: sessionStatusResultSchema,
   web_browser_action: actionResultSchema,
-  web_issue_capture: issueCaptureResultSchema,
+  web_issue_capture: z.union([issueCaptureResultSchema, recordedEvidenceSchema]),
   web_next_inspect: nextInspectionResultSchema,
   web_replay_seek: replaySeekResultSchema,
   web_breakpoint_set: debuggerBreakpointSchema,
   web_debug_control: debuggerSnapshotSchema,
   web_debug_evaluate: evaluationResultSchema,
-  web_repro_record: publicReproScenarioSchema,
-  web_fix_verify: verificationResultSchema,
+  web_repro_record: recordedFlowSummarySchema,
+  web_fix_verify: verificationSummarySchema,
   web_session_close: debugSessionSummarySchema,
 };

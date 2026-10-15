@@ -17,6 +17,7 @@ export interface ScreenshotCandidate {
   path: string;
   artifactDir: string;
   name: string;
+  delivery?: "resource";
 }
 
 export interface ArtifactDescriptor {
@@ -147,7 +148,7 @@ export class ArtifactStore {
         staged.push(stored);
         const uri = artifactUri(stored.id);
         const estimatedInlineBytes = Math.ceil(stored.size * 4 / 3) + 256;
-        const inline = !inlineUsed
+        const inline = candidate.delivery !== "resource" && !inlineUsed
           && stored.size <= MAX_INLINE_ARTIFACT_BYTES
           && estimatedInlineBytes <= inlineAvailable;
         if (inline) {

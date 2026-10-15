@@ -22,6 +22,7 @@ The server is a development tool. It runs over MCP stdio, launches or attaches t
 | `src/core/origin-policy.ts` | Exact top-level origin parsing and stable navigation errors | Platform Engineering; update with navigation authority changes |
 | `src/core/http.ts` | Streaming byte caps for local framework responses | Platform Engineering; update with transport limits |
 | `src/core/mcp-response.ts` | Canonical structured tool envelopes and total MCP result budget | Platform Engineering; update with output-schema changes |
+| `src/core/verification-output.ts`, `retained-evidence.ts` | Compact authoritative-result projections and bounded session-owned immutable observation resources | Platform Engineering; output or resource lifecycle changes |
 | `src/core/artifact-store.ts` | Opaque, non-enumerable, identity-revalidated screenshot resources | Platform Engineering; update with artifact delivery or retention changes |
 | `src/core/doctor.ts` | Read-only first-run project/browser/target readiness checks | Platform Engineering; update with setup requirements |
 | `src/core/version.ts` | Package-derived runtime and cleanup identity | Platform Engineering; update only if package metadata ownership changes |
@@ -148,6 +149,6 @@ The package entry point accepts no arguments for MCP transport, `doctor` options
 
 The suite uses one MCP surface with internal adapters because Codex should see a stable workflow rather than four overlapping server catalogs. The first adapter is Chromium/CDP because it is the smallest route to browser state, JavaScript execution, and debugger control. Framework adapters will be promoted only after the core evidence and lifecycle contracts have deterministic fixtures.
 
-## Unreleased source correlation
+## Source correlation
 
 The existing facade adds original-source breakpoint coordinates, optional action diagnostics, `sources`/`execution` capture surfaces, and explanatory differences. Chromium source identity and observation lifecycle live in separate adapter modules. Core comparison is pure and cannot set verification verdicts. `@jridgewell/trace-mapping` is an explicit runtime dependency. See [`docs/design-docs/execution-source-correlation.md`](docs/design-docs/execution-source-correlation.md) for the exact bounds, selection policy, unavailable cases and cleanup contract.

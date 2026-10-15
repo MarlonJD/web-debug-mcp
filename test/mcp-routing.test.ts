@@ -19,7 +19,9 @@ const RUNTIME_CAPABILITIES = chromiumRuntimeCapabilities(true);
 const TARGET = { schemaVersion: 1 as const, browser: "chromium" as const, remote: false, url: "http://127.0.0.1:4173/", title: "Fixture", viewport: { width: 1_440, height: 900 }, isolated: false, mode: "attach" as const, targetId: "route-tab" };
 const CAPTURE_TARGET = { schemaVersion: TARGET.schemaVersion, browser: TARGET.browser, remote: TARGET.remote, viewport: TARGET.viewport, isolated: TARGET.isolated, mode: TARGET.mode };
 const PROJECT = {
-  schemaVersion: 2 as const,
+  schemaVersion: 3 as const,
+  selection: { mode: "automatic" as const, host: "vanilla" as const },
+  recovery: { hosts: ["vanilla" as const], instruction: "Choose one grounded host." },
   projectRoot: "/project",
   packageManager: null,
   kind: "application" as const,

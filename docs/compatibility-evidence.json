@@ -1,16 +1,16 @@
 {
   "schemaVersion": 2,
-  "scope": "0.12.0-release",
-  "observedAt": "2026-10-13T04:53:21.322790+00:00",
-  "sourceVersion": "0.12.0",
+  "scope": "0.13.0-release",
+  "observedAt": "2026-10-15T03:50:06.261751+00:00",
+  "sourceVersion": "0.13.0",
   "releaseBaseline": {
-    "version": "0.11.0",
-    "commit": "601ff637cd8bd1e2fd0af25d526c25386d285e8c"
+    "version": "0.12.0",
+    "commit": "f96443f481c0f394ff552edbbb44c2d7e969c927"
   },
   "runtime": {
-    "node": "24.19.0",
+    "node": "24.18.0",
     "mcpSdk": "1.32.1",
-    "chromium": "153.0.8010.36",
+    "chromium": "151.0.7922.34",
     "safari": "27.0 (22625.1.29.11.27)",
     "react": "19.2.8",
     "vite": "7.3.6",
@@ -27,92 +27,97 @@
     {
       "command": "npm test",
       "status": "passed",
-      "signal": "228 tests across 37 files; source/native Safari/upstream 0.11 contracts and pause/redaction/cleanup regressions passed."
+      "signal": "262 tests across 40 files passed on final 0.13.0 identities."
     },
     {
       "command": "npm run typecheck",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Source and test typecheck passed with TypeScript 5.9.2."
     },
     {
       "command": "npm run build",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Shared build passed through pretest; emitted 0.13.0 output used by all live scripts."
     },
     {
       "command": "npm audit --omit=dev",
       "status": "passed",
-      "signal": "Production dependency audit: 0 vulnerabilities."
+      "signal": "0 production dependency vulnerabilities."
     },
     {
       "command": "npm run smoke:live",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:source-correlation",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:webmcp",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:react-vite",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:next",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:safari",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:local-fidelity",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:vue-vite",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run smoke:angular",
       "status": "passed",
-      "signal": "Final integrated 0.12.0 check passed; browser entries were run directly after the successful shared build."
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
     },
     {
       "command": "npm run demo:compare -- --runs=1",
       "status": "passed",
-      "signal": "Six scenarios completed; complex/async/responsive repair verification passed."
+      "signal": "Six scenarios passed, including complex/async/responsive repair; executed directly after the successful shared build."
     },
     {
       "command": "exact release archive handshake",
-      "status": "passed",
-      "signal": "Exact 188-file archive from 9c446552e3c2f5136eccff2c05eb7c8635e2c38a passed on Node 20.20.2, 22.23.3 and 24.19.0: 13 tools, 13 concrete schemas, 140714-byte catalog and successful project detection."
+      "status": "not-run",
+      "signal": "Current 0.13.0 release check pending; previous release evidence remains in Git and its completed plan."
     },
     {
       "command": "public npm fresh-cache handshake",
-      "status": "passed",
-      "signal": "Public npm 0.12.0 was installed with an empty cache/prefix; the Node 24.19.0 13-tool/project-detection handshake passed. Public shasum and integrity match the tested archive. latest=0.12.0; legacy next=0.10.0 is unchanged."
-    },
-    {
-      "command": "Codex plugin update",
-      "status": "passed",
-      "signal": "One enabled 0.12.0+codex.20261013040352 plugin with three skills and bundled web-debug-mcp@0.12.0. Removed the obsolete standalone GitHub#main override; exactly one effective Web Debug MCP connection remains. Other parsed Codex settings were preserved."
+      "status": "not-run",
+      "signal": "Current 0.13.0 release check pending; previous release evidence remains in Git and its completed plan."
     },
     {
       "command": "plugin skill validation",
       "status": "passed",
-      "signal": "All three skill validators and repository plugin/Antigravity/release-identity contracts passed."
+      "signal": "All three quick validators and deterministic plugin/Antigravity/release-identity contracts passed."
+    },
+    {
+      "command": "npm run smoke:workflow",
+      "status": "passed",
+      "signal": "Passed on 0.13.0; script executed directly after the successful shared build. Chromium uses command-owned Chrome for Testing 151.0.7922.34; Safari native smoke uses Safari 27.0 (22625.1.29.11.27)."
+    },
+    {
+      "command": "owned-process cleanup",
+      "status": "passed",
+      "signal": "Observed PID/start identities have no surviving owned processes; no new Chrome for Testing/crashpad processes remain. Normal user browsing was preserved."
     }
   ],
   "limits": [
@@ -123,16 +128,9 @@
     "Current-chat tool rebinding is not inferred from installation. A new Codex chat or MCP restart loads the updated tool schemas."
   ],
   "release": {
-    "version": "0.12.0",
-    "commit": "9c446552e3c2f5136eccff2c05eb7c8635e2c38a",
-    "tag": "v0.12.0",
-    "github": "https://github.com/MarlonJD/web-debug-mcp/releases/tag/v0.12.0",
-    "archive": {
-      "entryCount": 188,
-      "shasum": "99913893eff61af56205b5891e5c4a7b1dd98f15",
-      "integrity": "sha512-lCbpBBtHFkv4ByOXC52wxZyvxsdJRQDipO7yf1Biq4AVbJ1gHPw2pSTX0MjZD6d+dv/wiSZyUgjZEaGmMYf4sg==",
-      "size": 281107
-    },
-    "installedPlugin": "0.12.0+codex.20261013040352"
+    "version": "0.13.0",
+    "status": "local-gates-passed; archive/publication pending",
+    "installedPluginUpdate": "outside task scope",
+    "pluginVersion": "0.13.0+codex.20261015034422"
   }
 }

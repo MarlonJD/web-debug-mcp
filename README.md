@@ -4,7 +4,7 @@ An evidence-first, local MCP debugger for web applications.
 
 `web-debug-mcp` gives Codex and other MCP clients one bounded workflow for reproducing a web issue, inspecting browser and framework runtime state, collecting redacted evidence, and verifying the same flow after a fix. It covers the browser, frontend runtime, dev server, and replay timeline through one small MCP surface.
 
-Release `0.12.0` adds original-source breakpoints, opt-in execution/request diagnostics, explanatory evidence differences, and native Safari 27+ console collection. It preserves interactive UI capture and direct WebMCP; the MCP catalog remains 13 tools.
+Release `0.13.0` adds compact verification with retained evidence resources, typed geometry/numeric/network checks, observable completion, safer API guidance and project logs, and grounded framework recovery. It preserves original-source diagnostics, native Safari console collection, interactive UI capture and direct WebMCP; the MCP catalog remains 13 tools.
 
 Release `0.10.0` introduced selective capture and freshness states, tighter browser-routing guidance, stronger evaluation evidence, and Google Antigravity plugin compatibility.
 
@@ -21,14 +21,14 @@ The published npm package runs locally over stdio and does not require a hosted 
 From a terminal:
 
 ```bash
-codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.12.0
+codex mcp add web-debug-mcp -- npx -y web-debug-mcp@0.13.0
 codex mcp list
 ```
 
 The Codex desktop app and IDE extension share the same MCP configuration. You can also open Settings → MCP servers → Add server, choose **STDIO**, use `npx` as the command, and add these arguments:
 
 ```text
--y web-debug-mcp@0.12.0
+-y web-debug-mcp@0.13.0
 ```
 
 For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or a trusted project `.codex/config.toml`:
@@ -36,7 +36,7 @@ For a project-scoped Codex configuration, add this to `~/.codex/config.toml` or 
 ```toml
 [mcp_servers.web_debug_mcp]
 command = "npx"
-args = ["-y", "web-debug-mcp@0.12.0"]
+args = ["-y", "web-debug-mcp@0.13.0"]
 startup_timeout_sec = 20
 tool_timeout_sec = 150
 # Optional strict host policy: fail startup if this server cannot initialize.
@@ -117,7 +117,7 @@ Run the marketplace command above once, open the Plugins Directory, refresh it i
 
 5. Close the session with web_session_close when debugging is complete.
 
-The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.12.0` npm release; Node.js 20+, npm, and network access are required.
+The plugin runs the same local server as the standalone MCP install. It does not host a browser, upload evidence, or create a second tool catalog. The first MCP start uses npx to resolve the immutable `web-debug-mcp@0.13.0` npm release; Node.js 20+, npm, and network access are required.
 
 ### Boundary with Build Web Apps and native runners
 
@@ -152,14 +152,14 @@ For local development or testing before publishing the repository, load the plug
 claude --plugin-dir ./plugins/web-debug
 ~~~
 
-This command loads the repository's plugin metadata, all three skills, and bundled `web-debug-mcp@0.12.0` runtime.
+This command loads the repository's plugin metadata, all three skills, and bundled `web-debug-mcp@0.13.0` runtime.
 
 ### Use the standalone MCP server in Claude Code
 
 Install it for all projects on the machine:
 
 ```bash
-claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.12.0
+claude mcp add --transport stdio --scope user web-debug-mcp -- npx -y web-debug-mcp@0.13.0
 claude mcp list
 ```
 
@@ -235,7 +235,23 @@ Capture deltas and `web_fix_verify` include bounded `differences` that explain e
 - `include`: only the unique named `surfaces`; include `screenshot` to opt into pixels;
 - `delta`: the current bounded values of selected surfaces whose digest changed since `cursor`; omitted `surfaces` means every evidence surface except replay and screenshot, whose capture side effects require explicit inclusion. This is not JSON Patch, an event stream, or browser-state time travel. Requested screenshots use a fresh artifact rather than pixel diffing, so each successfully captured screenshot is changed.
 
-Surfaces are `dom`, `console`, `network`, `debugger`, `react`, `angular`, `vue`, `next`, `vite`, `accessibility`, `interactiveElements`, `webmcp`, `replay`, and `screenshot`. Capture schema 6 reports a `collection` state for each: `fresh`, `stale`, `not-collected`, `not-detected`, `unavailable`, or `suppressed`. Skipped collection is not absence: the callable WebMCP count is `null` until metadata is collected. Included framework evidence is collected only for detected, supported runtimes; paused cached values are stale. `interactiveElements` is an explicit, bounded visible-action map: it carries names/text, an existing locator, live match count/uniqueness, enabled/checked state, and viewport geometry, but never input values. Chromium live-validates the emitted locator; Safari emits CSS locators derived from stable `id`/`data-testid` attributes and keeps semantic locator capability unavailable. A cursor remembers only its own collected surfaces, so an explicit later collection is changed relative to a summary that skipped it, even if an older capture saw the same value. Each session retains at most eight reusable cursors. Unknown, evicted, cross-session, or browser-generation-stale cursors fail explicitly. Screenshot paths never appear in capture data; accepted pixels are delivered only through the envelope's artifact descriptors. Scenario baseline and fix verification still retain authoritative full evidence independently of the manual profile.
+Surfaces are `dom`, `console`, `network`, `debugger`, `react`, `angular`, `vue`, `next`, `vite`, `accessibility`, `interactiveElements`, `webmcp`, `replay`, `screenshot`, and `serverLogs`. Capture schema 6 reports a `collection` state for each: `fresh`, `stale`, `not-collected`, `not-detected`, `unavailable`, or `suppressed`. Skipped collection is not absence: the callable WebMCP count is `null` until metadata is collected. Included framework evidence is collected only for detected, supported runtimes; paused cached values are stale. `interactiveElements` is an explicit, bounded visible-action map: it carries names/text, an existing locator, live match count/uniqueness, enabled/checked state, and viewport geometry, but never input values. Chromium live-validates the emitted locator; Safari emits CSS locators derived from stable `id`/`data-testid` attributes and keeps semantic locator capability unavailable. A cursor remembers only its own collected surfaces, so an explicit later collection is changed relative to a summary that skipped it, even if an older capture saw the same value. Each session retains at most eight reusable cursors. Unknown, evicted, cross-session, or browser-generation-stale cursors fail explicitly. Screenshot paths never appear in capture data; accepted pixels are delivered only through the envelope's artifact descriptors. Scenario baseline and fix verification still retain authoritative full evidence independently of the manual profile.
+
+### Compact verification output in 0.13.0
+
+Release `0.13.0` returns scenario/verification summary schema 7 from `web_repro_record` and `web_fix_verify`. All authoritative checks, repetition/isolation facts and full collection still run. The response keeps check outcomes, missing evidence, differences and immutable observation references; it does not repeat scenario actions or full runtime bundles. The plugin runtime is pinned to the same `0.13.0` release. Clients consuming the former full scenario/verification payload must use the summary and read its evidence references when full observations are needed.
+
+Read a reference without rerunning browser actions by passing this to `web_issue_capture`:
+
+```json
+{"sessionId":"<live-session-id>","view":{"profile":"recorded","evidenceRef":"web-debug://evidence/<opaque-id>"}}
+```
+
+The same opaque reference is an unlisted MCP JSON resource. Recorded evidence reports capture time/attempt and SHA-256; freshness describes the original observation, not the current page. Records are capped at 96 KiB, eight per live session and 64 per process, with a one-hour maximum lifetime. Close and subsequent private fill/select/WebMCP operations invalidate JSON references. Verification screenshots remain separate resources and are never inlined in compact responses. Missing, evicted, expired and wrong-session references return `EVIDENCE_NOT_FOUND`.
+
+Recorded checks now also include `locatorInViewport` (the entire visible rectangle), `locatorUnobstructed` (a center hit test), `locatorNumber` (finite decimal DOM text with explicit tolerance), `networkResponse` (all matching same-origin method/path responses have the declared status), and `networkComplete` (actual transport completion, independent of HTTP success). Missing telemetry, stale observations, ambiguous locators and truncated network history remain unavailable; localized/currency strings are not silently parsed.
+
+For async flows, declare `completion: { checks, timeoutMs, stableForMs }` using observations independent of the bug's acceptance condition, such as completion of the relevant request. Each attempt retains its completion receipt; elapsed time alone cannot make it pass. `minimumPostFixAttempts` (1..5) prevents a decisive negative result from stopping below the declared minimum. Deadlines, unavailable sources and conflicting observations can still end inconclusively. Read needed screenshot resources promptly: the existing four-file quota can expire an earlier phase image.
 
 The MCP boundary is intentionally small. Framework-specific protocol details stay inside adapters, while session ownership, same-origin navigation, bounds, redaction, and recovery stay centralized.
 
@@ -452,7 +468,7 @@ codex mcp add web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/i
 claude mcp add --transport stdio --scope project web-debug-mcp-local -- node /absolute/path/to/web-debug-mcp/dist/index.js
 ```
 
-Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.12.0`. Disable the installed released plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
+Replace the placeholder with this checkout's absolute path, then verify `serverInfo.version` is `0.13.0`. Disable the installed released plugin in that client session while exercising the local checkout so the same MCP catalog is not registered twice.
 
 Then use the MCP client workflow:
 
@@ -468,7 +484,7 @@ Then use the MCP client workflow:
 For Vite, install the development-only plugin in `vite.config.ts`:
 
 ```bash
-npm install --save-dev web-debug-mcp@0.12.0
+npm install --save-dev web-debug-mcp@0.13.0
 ```
 
 ```ts
@@ -528,7 +544,7 @@ Safari 27 and Safari Technology Preview 247 include Apple’s official Safari MC
 
 ## Verification status
 
-Release `0.12.0` retains the 13-tool facade, direct-only WebMCP and bounded interactive discovery. Safari uses the official native MCP transport with real console/error/reset evidence. Exact release and installation evidence is recorded in the [0.12.0 release plan](docs/exec-plans/completed/release-0-12-0.md).
+Release `0.13.0` retains the 13-tool facade, direct-only WebMCP and bounded interactive discovery. Reproduction/verification summaries use schema 7 and immutable evidence references. Exact current release checks are recorded in the [0.13.0 release notes](docs/releases/0.13.0.md) and [compatibility evidence](docs/compatibility-evidence.json). The [0.12.0 release plan](docs/exec-plans/completed/release-0-12-0.md) remains historical.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), the [product contract](docs/product-specs/web-debug-contract.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/RELIABILITY.md`](docs/RELIABILITY.md) for implementation boundaries and operational details.
 
@@ -541,3 +557,11 @@ Exact locally verified versions are recorded in [`docs/COMPATIBILITY.md`](docs/C
 SPDX-License-Identifier: `GPL-3.0-or-later`
 
 The Safari smoke requires a real application console error with its source line, a failing `noConsoleErrors` check, reset without stale errors, and a new native console record. It also checks that screenshots are captured before private input and suppressed afterward. Network evidence still discloses Performance Resource Timing when Inspector returns no requests.
+
+Invalid calls return `INVALID_TOOL_ARGUMENTS` with bounded canonical field paths, choices, constraints and a static schema-valid example. Examples in each input schema derive from the same validator; rejected values and unknown field names are not reflected. Rejection executes no operation.
+
+Configure `web_session_start.logFile` with one project-relative `.log` file and request `web_issue_capture` with `view:{"profile":"include","surfaces":["serverLogs"]}` for a guarded redacted tail. Availability and truncation are explicit. Linked files and incomplete boundary records are omitted; arbitrary terminal reads do not share this privacy policy.
+
+Detection schema3 retains conflicting provenance and reports `selection` plus grounded `recovery.hosts`. Pass the same explicit `host` to `web_project_detect` and `web_session_start` when the running host is known; weak library dependencies cannot select an adapter. Workspace child selection uses one exact `workspace.candidates[].projectRoot`. A selected adapter still requires a compatible running local endpoint.
+
+Recorded summaries, attempt observations and verification also apply earlier registered session inputs and disposable auth values, even when the current flow has no fill action. Redacted titles and log identifiers retain their advertised bounds; short values do not corrupt semantic interactive locator kinds.

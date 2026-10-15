@@ -10,7 +10,7 @@
 | Security | [`SECURITY.md`](SECURITY.md) | Sensitive data, trust boundary, or permission changes |
 | Reliability | [`RELIABILITY.md`](RELIABILITY.md) | Lifecycle, timeout, retry, or cleanup changes |
 | Comparison demo | [`demos/comparison.md`](demos/comparison.md) | Before/after debugging examples and measured local evidence coverage |
-| Release notes | [`releases/0.6.0.md`](releases/0.6.0.md) | Public release behavior, migration, qualification, or verification scope changes |
+| Release notes | [`releases/0.13.0.md`](releases/0.13.0.md) | Public release behavior, migration, qualification, or verification scope changes |
 | Compatibility | [`COMPATIBILITY.md`](COMPATIBILITY.md) and [`compatibility-evidence.json`](compatibility-evidence.json) | Declared or locally verified runtime/framework versions change |
 | Examples and evidence | [`examples-evidence.md`](examples-evidence.md) | User-facing before/after stories, evidence snippets, and why to use the MCP |
 | ExecPlan policy | [`PLANS.md`](PLANS.md) | Planning or lifecycle changes |

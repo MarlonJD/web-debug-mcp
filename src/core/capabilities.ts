@@ -11,6 +11,7 @@ import type {
   ProjectDescriptor,
   WorkspaceCandidate,
   WorkspaceDiscovery,
+  RuntimeHost,
 } from "../domain/types.js";
 
 const CONFIG_MARKERS = [
@@ -37,15 +38,15 @@ type PackageJson = Record<string, unknown> & {
   workspaces?: unknown;
 };
 
-export function detectProject(projectRoot: string): ProjectDescriptor {
+export function detectProject(projectRoot: string, host?: RuntimeHost): ProjectDescriptor {
   const root = resolve(projectRoot);
   if (!existsSync(root) || !statSync(root).isDirectory()) {
     throw new WebDebugError("PROJECT_ROOT_INVALID", `Project root is not a directory: ${root}`);
   }
-  return detectCanonicalRoot(realpathSync(root), true);
+  return detectCanonicalRoot(realpathSync(root), true, host);
 }
 
-function detectCanonicalRoot(canonicalRoot: string, discoverWorkspaces: boolean): ProjectDescriptor {
+function detectCanonicalRoot(canonicalRoot: string, discoverWorkspaces: boolean, host?: RuntimeHost): ProjectDescriptor {
   const packageJson = readPackageJson(canonicalRoot);
   const configMarkers = CONFIG_MARKERS.filter((marker) => existsSync(join(canonicalRoot, marker)));
   const hasIndex = existsSync(join(canonicalRoot, "index.html"));
@@ -69,14 +70,27 @@ function detectCanonicalRoot(canonicalRoot: string, discoverWorkspaces: boolean)
   if (selected.size === 0 && hasIndex) selected.add("vanilla");
 
   const ambiguous = hasIncompatibleSelection(selected);
-  const frameworks = ambiguous ? [] : FRAMEWORK_ORDER.filter((framework) => selected.has(framework));
+  const nextEntry = ["app/page", "app/layout", "pages/index", "pages/_app", "src/app/page", "src/app/layout", "src/pages/index", "src/pages/_app"].some(path => ["js", "jsx", "ts", "tsx"].some(extension => existsSync(join(canonicalRoot, `${path}.${extension}`))));
+  const hosts: RuntimeHost[] = [
+    ...(nextSelected && nextEntry ? ["next" as const] : []),
+    ...(viteSelected && hasIndex ? ["vite" as const] : []),
+    ...(angularSelected ? ["angular" as const] : []),
+    ...(hasIndex ? ["vanilla" as const] : []),
+  ];
+  if (host && !hosts.includes(host)) throw new WebDebugError("PROJECT_HOST_UNCONFIRMED", "The requested host is not backed by application markers at this exact root. Detect an exact workspace candidate or choose a grounded host.", { allowedHosts: hosts });
+  let frameworks = ambiguous ? [] : FRAMEWORK_ORDER.filter((framework) => selected.has(framework));
+  if (host) {
+    frameworks = [host];
+    if (host === "next" && selected.has("react")) frameworks.push("react");
+    if (host === "vite" && selected.has("react") !== selected.has("vue")) frameworks.push(selected.has("react") ? "react" : "vue");
+  }
   const frameworkDetections = FRAMEWORK_ORDER.flatMap((framework): FrameworkDetection[] => {
     const provenance = signals.get(framework) ?? [];
     if (provenance.length === 0) return [];
     return [{
       framework,
       confidence: selected.has(framework) ? "high" : signalConfidence(provenance),
-      selected: !ambiguous && selected.has(framework),
+      selected: frameworks.includes(framework),
       provenance: provenance.slice(0, 8),
     }];
   });
@@ -103,7 +117,7 @@ function detectCanonicalRoot(canonicalRoot: string, discoverWorkspaces: boolean)
 
   const warnings: string[] = [];
   if (!packageJson) warnings.push("No package.json found; framework-specific adapters cannot be inferred.");
-  if (ambiguous) warnings.push("Incompatible application framework signals were detected; no framework-specific runtime was selected.");
+  if (ambiguous) warnings.push(host ? "Incompatible application framework signals remain visible; the explicitly selected grounded host controls runtime enrichment." : "Incompatible application framework signals were detected; no framework-specific runtime was selected. Choose one recovery.hosts value explicitly or pass one exact workspace candidate projectRoot.");
   if (frameworkDetections.some((detection) => !detection.selected && detection.confidence !== "high")) warnings.push("Uncorroborated dependency signals were retained as candidates and did not select framework adapters.");
   if (!browserTarget) warnings.push("No confirmed application entry or supported framework configuration was found at this exact project root.");
   if (workspace.candidates.length > 0) warnings.push("Workspace application candidates are informational; pass one exact candidate projectRoot to select it.");
@@ -113,7 +127,9 @@ function detectCanonicalRoot(canonicalRoot: string, discoverWorkspaces: boolean)
   if (projectCapabilities.vue) warnings.push("Vue runtime enrichment requires a compatible Vue 3 Chromium development build.");
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
+    selection: { mode: host ? "explicit" : frameworks.length ? "automatic" : "unresolved", host: host ?? (["next", "vite", "angular", "vanilla"] as RuntimeHost[]).find(value => frameworks.includes(value)) ?? null },
+    recovery: { hosts, instruction: "Pass one listed host explicitly to detection and session start for this root. Workspace children are not auto-selected: use an exact projectRoot from workspace.candidates, detect it, then start its local URL. Project selection does not prove that a compatible runtime endpoint is available." },
     projectRoot: canonicalRoot,
     packageManager: detectPackageManager(canonicalRoot),
     kind,

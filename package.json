@@ -1,10 +1,10 @@
 {
   "name": "web-debug-mcp",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "webDebug": {
     "releaseStatus": "final",
-    "releasedPackageVersion": "0.12.0",
-    "releasedPluginRuntimeVersion": "0.12.0"
+    "releasedPackageVersion": "0.13.0",
+    "releasedPluginRuntimeVersion": "0.13.0"
   },
   "description": "Local evidence-first web debugging MCP server for Codex, Claude Code, and other MCP clients.",
   "type": "module",
@@ -71,7 +71,8 @@
     "pretest": "npm run build --silent",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
-    "smoke:source-correlation": "npm run build && node scripts/live-source-correlation-smoke.mjs"
+    "smoke:source-correlation": "npm run build && node scripts/live-source-correlation-smoke.mjs",
+    "smoke:workflow": "npm run build && node scripts/live-workflow-smoke.mjs"
   },
   "dependencies": {
     "@jridgewell/trace-mapping": "0.3.31",

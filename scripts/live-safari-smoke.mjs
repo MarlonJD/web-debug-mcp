@@ -47,6 +47,10 @@ try {
     return true;
   })()`, true);
   const keys = ["Enter", "Escape", "Tab", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Backspace", "Delete", "Space"];
+  const visibleLayout = await adapter.layout({ kind: "css", value: "#native-hover" });
+  await manager.evaluate(session.id, "document.querySelector('#native-hover').style.cssText='position:fixed;top:200vh'", true);
+  const offscreenLayout = await adapter.layout({ kind: "css", value: "#native-hover" });
+  await manager.evaluate(session.id, "document.querySelector('#native-hover').style.cssText=''", true);
   for (const key of keys) await manager.act(session.id, { kind: "press", locator: { kind: "css", value: "#native-key" }, key });
   await manager.act(session.id, { kind: "select", locator: { kind: "css", value: "#native-select" }, value: "safari-option-two" });
   await manager.act(session.id, { kind: "check", locator: { kind: "css", value: "#native-check" }, checked: true });
@@ -89,6 +93,7 @@ try {
   const remember = interactive.find((element) => element.name === "Remember this device");
   const usesPerformanceNetwork = evidence.network.some((entry) => entry.requestId.startsWith("performance-"));
   const assertions = {
+    typedLayout: visibleLayout.count === 1 && visibleLayout.inViewport && visibleLayout.unobstructed && !offscreenLayout.inViewport && !offscreenLayout.unobstructed,
     networkFreshness: verificationCapture.collection.network === "fresh" && verificationCapture.summary.observations?.network?.freshness === "fresh",
     flowCaptured: verificationCapture.redaction.applied === true,
     safariTarget: session.target?.browser === "safari",
